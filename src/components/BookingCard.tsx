@@ -22,18 +22,19 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       id="booking-card-section" 
       className="w-full max-w-[1020px] mx-auto bg-transparent lg:bg-white lg:rounded-[26px] lg:border lg:border-navy-200/90 lg:shadow-card p-0 lg:p-8 transition-all relative z-20"
     >
-      {/* Desktop-only top bar with car transmission preference */}
-      <div className="hidden lg:flex items-center justify-between gap-2 pb-3 mb-4 border-b border-navy-100">
+      {/* Top bar with car transmission preference (visible on both mobile and desktop) */}
+      <div className="flex items-center justify-between gap-2 pb-3 mb-2 lg:mb-4 border-b border-navy-100 px-4 lg:px-0 pt-2 lg:pt-0">
         <div className="flex items-center gap-2 text-xs font-semibold text-navy-800">
-          <span className="w-2 h-2 rounded-full bg-bee-600" />
-          <span>Professional Driver Service For Your Personal Vehicle</span>
+          <span className="w-2 h-2 rounded-full bg-bee-600 shrink-0" />
+          <span className="hidden sm:inline">Professional Driver Service For Your Personal Vehicle</span>
+          <span className="sm:hidden text-xs font-bold text-navy-800">Transmission</span>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-navy-50 p-1 rounded-xl border border-navy-200/60">
+        <div className="flex items-center gap-1.5 bg-navy-50 p-1 rounded-xl border border-navy-200/60 shrink-0">
           <button
             type="button"
             onClick={() => updateBookingState({ transmission: 'automatic' })}
-            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
               bookingState.transmission === 'automatic'
                 ? 'bg-white text-navy-950 shadow-xs'
                 : 'text-navy-600 hover:text-navy-900'
@@ -44,7 +45,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           <button
             type="button"
             onClick={() => updateBookingState({ transmission: 'manual' })}
-            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
               bookingState.transmission === 'manual'
                 ? 'bg-white text-navy-950 shadow-xs'
                 : 'text-navy-600 hover:text-navy-900'
