@@ -115,7 +115,7 @@ export const WhyDriverBee: React.FC<{ onBookClick: () => void }> = ({ onBookClic
               Warangal's Most Trusted Driver Network
             </div>
             <h4 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Over 250,000+ safe trips completed across Warangal.
+              Over 20,000+ safe trips completed across Warangal.
             </h4>
             <p className="text-xs sm:text-sm text-navy-300 mt-1">
               Drivers available across Hanamkonda, Kazipet, Subedari, Nakkalagutta, Hunter Road, and Waddepally in under 30 minutes.
