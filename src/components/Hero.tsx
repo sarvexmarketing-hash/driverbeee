@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, HeartHandshake, Clock, Bell, ChevronDown, LogIn, User, MapPin, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { DriverBeeLogo } from './DriverBeeLogo';
 
 interface HeroProps {
   onQuickBook?: () => void;
@@ -35,47 +36,53 @@ export const Hero: React.FC<HeroProps> = ({
       >
         <div className="relative px-4 pt-3 pb-0">
           
-          {/* Top Row: Auth Button + Bell + Warangal Location Pill */}
+          {/* Top Row: DriverBee Logo + Location Pill + Bell + Auth Button */}
           <div className="flex items-center justify-between gap-2 mb-3">
-            {/* Left side on mobile hero: Auth status */}
-            <div>
-              {user ? (
-                <button
-                  onClick={() => onOpenAuth?.('login')}
-                  className="flex items-center gap-1.5 px-2.5 py-1 bg-white/90 rounded-full shadow-xs border border-white/80 text-xs font-bold text-navy-950"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="truncate max-w-[100px]">{profile?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => onOpenAuth?.('login')}
-                  className="flex items-center gap-1 px-3 py-1 bg-white/90 hover:bg-white rounded-full shadow-xs border border-white/80 text-xs font-bold text-navy-950 transition-colors"
-                >
-                  <User className="w-3 h-3 text-bee-600" />
-                  <span>Sign In</span>
-                </button>
-              )}
+            {/* Left: Official DriverBee Brand Logo */}
+            <div className="flex items-center">
+              <DriverBeeLogo
+                height={26}
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              />
             </div>
 
-            {/* Right side on mobile hero: City Selector + Notification Bell */}
+            {/* Right: City Selector + Notification Bell + Auth */}
             <div className="flex items-center gap-1.5">
               <button
                 onClick={onOpenCitySelector}
-                className="flex items-center gap-1 px-2.5 py-1 bg-white/80 backdrop-blur-xs rounded-full shadow-xs border border-white/60 text-xs font-bold text-navy-900"
+                className="flex items-center gap-1 px-2.5 py-1 bg-white/85 backdrop-blur-xs rounded-full shadow-xs border border-white/60 text-[11.5px] font-bold text-navy-900"
               >
                 <MapPin className="w-3 h-3 text-bee-600 flex-shrink-0" />
-                <span className="truncate max-w-[110px]">{selectedCity.split(',')[0]}</span>
+                <span className="truncate max-w-[85px] sm:max-w-[110px]">{selectedCity.split(',')[0]}</span>
                 <ChevronDown className="w-3 h-3 text-navy-400" />
               </button>
 
               <button
                 onClick={onOpenNotifications}
-                className="w-7 h-7 rounded-full bg-white/80 backdrop-blur-xs shadow-xs border border-white/60 flex items-center justify-center text-navy-800"
+                className="w-7 h-7 rounded-full bg-white/85 backdrop-blur-xs shadow-xs border border-white/60 flex items-center justify-center text-navy-800"
                 aria-label="Notifications"
               >
                 <Bell className="w-3.5 h-3.5" />
               </button>
+
+              {user ? (
+                <button
+                  onClick={() => onOpenAuth?.('login')}
+                  className="flex items-center gap-1 px-2 py-1 bg-white/90 rounded-full shadow-xs border border-white/80 text-[11px] font-bold text-navy-950"
+                  title={profile?.full_name || user.email || ''}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="truncate max-w-[65px]">{profile?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => onOpenAuth?.('login')}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-white/90 hover:bg-white rounded-full shadow-xs border border-white/80 text-[11px] font-bold text-navy-950 transition-colors"
+                >
+                  <User className="w-3 h-3 text-bee-600" />
+                  <span>Sign In</span>
+                </button>
+              )}
             </div>
           </div>
 
