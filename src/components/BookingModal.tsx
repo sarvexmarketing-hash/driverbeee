@@ -34,7 +34,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [carPlate, setCarPlate] = useState('TS-03-MJ-4412');
   const [carModel, setCarModel] = useState('Honda City / Luxury Sedan');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [submittedBookingId, setSubmittedBookingId] = useState<string | null>(null);
+  const [submittedBookingId, setSubmittedBookingId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('driverbee_pending_booking_id');
+    } catch {
+      return null;
+    }
+  });
   const [hasCelebrated, setHasCelebrated] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
 
@@ -61,14 +67,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // Live lookup of this booking from shared context
   const liveBooking = submittedBookingId ? bookings.find(b => b.id === submittedBookingId) : null;
   const isConfirmed = !!liveBooking && (liveBooking.status === 'assigned' || liveBooking.status === 'accepted' || liveBooking.status === 'active');
+  const isWaitingAdminAcceptance = !!submittedBookingId && !isConfirmed && liveBooking?.status !== 'cancelled';
+
+  // Cleanup completed/cancelled bookings from pending state
+  useEffect(() => {
+    if (liveBooking) {
+      if (liveBooking.status === 'completed' || liveBooking.status === 'cancelled') {
+        try { localStorage.removeItem('driverbee_pending_booking_id'); } catch {}
+        setSubmittedBookingId(null);
+      }
+    }
+  }, [liveBooking?.status]);
 
   useEffect(() => {
     if (!isOpen) {
-      setSubmittedBookingId(null);
       setHasCelebrated(false);
       setIsProcessing(false);
+      if (isConfirmed) {
+        try { localStorage.removeItem('driverbee_pending_booking_id'); } catch {}
+        setSubmittedBookingId(null);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isConfirmed]);
 
   useEffect(() => {
     if (isConfirmed && !hasCelebrated) {
@@ -117,6 +137,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const total = getBaseRate();
 
   const handleConfirm = async () => {
+    if (isProcessing || isWaitingAdminAcceptance) return;
     setIsProcessing(true);
 
     const forWhomStr = bookingState.passengerType === 'self' 
@@ -196,6 +217,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       });
 
       setSubmittedBookingId(newId);
+      try {
+        localStorage.setItem('driverbee_pending_booking_id', newId);
+      } catch {}
       onConfirmSuccess(newId);
     } catch (err) {
       console.error('Booking failed', err);
@@ -217,14 +241,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <span className="text-[11px] font-bold uppercase tracking-wider text-bee-700">
               {isConfirmed 
                 ? 'Booking Confirmed' 
-                : submittedBookingId 
+                : isWaitingAdminAcceptance 
                 ? 'Awaiting Admin Acceptance' 
                 : 'Review & Confirm Drive'}
             </span>
             <h3 className="text-lg sm:text-xl font-extrabold text-navy-950">
               {isConfirmed 
                 ? 'Your Driver Is Dispatched' 
-                : submittedBookingId 
+                : isWaitingAdminAcceptance 
                 ? 'Booking Request Placed' 
                 : 'DriverBee Driver Booking'}
             </h3>
@@ -491,16 +515,46 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </span>
             </label>
 
-            {/* Confirm CTA */}
+            {/* Live Awaiting Admin Banner if currently waiting */}
+            {isWaitingAdminAcceptance && (
+              <div className="p-3.5 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center gap-3 text-xs text-amber-950 shadow-xs animate-pulse">
+                <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-4 h-4 text-amber-800 stroke-[2.5]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold flex items-center gap-1.5">
+                    <span>Booking Request Placed</span>
+                    <span className="text-[10px] bg-amber-200/90 px-1.5 py-0.5 rounded font-mono font-bold">
+                      {submittedBookingId}
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] text-amber-850 mt-0.5 leading-tight">
+                    Waiting for DriverBee admin to accept your booking. You cannot submit again until accepted.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Confirm / Waiting CTA */}
             <button
+              type="button"
               onClick={handleConfirm}
-              disabled={isProcessing || !agreedTerms}
-              className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200"
+              disabled={isProcessing || !agreedTerms || isWaitingAdminAcceptance}
+              className={`w-full h-12 sm:h-14 rounded-full font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all duration-200 select-none ${
+                isWaitingAdminAcceptance
+                  ? 'bg-amber-500 hover:bg-amber-500 text-navy-950 border border-amber-600/30 cursor-not-allowed opacity-95 shadow-none'
+                  : 'bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-cta'
+              }`}
             >
               {isProcessing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Assigning Driver...</span>
+                  <span>Placing Booking Request...</span>
+                </>
+              ) : isWaitingAdminAcceptance ? (
+                <>
+                  <Clock className="w-5 h-5 animate-pulse text-navy-950 stroke-[2.5]" />
+                  <span>Waiting Admin Acceptance</span>
                 </>
               ) : (
                 <>
@@ -510,102 +564,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               )}
             </button>
 
-          </div>
-        ) : !isConfirmed ? (
-          /* ─────────────────────────────────────────────────────────────────
-             State 2: Awaiting Admin Acceptance (Pending Operations Approval)
-             ───────────────────────────────────────────────────────────────── */
-          <div className="p-6 sm:p-8 text-center space-y-5">
-            {/* Animated Pulsing Status Ring */}
-            <div className="relative w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
-              <div className="absolute inset-0 rounded-full bg-amber-400/25 animate-ping" />
-              <Clock className="w-8 h-8 stroke-[2.5] relative z-10" />
-            </div>
-
-            <div>
-              <span className="text-xs font-extrabold text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-full uppercase tracking-wider border border-amber-200">
-                Booking ID: {submittedBookingId}
-              </span>
-              <h4 className="text-xl sm:text-2xl font-extrabold text-navy-950 mt-2">
-                Waiting for Admin Acceptance...
-              </h4>
-              <p className="text-xs sm:text-sm text-navy-600 mt-1.5 max-w-md mx-auto leading-relaxed">
-                Your ride request has been submitted to DriverBee Dispatch. As soon as the admin accepts and assigns your driver, your booking will show <strong>Confirmed</strong> with driver contact details.
-              </p>
-            </div>
-
-            {/* Live Step Tracker */}
-            <div className="p-3.5 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-left space-y-2.5">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs flex-shrink-0">✓</div>
-                <div className="text-xs">
-                  <div className="font-bold text-navy-950">1. Booking Request Placed</div>
-                  <div className="text-[10px] text-gray-500">Pickup and route received by dispatch</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs flex-shrink-0 animate-pulse">⏳</div>
-                <div className="text-xs">
-                  <div className="font-bold text-amber-900">2. Awaiting Admin Acceptance</div>
-                  <div className="text-[10px] text-amber-700 font-medium">Operations team is reviewing and assigning an on-duty driver</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 opacity-40">
-                <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-xs flex-shrink-0">3</div>
-                <div className="text-xs">
-                  <div className="font-bold text-gray-700">3. Driver Dispatched</div>
-                  <div className="text-[10px] text-gray-400">Driver navigates to your doorstep</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Trip details summary */}
-            <div className="p-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-xs text-left space-y-2">
-              <div className="flex justify-between">
-                <span className="text-navy-500">Pickup Address</span>
-                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{address}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Delivery Address</span>
-                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{deliveryAddress}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Your Phone</span>
-                <span className="font-bold text-navy-950">+91 {phone}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-navy-500">Driver Assignment</span>
-                <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 text-[11px] animate-pulse">
-                  Pending Admin Assignment...
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Vehicle</span>
-                <span className="font-bold text-navy-950">{carModel} ({carPlate})</span>
-              </div>
-              <div className="flex justify-between pt-1 border-t border-navy-100">
-                <span className="text-navy-500 font-medium">Estimated Total</span>
-                <span className="font-bold text-bee-700">₹{total.toLocaleString('en-IN')} (Pay on Completion)</span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-2 pt-1">
-              <button
-                onClick={onClose}
-                className="w-full py-3.5 px-4 rounded-full bg-navy-950 hover:bg-navy-800 text-white font-bold text-xs sm:text-sm transition-colors shadow-sm"
-              >
-                Track in My Bookings
-              </button>
-              <button
-                type="button"
-                onClick={() => submittedBookingId && acceptBooking(submittedBookingId)}
-                className="w-full text-center text-[11px] font-semibold text-gray-400 hover:text-bee-600 transition-colors py-1 flex items-center justify-center gap-1.5"
-                title="Quick demo simulation to test without navigating to Admin portal"
-              >
-                <span>⚡ Admin Preview: Click here to simulate Admin Acceptance</span>
-              </button>
-            </div>
           </div>
         ) : (
           /* ─────────────────────────────────────────────────────────────────
@@ -661,7 +619,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             <div className="pt-2">
               <button
-                onClick={onClose}
+                onClick={() => {
+                  try { localStorage.removeItem('driverbee_pending_booking_id'); } catch {}
+                  setSubmittedBookingId(null);
+                  onClose();
+                }}
                 className="w-full py-3.5 px-4 rounded-full bg-navy-950 hover:bg-navy-800 text-white font-bold text-xs sm:text-sm transition-colors shadow-sm"
               >
                 Done & View Dashboard
