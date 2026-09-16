@@ -94,7 +94,7 @@ export const Hero: React.FC<HeroProps> = ({
               <h1 className="text-2xl font-extrabold tracking-tight text-navy-950 leading-tight font-display">
                 Book a Driver
               </h1>
-              <p className="text-xs text-navy-500 font-medium mt-0.5">
+              <p className="text-xs font-display font-bold tracking-tight text-navy-950 mt-0.5">
                 Your car our driver, on demand
               </p>
             </div>
@@ -139,7 +139,7 @@ export const Hero: React.FC<HeroProps> = ({
                 Book a Driver
               </h1>
 
-              <p className="text-xl font-medium text-navy-600 mb-6 max-w-lg">
+              <p className="text-xl font-display font-bold tracking-tight text-navy-950 mb-6 max-w-lg">
                 Your car our driver, on demand
               </p>
 
@@ -187,7 +187,7 @@ export const Hero: React.FC<HeroProps> = ({
                     Rajesh K. • 4.97 ★ (1,420 drives)
                   </span>
                   <span className="bg-bee-100 text-bee-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded">
-                    AP-29 Verified
+                    Warangal Verified
                   </span>
                 </div>
               </div>
