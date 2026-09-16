@@ -34,10 +34,10 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           <button
             type="button"
             onClick={() => updateBookingState({ transmission: 'automatic' })}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all border-2 ${
               bookingState.transmission === 'automatic'
-                ? 'bg-white text-navy-950 shadow-xs'
-                : 'text-navy-600 hover:text-navy-900'
+                ? 'bg-white text-navy-950 border-bee-500 ring-1 ring-bee-400/40 shadow-xs font-bold'
+                : 'border-transparent text-navy-600 hover:text-navy-900'
             }`}
           >
             Automatic
@@ -45,10 +45,10 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           <button
             type="button"
             onClick={() => updateBookingState({ transmission: 'manual' })}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all border-2 ${
               bookingState.transmission === 'manual'
-                ? 'bg-white text-navy-950 shadow-xs'
-                : 'text-navy-600 hover:text-navy-900'
+                ? 'bg-white text-navy-950 border-bee-500 ring-1 ring-bee-400/40 shadow-xs font-bold'
+                : 'border-transparent text-navy-600 hover:text-navy-900'
             }`}
           >
             Manual

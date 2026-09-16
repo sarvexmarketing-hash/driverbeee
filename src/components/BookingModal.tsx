@@ -31,6 +31,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   );
   const [phone, setPhone] = useState('9845012345');
   const [carType, setCarType] = useState<'hatchback' | 'sedan' | 'suv'>((bookingState.carType as any) || 'sedan');
+  const [transmission, setTransmission] = useState<'automatic' | 'manual'>(bookingState.transmission || 'automatic');
   const [carPlate, setCarPlate] = useState('TS-03-MJ-4412');
   const [carModel, setCarModel] = useState('Honda City / Luxury Sedan');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -41,6 +42,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // Synchronize delivery address when outstation destination or distance slab is selected
   useEffect(() => {
     if (isOpen) {
+      setTransmission(bookingState.transmission || 'automatic');
       if (bookingState.tripType === 'outside') {
         if (bookingState.outstationMode === 'distance') {
           setDeliveryAddress(`Destination (${bookingState.outstationDistanceRange || 'Distance Slab'})`);
@@ -148,7 +150,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           `• Daily Service Window: 12 Hours (8:00 AM – 8:00 PM)`,
           `• Overtime Charges: ₹100 per hour beyond 12 hours`,
           `• Driver Night Stay: Client provides food & basic accommodation`,
-          `• Transmission: ${bookingState.transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
+          `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
           `• Car Type: ${carType.toUpperCase()}`,
           `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
           `• Booked For: ${forWhomStr}`,
@@ -165,7 +167,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           `• Daily Service Window: 12 Hours (8:00 AM – 8:00 PM)`,
           `• Overtime Charges: ₹100 per hour beyond 12 hours`,
           `• Driver Night Stay: Client provides food & basic accommodation`,
-          `• Transmission: ${bookingState.transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
+          `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
           `• Car Type: ${carType.toUpperCase()}`,
           `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
           `• Booked For: ${forWhomStr}`,
@@ -179,7 +181,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       bookingNotes = [
         `[WITHIN THE CITY TRIP (Warangal / Local)]`,
         `• Package Duration: ${bookingState.duration} Hours (${bookingState.duration === 2 ? '2-Hr Short Trip' : bookingState.duration === 4 ? '4-Hr Half Day' : bookingState.duration === 6 ? '6-Hr Extended' : '8-Hr Full Day'})`,
-        `• Transmission: ${bookingState.transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
+        `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
         `• Car Type: ${carType.toUpperCase()}`,
         `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
         `• Booked For: ${forWhomStr}`,
@@ -200,7 +202,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         scheduleType: bookingState.scheduleType,
         date: bookingState.scheduleType === 'now' ? new Date().toISOString().split('T')[0] : bookingState.date,
         time: bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : bookingState.time,
-        transmission: bookingState.transmission,
+        transmission: transmission,
         carModel: `${carType.toUpperCase()} • ${carModel || 'Personal Car'}`,
         carPlate: carPlate || 'TS-03-MJ-4412',
         forWhom: forWhomStr,
@@ -392,7 +394,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Transmission</span>
-                <span className="font-bold text-navy-950 capitalize">{bookingState.transmission} Drive</span>
+                <span className="font-bold text-navy-950 capitalize">{transmission} Drive</span>
               </div>
               <div className="flex justify-between pt-1 border-t border-navy-100">
                 <span className="text-navy-500 font-medium">Estimated Total</span>
@@ -462,7 +464,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div>
                   <span className="text-navy-400 font-medium block">Transmission</span>
                   <span className="font-bold text-navy-950 text-sm capitalize">
-                    {bookingState.transmission} Drive
+                    {transmission} Drive
                   </span>
                 </div>
               </div>
@@ -576,6 +578,40 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         <span className="text-[10px] text-navy-400 block truncate mt-0.5">
                           {type.example}
                         </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Transmission Preference: Automatic | Manual with gold bordering */}
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-navy-600 mb-1.5">
+                  Transmission Type
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'automatic' as const, label: 'Automatic' },
+                    { id: 'manual' as const, label: 'Manual' },
+                  ].map((t) => {
+                    const isSelected = transmission === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTransmission(t.id)}
+                        className={`py-2 px-3 rounded-xl border-2 text-center transition-all flex items-center justify-center gap-2 ${
+                          isSelected
+                            ? 'bg-bee-500/15 border-bee-500 text-navy-950 font-bold shadow-xs ring-1 ring-bee-400/40'
+                            : 'bg-white border-navy-200/90 text-navy-600 hover:bg-navy-50 font-medium'
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            isSelected ? 'bg-bee-600' : 'bg-navy-300'
+                          }`}
+                        />
+                        <span className="text-xs font-semibold">{t.label} Transmission</span>
                       </button>
                     );
                   })}
