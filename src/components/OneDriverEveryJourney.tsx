@@ -171,7 +171,7 @@ export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) =
                   <div className="flex items-center gap-2.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                     <div>
-                      <div className="text-xs font-bold text-navy-950">Driver Ready In 15 Mins</div>
+                      <div className="text-xs font-bold text-navy-950">Driver Ready In 30 Mins</div>
                       <div className="text-[10px] text-navy-500">Available across all Warangal localities</div>
                     </div>
                   </div>

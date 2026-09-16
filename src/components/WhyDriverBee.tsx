@@ -37,11 +37,11 @@ export const WhyDriverBee: React.FC<{ onBookClick: () => void }> = ({ onBookClic
       Icon: Zap,
       tag: 'INSTANT OR ADVANCE',
       title: 'Book Now or Later.',
-      description: 'Get a driver at your doorstep in Hanamkonda, Kazipet, or Subedari in 15 minutes, or reserve a trusted driver for an outstation trip next month.',
+      description: 'Get a driver at your doorstep in Hanamkonda, Kazipet, or Subedari in 30 minutes, or reserve a trusted driver for an outstation trip next month.',
       accent: 'border-amber-200 hover:border-amber-400 bg-gradient-to-b from-white to-amber-50/30',
       badgeBg: 'bg-bee-100 text-bee-800',
       iconBg: 'bg-bee-50 text-bee-700',
-      points: ['15-minute express arrival', 'Advance scheduled bookings', 'Free cancellation up to 1 hr before']
+      points: ['30-minute express arrival', 'Advance scheduled bookings', 'Free cancellation up to 1 hr before']
     }
   ];
 
@@ -118,7 +118,7 @@ export const WhyDriverBee: React.FC<{ onBookClick: () => void }> = ({ onBookClic
               Over 250,000+ safe trips completed across Warangal.
             </h4>
             <p className="text-xs sm:text-sm text-navy-300 mt-1">
-              Drivers available across Hanamkonda, Kazipet, Subedari, Nakkalagutta, Hunter Road, and Waddepally in under 15 minutes.
+              Drivers available across Hanamkonda, Kazipet, Subedari, Nakkalagutta, Hunter Road, and Waddepally in under 30 minutes.
             </p>
           </div>
 

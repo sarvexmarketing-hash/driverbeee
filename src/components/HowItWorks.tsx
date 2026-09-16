@@ -21,7 +21,7 @@ export const HowItWorks: React.FC<{ onBookClick: () => void }> = ({ onBookClick 
       number: '03',
       Icon: Calendar,
       title: 'Choose when you need the driver',
-      description: 'Request instant dispatch within 15 minutes across Warangal, or schedule in advance for morning meetings or weekend trips.',
+      description: 'Request instant dispatch within 30 minutes across Warangal, or schedule in advance for morning meetings or weekend trips.',
       color: 'text-emerald-600 bg-emerald-50 border-emerald-200'
     },
     {

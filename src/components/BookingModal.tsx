@@ -180,7 +180,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div>
                   <span className="text-navy-400 font-medium block">Pickup Timing</span>
                   <span className="font-bold text-navy-950 text-sm">
-                    {bookingState.scheduleType === 'now' ? 'Immediate (~15 mins)' : `${formatDisplayDate(bookingState.date)} at ${bookingState.time}`}
+                    {bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : `${formatDisplayDate(bookingState.date)} at ${bookingState.time}`}
                   </span>
                 </div>
                 <div>

@@ -195,7 +195,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                   <div className="px-3 py-2 bg-navy-50 rounded-xl mt-1 text-[11px] text-navy-600 flex items-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                    <span>Drivers arrive in 15 mins across Warangal</span>
+                    <span>Drivers arrive in 30 mins across Warangal</span>
                   </div>
                 </div>
               </>
