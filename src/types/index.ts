@@ -29,9 +29,12 @@ export interface BookingState {
   passengerType: 'self' | 'family';
   familyMemberName?: string;
   notes?: string;
+  outstationMode?: 'district' | 'distance';
   outstationDestinationId?: string;
   outstationDestinationName?: string;
   outstationDistrict?: string;
+  outstationDistanceSlabId?: string;
+  outstationDistanceRange?: string;
   outstationDays?: 1 | 2;
   outstationPrice?: number;
 }

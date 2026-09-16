@@ -23,8 +23,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const { bookings, addBooking, acceptBooking } = useBookings();
   const [address, setAddress] = useState('Flat 402, Royal Palms, Hanamkonda, Warangal');
   const [deliveryAddress, setDeliveryAddress] = useState(
-    bookingState.tripType === 'outside' && bookingState.outstationDestinationName
-      ? `${bookingState.outstationDestinationName}, ${bookingState.outstationDistrict || ''}, Telangana`
+    bookingState.tripType === 'outside'
+      ? bookingState.outstationMode === 'distance'
+        ? `Destination (${bookingState.outstationDistanceRange || 'Distance Slab'})`
+        : `${bookingState.outstationDestinationName || 'Destination'}, ${bookingState.outstationDistrict || ''}, Telangana`
       : 'Hunter Road / Destination, Warangal'
   );
   const [phone, setPhone] = useState('9845012345');
@@ -34,14 +36,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [submittedBookingId, setSubmittedBookingId] = useState<string | null>(null);
   const [hasCelebrated, setHasCelebrated] = useState(false);
 
-  // Synchronize delivery address when outstation destination is selected
+  // Synchronize delivery address when outstation destination or distance slab is selected
   useEffect(() => {
     if (isOpen) {
-      if (bookingState.tripType === 'outside' && bookingState.outstationDestinationName) {
-        setDeliveryAddress(`${bookingState.outstationDestinationName}, ${bookingState.outstationDistrict || ''}, Telangana`);
+      if (bookingState.tripType === 'outside') {
+        if (bookingState.outstationMode === 'distance') {
+          setDeliveryAddress(`Destination (${bookingState.outstationDistanceRange || 'Distance Slab'})`);
+        } else if (bookingState.outstationDestinationName) {
+          setDeliveryAddress(`${bookingState.outstationDestinationName}, ${bookingState.outstationDistrict || ''}, Telangana`);
+        }
       }
     }
-  }, [isOpen, bookingState.tripType, bookingState.outstationDestinationName, bookingState.outstationDistrict]);
+  }, [
+    isOpen,
+    bookingState.tripType,
+    bookingState.outstationMode,
+    bookingState.outstationDestinationName,
+    bookingState.outstationDistrict,
+    bookingState.outstationDistanceRange,
+  ]);
 
   // Live lookup of this booking from shared context
   const liveBooking = submittedBookingId ? bookings.find(b => b.id === submittedBookingId) : null;
@@ -195,7 +208,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </span>
                   <span className="font-bold text-navy-950 text-sm">
                     {bookingState.tripType === 'outside'
-                      ? `${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDays || 1} Day)`
+                      ? bookingState.outstationMode === 'distance'
+                        ? `${bookingState.outstationDistanceRange || 'Distance Slab'} (${bookingState.outstationDays || 1} Day)`
+                        : `${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDays || 1} Day)`
                       : `${bookingState.duration} Hours`}
                   </span>
                 </div>
@@ -295,7 +310,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <span className="text-sm sm:text-base font-extrabold text-navy-950 block">Total Payable</span>
                 <span className="text-xs text-navy-500 font-medium">
                   {bookingState.tripType === 'outside'
-                    ? `Driver Service (${bookingState.outstationDays || 1} Day - ${bookingState.outstationDestinationName || 'Outstation'})`
+                    ? bookingState.outstationMode === 'distance'
+                      ? `Driver Service (${bookingState.outstationDays || 1} Day - ${bookingState.outstationDistanceRange || 'Distance Slab'})`
+                      : `Driver Service (${bookingState.outstationDays || 1} Day - ${bookingState.outstationDestinationName || 'Outstation'})`
                     : `Driver Service (${bookingState.duration} Hours)`}
                 </span>
               </div>

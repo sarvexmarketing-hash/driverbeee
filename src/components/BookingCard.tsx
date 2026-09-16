@@ -78,16 +78,30 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         {/* SECTION 2: Duration (for City) OR Outstation Destination Selector (for Outside) */}
         {bookingState.tripType === 'outside' ? (
           <OutstationDestinationSelector
+            mode={bookingState.outstationMode || 'district'}
+            onModeChange={(m) => updateBookingState({ outstationMode: m })}
             selectedDestinationId={bookingState.outstationDestinationId || 'hyderabad'}
+            selectedDistanceSlabId={bookingState.outstationDistanceSlabId || 'slab-100-150'}
             selectedDays={bookingState.outstationDays || 1}
             onSelectDestination={(dest, opt) => {
               updateBookingState({
+                outstationMode: 'district',
                 outstationDestinationId: dest.id,
                 outstationDestinationName: dest.destination,
                 outstationDistrict: dest.district,
                 outstationDays: opt.days,
                 outstationPrice: opt.price,
-                duration: (opt.days === 1 ? 8 : 8) as DurationOption,
+                duration: 8 as DurationOption,
+              });
+            }}
+            onSelectDistanceSlab={(slab, days) => {
+              updateBookingState({
+                outstationMode: 'distance',
+                outstationDistanceSlabId: slab.id,
+                outstationDistanceRange: slab.range,
+                outstationDays: days,
+                outstationPrice: slab.pricePerDay * days,
+                duration: 8 as DurationOption,
               });
             }}
           />

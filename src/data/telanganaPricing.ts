@@ -13,6 +13,49 @@ export interface TelanganaDestination {
   popular?: boolean;
 }
 
+export interface DistanceSlab {
+  id: string;
+  range: string;
+  minKm: number;
+  maxKm?: number;
+  pricePerDay: number;
+  label: string;
+  description: string;
+  popular?: boolean;
+}
+
+export const DISTANCE_SLABS: DistanceSlab[] = [
+  {
+    id: 'slab-100-150',
+    range: '100 – 150 km',
+    minKm: 100,
+    maxKm: 150,
+    pricePerDay: 1200,
+    label: '100 – 150 km',
+    description: 'From customer location (e.g. 100 to 150 km distance)',
+    popular: true,
+  },
+  {
+    id: 'slab-150-250',
+    range: '150 – 250 km',
+    minKm: 150,
+    maxKm: 250,
+    pricePerDay: 1500,
+    label: '150 – 250 km',
+    description: 'From customer location (e.g. 150 to 250 km distance)',
+    popular: true,
+  },
+  {
+    id: 'slab-above-250',
+    range: 'Above 250 km',
+    minKm: 250,
+    pricePerDay: 1800,
+    label: 'Above 250 km',
+    description: 'From customer location (e.g. 250+ km long distance journeys)',
+    popular: true,
+  },
+];
+
 export const TELANGANA_DISTRICT_PRICING: TelanganaDestination[] = [
   {
     id: 'hyderabad',
