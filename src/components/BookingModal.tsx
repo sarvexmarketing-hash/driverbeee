@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookingState, FamilyMember, formatDisplayDate } from '../types';
-import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle, Car } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
 import { useBookings } from '../context/BookingContext';
@@ -30,6 +30,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       : 'Hunter Road / Destination, Warangal'
   );
   const [phone, setPhone] = useState('9845012345');
+  const [carType, setCarType] = useState<'hatchback' | 'sedan' | 'suv'>((bookingState.carType as any) || 'sedan');
   const [carPlate, setCarPlate] = useState('TS-03-MJ-4412');
   const [carModel, setCarModel] = useState('Honda City / Luxury Sedan');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -134,7 +135,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           `• Overtime Charges: ₹100 per hour beyond 12 hours`,
           `• Driver Night Stay: Client provides food & basic accommodation`,
           `• Transmission: ${bookingState.transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
-          `• Vehicle: ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
+          `• Car Type: ${carType.toUpperCase()}`,
+          `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
           `• Booked For: ${forWhomStr}`,
           `• Pickup Doorstep: ${address}`,
           `• Destination Address: ${deliveryAddress}`,
@@ -150,7 +152,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           `• Overtime Charges: ₹100 per hour beyond 12 hours`,
           `• Driver Night Stay: Client provides food & basic accommodation`,
           `• Transmission: ${bookingState.transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
-          `• Vehicle: ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
+          `• Car Type: ${carType.toUpperCase()}`,
+          `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
           `• Booked For: ${forWhomStr}`,
           `• Pickup Doorstep: ${address}`,
           `• Destination Address: ${deliveryAddress}`,
@@ -163,7 +166,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         `[WITHIN THE CITY TRIP (Warangal / Local)]`,
         `• Package Duration: ${bookingState.duration} Hours (${bookingState.duration === 2 ? '2-Hr Short Trip' : bookingState.duration === 4 ? '4-Hr Half Day' : bookingState.duration === 6 ? '6-Hr Extended' : '8-Hr Full Day'})`,
         `• Transmission: ${bookingState.transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
-        `• Vehicle: ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
+        `• Car Type: ${carType.toUpperCase()}`,
+        `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
         `• Booked For: ${forWhomStr}`,
         `• Pickup Doorstep: ${address}`,
         `• Drop-off Destination: ${deliveryAddress}`,
@@ -183,8 +187,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         date: bookingState.scheduleType === 'now' ? new Date().toISOString().split('T')[0] : bookingState.date,
         time: bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : bookingState.time,
         transmission: bookingState.transmission,
-        carModel: carModel || 'Personal Car',
-        carPlate: carPlate || 'AP-29-MJ-4412',
+        carModel: `${carType.toUpperCase()} • ${carModel || 'Personal Car'}`,
+        carPlate: carPlate || 'TS-03-MJ-4412',
         forWhom: forWhomStr,
         area: `${address} ➔ ${deliveryAddress}`,
         estimatedFare: total,
@@ -331,25 +335,95 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
 
             {/* Vehicle Details confirmation */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-navy-700">
-                Your Vehicle Information
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  value={carPlate}
-                  onChange={(e) => setCarPlate(e.target.value)}
-                  placeholder="Vehicle Reg No. (e.g. AP-29-MJ-4412)"
-                  className="px-3 py-2 text-xs font-semibold bg-navy-50 border border-navy-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-900"
-                />
-                <input
-                  type="text"
-                  value={carModel}
-                  onChange={(e) => setCarModel(e.target.value)}
-                  placeholder="Car Model (e.g. Honda City / BMW 3)"
-                  className="px-3 py-2 text-xs font-semibold bg-navy-50 border border-navy-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-900"
-                />
+            <div className="space-y-3 bg-[#FAFBFD] rounded-2xl border border-navy-200/90 p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 flex items-center gap-2">
+                  <Car className="w-4 h-4 text-bee-600 flex-shrink-0" />
+                  <span>Your Vehicle Information</span>
+                </label>
+                <span className="text-[11px] font-bold text-bee-700 bg-bee-50 border border-bee-200/70 px-2 py-0.5 rounded-lg capitalize">
+                  {carType} Selected
+                </span>
+              </div>
+
+              {/* Car Type Selector: Hatchback | Sedan | SUV */}
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-navy-600 mb-1.5">
+                  Select Car Type
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'hatchback' as const, label: 'Hatchback', example: 'Swift, i20, Tiago' },
+                    { id: 'sedan' as const, label: 'Sedan', example: 'City, Verna, Dzire' },
+                    { id: 'suv' as const, label: 'SUV', example: 'Creta, Innova, Nexon' },
+                  ].map((type) => {
+                    const isSelected = carType === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => {
+                          setCarType(type.id);
+                          if (
+                            !carModel ||
+                            carModel.includes('Honda City') ||
+                            carModel.includes('Swift') ||
+                            carModel.includes('Creta')
+                          ) {
+                            if (type.id === 'hatchback') setCarModel('Maruti Swift / Hatchback');
+                            else if (type.id === 'sedan') setCarModel('Honda City / Luxury Sedan');
+                            else if (type.id === 'suv') setCarModel('Hyundai Creta / SUV');
+                          }
+                        }}
+                        className={`py-2.5 px-2 rounded-xl border text-center transition-all ${
+                          isSelected
+                            ? 'bg-bee-500/15 border-bee-600 text-navy-950 font-bold shadow-xs ring-1 ring-bee-500'
+                            : 'bg-white border-navy-200/90 text-navy-600 hover:bg-navy-50 font-medium'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              isSelected ? 'bg-bee-600' : 'bg-navy-300'
+                            }`}
+                          />
+                          <span className="text-xs">{type.label}</span>
+                        </div>
+                        <span className="text-[10px] text-navy-400 block truncate mt-0.5">
+                          {type.example}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Vehicle Reg No. and Car Model Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-navy-600 mb-1">
+                    Vehicle Reg No.
+                  </label>
+                  <input
+                    type="text"
+                    value={carPlate}
+                    onChange={(e) => setCarPlate(e.target.value.toUpperCase())}
+                    placeholder="e.g. TS-03-MJ-4412"
+                    className="w-full px-3.5 py-2.5 text-xs font-semibold bg-white border border-navy-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-navy-600 mb-1">
+                    Car Brand / Model
+                  </label>
+                  <input
+                    type="text"
+                    value={carModel}
+                    onChange={(e) => setCarModel(e.target.value)}
+                    placeholder="e.g. Honda City / Creta / Swift"
+                    className="w-full px-3.5 py-2.5 text-xs font-semibold bg-white border border-navy-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all"
+                  />
+                </div>
               </div>
             </div>
 
