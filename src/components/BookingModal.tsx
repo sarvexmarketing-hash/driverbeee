@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookingState, FamilyMember } from '../types';
+import { BookingState, FamilyMember, formatDisplayDate } from '../types';
 import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
@@ -180,7 +180,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div>
                   <span className="text-navy-400 font-medium block">Pickup Timing</span>
                   <span className="font-bold text-navy-950 text-sm">
-                    {bookingState.scheduleType === 'now' ? 'Immediate (~15 mins)' : `${bookingState.date} at ${bookingState.time}`}
+                    {bookingState.scheduleType === 'now' ? 'Immediate (~15 mins)' : `${formatDisplayDate(bookingState.date)} at ${bookingState.time}`}
                   </span>
                 </div>
                 <div>

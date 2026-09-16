@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useBookings, LiveBooking, BookingStatus } from '../context/BookingContext';
+import { formatDisplayDate } from '../types';
 import { DriverBeeLogo } from '../components/DriverBeeLogo';
 import {
   LayoutDashboard, Car, Users, Wallet, Bell, LogOut,
@@ -188,7 +189,7 @@ const BookingDetailDrawer: React.FC<{
               {[
                 ['Trip Type', tripLabel(booking.tripType)],
                 ['Duration', `${booking.duration} Hours`],
-                ['Schedule', booking.scheduleType === 'now' ? 'Immediate' : `${booking.date} at ${booking.time}`],
+                ['Schedule', booking.scheduleType === 'now' ? 'Immediate' : `${formatDisplayDate(booking.date)} at ${booking.time}`],
                 ['Transmission', booking.transmission],
                 ['Vehicle', booking.carModel],
                 ['Reg. No.', booking.carPlate],

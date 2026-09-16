@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookingRecord } from '../types';
+import { BookingRecord, formatDisplayDate } from '../types';
 import { X, Calendar, Clock, MapPin, Car, PhoneCall, Star, ChevronRight } from 'lucide-react';
 
 interface MyBookingsDrawerProps {
@@ -71,7 +71,7 @@ export const MyBookingsDrawer: React.FC<MyBookingsDrawerProps> = ({
                 </div>
                 <div className="flex items-center gap-2 text-navy-500">
                   <Calendar className="w-3.5 h-3.5 text-navy-400" />
-                  <span>{booking.date} at {booking.time}</span>
+                  <span>{formatDisplayDate(booking.date)} at {booking.time}</span>
                 </div>
                 <div className="flex items-center gap-2 text-navy-500">
                   <Car className="w-3.5 h-3.5 text-navy-400" />

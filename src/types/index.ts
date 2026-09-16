@@ -66,3 +66,17 @@ export interface BookingRecord {
   forWhom: string;
   carName: string;
 }
+
+export function formatDisplayDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const [, year, monthNum, dayNum] = match;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[parseInt(monthNum, 10) - 1] || monthNum;
+    const day = parseInt(dayNum, 10);
+    const shortYear = year.slice(-2);
+    return `${day} ${month} ${shortYear}`;
+  }
+  return dateStr;
+}

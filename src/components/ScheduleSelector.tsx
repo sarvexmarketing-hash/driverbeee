@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScheduleType } from '../types';
+import { ScheduleType, formatDisplayDate } from '../types';
 import { Clock } from 'lucide-react';
 
 interface ScheduleSelectorProps {
@@ -132,7 +132,7 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
         <div className="p-3 bg-[#FAFBFD] rounded-2xl border border-bee-200/80 space-y-2 animate-fade-in mt-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-navy-800">
             <span>Pickup Date & Slot:</span>
-            <span className="text-bee-700">{date} at {time}</span>
+            <span className="text-bee-700">{formatDisplayDate(date)} at {time}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
