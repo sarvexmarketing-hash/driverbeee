@@ -67,11 +67,6 @@ const AdminLogin: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
     }
   };
 
-  const handleQuickFill = () => {
-    setEmail('admin@driverbee.in');
-    setPassword('Admin@2026');
-    setError('');
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
@@ -163,21 +158,7 @@ const AdminLogin: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
             </button>
           </div>
 
-          <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 bg-amber-50/60 p-3 rounded-xl border border-amber-100">
-            <div>
-              <div className="font-bold text-navy-900">Admin Credentials:</div>
-              <div className="text-[11px] text-gray-600">
-                <span className="font-mono font-medium">admin@driverbee.in</span> • <span className="font-mono font-medium">Admin@2026</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleQuickFill}
-              className="px-2.5 py-1 text-[11px] font-bold text-bee-700 hover:text-bee-800 bg-white border border-bee-300 rounded-lg hover:bg-bee-50 transition-colors cursor-pointer shadow-2xs"
-            >
-              Auto-fill
-            </button>
-          </div>
+
         </form>
       </div>
     </div>
@@ -382,7 +363,7 @@ export const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50 text-navy-950 flex flex-col lg:flex-row">
 
       {/* ── SIDEBAR ── */}
-      <aside className="hidden lg:flex flex-col w-[240px] xl:w-[260px] bg-white border-r border-gray-200 p-6 min-h-screen sticky top-0 shadow-sm">
+      <aside className="hidden lg:flex flex-col w-[240px] xl:w-[260px] bg-white border-r border-gray-200 p-6 h-screen sticky top-0 overflow-y-auto shadow-sm">
         {/* Brand */}
         <div className="flex items-center gap-3 mb-8">
           <DriverBeeLogo height={28} />
@@ -471,6 +452,13 @@ export const AdminDashboard: React.FC = () => {
                   </button>
                 );
               })}
+              <button
+                onClick={handleSignOut}
+                title="Sign Out"
+                className="p-2 rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </header>

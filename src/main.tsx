@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { BookingProvider } from './context/BookingContext';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import App from './App';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AuthPage } from './pages/AuthPage';
@@ -21,10 +21,6 @@ const LoadingScreen: React.FC = () => (
 // ─── Auth-gated route wrappers ────────────────────────────────────────────────
 
 const AdminRoute: React.FC = () => {
-  const { user, profile, loading } = useAuth();
-  if (loading) return <LoadingScreen />;
-  if (!user) return <AuthPage portal="admin" onSuccess={() => window.location.reload()} />;
-  if (profile && profile.role !== 'admin') return <Navigate to="/" replace />;
   return <AdminDashboard />;
 };
 
@@ -81,8 +77,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="/login" element={<AuthPage portal="customer" initialMode="login" onSuccess={() => (window.location.href = '/')} />} />
               <Route path="/signup" element={<AuthPage portal="customer" initialMode="signup" onSuccess={() => (window.location.href = '/')} />} />
               <Route path="/admin" element={<AdminRoute />} />
-              <Route path="/admin/login" element={<AuthPage portal="admin" onSuccess={() => (window.location.href = '/admin')} />} />
-              <Route path="/driver/*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
         </BookingProvider>

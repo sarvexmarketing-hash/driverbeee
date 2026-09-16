@@ -159,17 +159,38 @@ export async function fetchMyBookings(userId: string): Promise<DBBooking[]> {
   return data;
 }
 
+// UUID regex – Supabase driver_id FK requires a real UUID
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function updateBookingStatus(
   bookingId: string,
   status: DBBooking['status'],
   extra?: { assigned_driver_id?: string; assigned_driver_name?: string; completed_at?: string }
 ) {
-  return supabase.from('bookings').update({
+  const payload: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),
-    ...(status === 'completed' ? { completed_at: new Date().toISOString() } : {}),
-    ...extra,
-  }).eq('id', bookingId);
+  };
+  if (status === 'completed') payload.completed_at = new Date().toISOString();
+
+  if (extra) {
+    // Only include assigned_driver_id when it's a real UUID (FK constraint)
+    if (extra.assigned_driver_id && UUID_RE.test(extra.assigned_driver_id)) {
+      payload.assigned_driver_id = extra.assigned_driver_id;
+    }
+    if (extra.assigned_driver_name) {
+      payload.assigned_driver_name = extra.assigned_driver_name;
+    }
+    if (extra.completed_at) {
+      payload.completed_at = extra.completed_at;
+    }
+  }
+
+  const result = await supabase.from('bookings').update(payload).eq('id', bookingId);
+  if (result.error) {
+    console.error('[DriverBee] updateBookingStatus DB error:', result.error.message, payload);
+  }
+  return result;
 }
 
 // ─── Driver Helpers ──────────────────────────────────────────────────────────
