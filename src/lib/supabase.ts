@@ -1,13 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const DEFAULT_SUPABASE_URL = 'https://xcisrhikagtpuqwseoqq.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjaXNyaGlrYWd0cHVxd3Nlb3FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0ODQzOTAsImV4cCI6MjEwNTA2MDM5MH0.t4nk9kYFu8pRJ5cRNfwCD81I0OYTsdLboyR5h3hTUhI';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    '[DriverBee] Missing Supabase env vars. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local'
-  );
-}
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || DEFAULT_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
