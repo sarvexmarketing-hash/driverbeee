@@ -34,13 +34,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [carPlate, setCarPlate] = useState('TS-03-MJ-4412');
   const [carModel, setCarModel] = useState('Honda City / Luxury Sedan');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [submittedBookingId, setSubmittedBookingId] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem('driverbee_pending_booking_id');
-    } catch {
-      return null;
-    }
-  });
+  const [submittedBookingId, setSubmittedBookingId] = useState<string | null>(null);
   const [hasCelebrated, setHasCelebrated] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
 
@@ -73,7 +67,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   useEffect(() => {
     if (liveBooking) {
       if (liveBooking.status === 'completed' || liveBooking.status === 'cancelled') {
-        try { localStorage.removeItem('driverbee_pending_booking_id'); } catch {}
         setSubmittedBookingId(null);
       }
     }
@@ -81,14 +74,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) {
+      setSubmittedBookingId(null);
       setHasCelebrated(false);
       setIsProcessing(false);
-      if (isConfirmed) {
-        try { localStorage.removeItem('driverbee_pending_booking_id'); } catch {}
-        setSubmittedBookingId(null);
-      }
+      try {
+        localStorage.removeItem('driverbee_pending_booking_id');
+      } catch {}
     }
-  }, [isOpen, isConfirmed]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isConfirmed && !hasCelebrated) {
@@ -217,9 +210,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       });
 
       setSubmittedBookingId(newId);
-      try {
-        localStorage.setItem('driverbee_pending_booking_id', newId);
-      } catch {}
       onConfirmSuccess(newId);
     } catch (err) {
       console.error('Booking failed', err);
