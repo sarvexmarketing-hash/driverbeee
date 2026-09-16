@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, HeartHandshake, Clock, ChevronDown, LogIn, User, MapPin, Sparkles } from 'lucide-react';
+import { ShieldCheck, HeartHandshake, Clock, ChevronDown, LogIn, User, MapPin, Sparkles, Phone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { DriverBeeLogo } from './DriverBeeLogo';
 
@@ -58,6 +58,16 @@ export const Hero: React.FC<HeroProps> = ({
                 <span className="truncate max-w-[85px] sm:max-w-[110px]">{selectedCity.split(',')[0]}</span>
                 <ChevronDown className="w-3 h-3 text-navy-400" />
               </button>
+
+              {/* Call Helpline Button */}
+              <a
+                href="tel:+917569402288"
+                className="w-7 h-7 rounded-full bg-white/95 active:scale-95 backdrop-blur-xs shadow-xs border border-white/80 flex items-center justify-center text-emerald-600 hover:text-emerald-700 transition-all"
+                aria-label="Call DriverBee Support"
+                title="Call Helpline: +91 75694 02288"
+              >
+                <Phone className="w-3.5 h-3.5 fill-emerald-600/20" />
+              </a>
 
               {user ? (
                 <button
