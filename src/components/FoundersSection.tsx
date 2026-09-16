@@ -6,6 +6,7 @@ import {
   Sparkles, 
   Linkedin, 
   Mail, 
+  Phone,
   Award, 
   CheckCircle2,
   TrendingUp,
@@ -91,18 +92,21 @@ export const FoundersSection: React.FC<FoundersSectionProps> = ({ onBookClick })
               </div>
 
               {/* Founder Social & Contact Quick Links */}
-              <div className="flex items-center gap-3 mt-6">
+              <div className="flex flex-wrap items-center gap-2.5 mt-6">
                 <a
-                  href="mailto:viswa@driverbee.in"
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-navy-50 hover:bg-bee-50 border border-navy-200/80 hover:border-bee-300 text-xs font-semibold text-navy-700 hover:text-navy-950 transition-colors shadow-xs"
+                  href="tel:+917569402288"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-navy-50 hover:bg-emerald-50 border border-navy-200/80 hover:border-emerald-300 text-xs font-bold text-navy-800 hover:text-emerald-950 transition-colors shadow-xs"
+                >
+                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>+91 75694 02288</span>
+                </a>
+                <a
+                  href="mailto:officialdriverbee@gmail.com"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-navy-50 hover:bg-bee-50 border border-navy-200/80 hover:border-bee-300 text-xs font-semibold text-navy-700 hover:text-navy-950 transition-colors shadow-xs"
                 >
                   <Mail className="w-3.5 h-3.5 text-bee-600" />
-                  <span>Connect with Founder</span>
+                  <span>officialdriverbee@gmail.com</span>
                 </a>
-                <div className="flex items-center gap-1 px-3 py-2 rounded-full bg-navy-50 border border-navy-200/80 text-xs font-medium text-navy-600">
-                  <Award className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Tech Innovator</span>
-                </div>
               </div>
             </div>
 

@@ -14,7 +14,9 @@ import {
   Crosshair,
   LogIn,
   LogOut,
-  UserPlus
+  UserPlus,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { DriverBeeLogo } from './DriverBeeLogo';
 import { useAuth } from '../context/AuthContext';
@@ -291,6 +293,16 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              {/* Official Helpline */}
+              <a
+                href="tel:+917569402288"
+                className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 text-xs font-bold text-emerald-950 transition-colors shadow-xs"
+                title="DriverBee Helpline: +91 75694 02288"
+              >
+                <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                <span>+91 75694 02288</span>
+              </a>
+
               <button
                 onClick={() => onOpenAuth?.('login')}
                 className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-navy-200/90 text-xs font-bold text-navy-800 hover:bg-navy-100 hover:text-navy-950 transition-colors"
@@ -398,6 +410,28 @@ export const Header: React.FC<HeaderProps> = ({
               <Sparkles className="w-4 h-4 text-bee-600" />
               <span>Meet Founder: Mr. Viswa Teja</span>
             </button>
+          </div>
+
+          <div className="pt-2.5 border-t border-navy-100 space-y-1.5 text-xs">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-navy-400">
+              Customer Helpline & Support
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <a 
+                href="tel:+917569402288" 
+                className="flex items-center gap-2 font-bold text-navy-900 hover:text-bee-600 transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                <span>+91 75694 02288</span>
+              </a>
+              <a 
+                href="mailto:officialdriverbee@gmail.com" 
+                className="flex items-center gap-2 text-navy-600 hover:text-bee-600 transition-colors"
+              >
+                <Mail className="w-3.5 h-3.5 text-bee-600 flex-shrink-0" />
+                <span className="truncate">officialdriverbee@gmail.com</span>
+              </a>
+            </div>
           </div>
 
           <div className="pt-1 flex items-center justify-between text-xs text-navy-500">

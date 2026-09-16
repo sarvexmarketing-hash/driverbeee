@@ -416,10 +416,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-2.5 px-4 text-xs font-semibold text-navy-500 hover:text-navy-900 transition-colors"
+                className="w-full py-2 px-4 text-xs font-semibold text-navy-500 hover:text-navy-900 transition-colors"
               >
                 Close & track in background
               </button>
+
+              <div className="pt-2 border-t border-navy-100 flex items-center justify-between text-[11px] text-navy-500">
+                <span>Need urgent assistance?</span>
+                <a href="tel:+917569402288" className="font-bold text-navy-950 hover:text-bee-600 flex items-center gap-1">
+                  <PhoneCall className="w-3 h-3 text-emerald-600" />
+                  <span>+91 75694 02288</span>
+                </a>
+              </div>
             </div>
           </div>
         ) : (

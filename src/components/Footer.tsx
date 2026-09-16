@@ -77,21 +77,28 @@ export const Footer: React.FC = () => {
           {/* Contact & Support */}
           <div className="lg:col-span-3 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-navy-950">
-              Warangal Office
+              Contact & Support
             </h4>
-            <div className="space-y-2 text-xs">
+            <div className="space-y-2.5 text-xs">
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-bee-600 flex-shrink-0 mt-0.5" />
-                <span>DriverBee Mobility Labs, Main Road, Hanamkonda, Warangal, TS 506001</span>
+                <span>DriverBee Mobility, Main Road, Hanamkonda, Warangal, TS 506001</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-navy-700 flex-shrink-0" />
-                <span className="font-bold text-navy-950">+91 80 4710 9900 (24/7)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-navy-700 flex-shrink-0" />
-                <span>concierge@driverbee.in</span>
-              </div>
+              <a 
+                href="tel:+917569402288" 
+                className="flex items-center gap-2 text-navy-900 hover:text-bee-600 transition-colors group"
+              >
+                <Phone className="w-4 h-4 text-emerald-600 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                <span className="font-bold text-navy-950">+91 75694 02288</span>
+                <span className="text-[10px] text-navy-400 font-normal">(Call / WhatsApp)</span>
+              </a>
+              <a 
+                href="mailto:officialdriverbee@gmail.com" 
+                className="flex items-center gap-2 text-navy-700 hover:text-bee-600 transition-colors group"
+              >
+                <Mail className="w-4 h-4 text-bee-600 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                <span className="font-medium">officialdriverbee@gmail.com</span>
+              </a>
             </div>
           </div>
 

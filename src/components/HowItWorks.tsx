@@ -101,7 +101,7 @@ export const HowItWorks: React.FC<{ onBookClick: () => void }> = ({ onBookClick 
             onClick={onBookClick}
             className="px-8 py-3.5 rounded-full bg-navy-950 hover:bg-bee-600 text-white font-bold text-sm shadow-md transition-all inline-flex items-center gap-2"
           >
-            <span>Try DriverBee Now • 15 Min Arrival</span>
+            <span>Try DriverBee Now • 30 Min Arrival</span>
           </button>
         </div>
 

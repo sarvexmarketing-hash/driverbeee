@@ -11,8 +11,8 @@ interface LocationModalProps {
 }
 
 const PRIMARY_CITIES = [
-  { name: 'Warangal, Telangana', hub: 'Primary Hub (10-min arrival)', badge: 'Active' },
-  { name: 'Hanamkonda, Warangal', hub: 'Tri-City Hub (10-min arrival)', badge: 'Active' },
+  { name: 'Warangal, Telangana', hub: 'Primary Hub (30-min arrival)', badge: 'Active' },
+  { name: 'Hanamkonda, Warangal', hub: 'Tri-City Hub (30-min arrival)', badge: 'Active' },
   { name: 'Kazipet, Warangal', hub: 'Station & Junction Hub', badge: 'Active' },
   { name: 'Hyderabad, Telangana', hub: 'Extended Service / Outstation Hub', badge: 'Active' },
   { name: 'Visakhapatnam, Andhra Pradesh', hub: 'Coastal Hub & City Drives', badge: 'Active' },
