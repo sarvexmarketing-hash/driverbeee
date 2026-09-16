@@ -4,7 +4,7 @@ import { formatDisplayDate } from '../types';
 import { DriverBeeLogo } from '../components/DriverBeeLogo';
 import {
   LayoutDashboard, Car, Users, Wallet, Bell, LogOut,
-  CheckCircle2, XCircle, Clock, MapPin, TrendingUp, Eye,
+  CheckCircle2, XCircle, Clock, MapPin, TrendingUp, Eye, EyeOff, Mail, Lock,
   AlertCircle, UserCheck, ArrowRight, Shield,
   Activity, X, PhoneCall, Star
 } from 'lucide-react';
@@ -42,73 +42,141 @@ function tripLabel(t: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Login Gate
+// Login Gate (Email & Password)
 // ─────────────────────────────────────────────────────────────────────────────
 const AdminLogin: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
-  const [pin, setPin] = useState('');
+  const [email, setEmail] = useState('admin@driverbee.in');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === 'admin123') { onLogin(); }
-    else { setError('Incorrect PIN. Try admin123'); setPin(''); }
+    setIsLoading(true);
+    setError('');
+
+    const cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail === 'admin@driverbee.in' && (password === 'Admin@2026' || password === 'admin123')) {
+      localStorage.setItem('driverbee_admin_session', 'true');
+      setIsLoading(false);
+      onLogin();
+    } else {
+      setIsLoading(false);
+      setError('Invalid admin credentials. Please enter email: admin@driverbee.in and password: Admin@2026');
+    }
+  };
+
+  const handleQuickFill = () => {
+    setEmail('admin@driverbee.in');
+    setPassword('Admin@2026');
+    setError('');
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex flex-col items-center gap-2 mb-3">
-            <DriverBeeLogo height={38} />
-            <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+            <DriverBeeLogo height={42} />
+            <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">
               Admin Portal
             </div>
           </div>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 text-sm font-medium">
             DriverBee Operations Command Centre
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm"
+          className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-5"
         >
-          <h2 className="text-xl font-bold text-navy-950 mb-6">Sign In to Admin</h2>
+          <div>
+            <h2 className="text-xl font-extrabold text-navy-950">Sign In to Admin</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Enter administrator email & password to manage live bookings
+            </p>
+          </div>
 
           <div className="space-y-4">
+            {/* Email field */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
-                Admin PIN
+              <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                Admin Email
               </label>
-              <input
-                type="password"
-                value={pin}
-                onChange={e => setPin(e.target.value)}
-                placeholder="Enter PIN (admin123)"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500 text-sm font-medium"
-                autoFocus
-              />
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="admin@driverbee.in"
+                  required
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500 text-sm font-semibold"
+                />
+              </div>
+            </div>
+
+            {/* Password field */}
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Enter admin password (Admin@2026)"
+                  required
+                  className="w-full pl-10 pr-11 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500 text-sm font-semibold"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(p => !p)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 text-red-500 text-xs font-medium">
-                <AlertCircle className="w-4 h-4" />
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-600 text-xs font-medium">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full py-3 rounded-2xl bg-bee-600 hover:bg-bee-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
+              disabled={isLoading}
+              className="w-full py-3.5 rounded-2xl bg-bee-600 hover:bg-bee-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer disabled:opacity-50"
             >
-              <span>Access Admin Dashboard</span>
+              <span>{isLoading ? 'Verifying...' : 'Access Admin Dashboard'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-center text-xs text-gray-500">
-            Demo PIN: <span className="text-bee-600 font-bold">admin123</span>
+          <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 bg-amber-50/60 p-3 rounded-xl border border-amber-100">
+            <div>
+              <div className="font-bold text-navy-900">Admin Credentials:</div>
+              <div className="text-[11px] text-gray-600">
+                <span className="font-mono font-medium">admin@driverbee.in</span> • <span className="font-mono font-medium">Admin@2026</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleQuickFill}
+              className="px-2.5 py-1 text-[11px] font-bold text-bee-700 hover:text-bee-800 bg-white border border-bee-300 rounded-lg hover:bg-bee-50 transition-colors cursor-pointer shadow-2xs"
+            >
+              Auto-fill
+            </button>
           </div>
         </form>
       </div>
@@ -265,8 +333,15 @@ const BookingDetailDrawer: React.FC<{
 // Main Admin Dashboard
 // ─────────────────────────────────────────────────────────────────────────────
 export const AdminDashboard: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('driverbee_admin_session') === 'true';
+  });
   const [activeSection, setActiveSection] = useState<'bookings' | 'drivers' | 'revenue'>('bookings');
+
+  const handleSignOut = () => {
+    localStorage.removeItem('driverbee_admin_session');
+    setIsLoggedIn(false);
+  };
   const [selectedBooking, setSelectedBooking] = useState<LiveBooking | null>(null);
   const [filterStatus, setFilterStatus] = useState<BookingStatus | 'all'>('all');
   const [showNewAlert, setShowNewAlert] = useState(false);
@@ -355,7 +430,7 @@ export const AdminDashboard: React.FC = () => {
             <span>Customer Site</span>
           </a>
           <button
-            onClick={() => setIsLoggedIn(false)}
+            onClick={handleSignOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-red-500 hover:bg-red-50 transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />

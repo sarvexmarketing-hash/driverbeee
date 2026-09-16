@@ -146,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Admin portal login
     if (portal === 'admin') {
-      if (cleanEmail === 'admin@driverbee.in' && (password === 'admin123' || password === 'driverbee@admin')) {
+      if (cleanEmail === 'admin@driverbee.in' && (password === 'Admin@2026' || password === 'admin123' || password === 'driverbee@admin')) {
         setUser(DEMO_ADMIN_USER);
         setProfile(DEMO_ADMIN_PROFILE);
         localStorage.setItem('driverbee_admin_session', 'true');
@@ -155,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const { data, error } = await signIn(email, password);
       if (error) {
-        if (cleanEmail === 'admin@driverbee.in' && password === 'admin123') {
+        if (cleanEmail === 'admin@driverbee.in' && (password === 'Admin@2026' || password === 'admin123')) {
           setUser(DEMO_ADMIN_USER);
           setProfile(DEMO_ADMIN_PROFILE);
           localStorage.setItem('driverbee_admin_session', 'true');
