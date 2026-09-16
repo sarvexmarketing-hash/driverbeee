@@ -1,6 +1,6 @@
 export type TripType = 'city' | 'outside' | 'airport' | 'intercity';
 
-export type DurationOption = 2 | 4 | 6 | 8;
+export type DurationOption = 1 | 2 | 4 | 6 | 8;
 
 export type ScheduleType = 'now' | 'later';
 
@@ -73,6 +73,8 @@ export interface BookingRecord {
   status: 'pending' | 'assigned' | 'accepted' | 'upcoming' | 'completed' | 'ongoing' | 'cancelled';
   forWhom: string;
   carName: string;
+  area?: string;
+  notes?: string;
 }
 
 export function formatDisplayDate(dateStr: string): string {

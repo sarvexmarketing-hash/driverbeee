@@ -122,23 +122,73 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       ? 'Myself' 
       : (bookingState.familyMemberName || 'Family Member');
 
+    // Build comprehensive, structured notes detailing every choice made by the customer
+    let bookingNotes = '';
+    if (bookingState.tripType === 'outside') {
+      if (bookingState.outstationMode === 'distance') {
+        bookingNotes = [
+          `[OUTSIDE CITY TRIP - BY DISTANCE SLAB]`,
+          `• Distance Slab: ${bookingState.outstationDistanceRange || '100 – 150 km'} (from customer doorstep)`,
+          `• Package Duration: ${bookingState.outstationDays || 1} Day Package`,
+          `• Daily Service Window: 12 Hours (8:00 AM – 8:00 PM)`,
+          `• Overtime Charges: ₹100 per hour beyond 12 hours`,
+          `• Driver Night Stay: Client provides food & basic accommodation`,
+          `• Transmission: ${bookingState.transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
+          `• Vehicle: ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
+          `• Booked For: ${forWhomStr}`,
+          `• Pickup Doorstep: ${address}`,
+          `• Destination Address: ${deliveryAddress}`,
+          `• Fixed Driver Fare: ₹${total.toLocaleString('en-IN')}`,
+          `• Terms & Conditions Accepted: Yes`,
+        ].join('\n');
+      } else {
+        bookingNotes = [
+          `[OUTSIDE CITY TRIP - BY DISTRICT / DESTINATION]`,
+          `• Destination: ${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDistrict || 'Telangana'} District)`,
+          `• Package Duration: ${bookingState.outstationDays || 1} Day Package`,
+          `• Daily Service Window: 12 Hours (8:00 AM – 8:00 PM)`,
+          `• Overtime Charges: ₹100 per hour beyond 12 hours`,
+          `• Driver Night Stay: Client provides food & basic accommodation`,
+          `• Transmission: ${bookingState.transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
+          `• Vehicle: ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
+          `• Booked For: ${forWhomStr}`,
+          `• Pickup Doorstep: ${address}`,
+          `• Destination Address: ${deliveryAddress}`,
+          `• Fixed Driver Fare: ₹${total.toLocaleString('en-IN')}`,
+          `• Terms & Conditions Accepted: Yes`,
+        ].join('\n');
+      }
+    } else {
+      bookingNotes = [
+        `[WITHIN THE CITY TRIP (Warangal / Local)]`,
+        `• Package Duration: ${bookingState.duration} Hours (${bookingState.duration === 2 ? '2-Hr Short Trip' : bookingState.duration === 4 ? '4-Hr Half Day' : bookingState.duration === 6 ? '6-Hr Extended' : '8-Hr Full Day'})`,
+        `• Transmission: ${bookingState.transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
+        `• Vehicle: ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
+        `• Booked For: ${forWhomStr}`,
+        `• Pickup Doorstep: ${address}`,
+        `• Drop-off Destination: ${deliveryAddress}`,
+        `• Driver Fare: ₹${total.toLocaleString('en-IN')}`,
+        `• Terms & Conditions Accepted: Yes`,
+      ].join('\n');
+    }
+
     try {
       const newId = await addBooking({
+        customerId: profile?.id || null,
         customerName: profile?.full_name || 'Customer',
         customerPhone: phone.startsWith('+91') ? phone : `+91 ${phone}`,
         tripType: bookingState.tripType,
-        duration: bookingState.duration,
+        duration: bookingState.tripType === 'outside' ? (bookingState.outstationDays || 1) : bookingState.duration,
         scheduleType: bookingState.scheduleType,
-        date: bookingState.scheduleType === 'now' ? 'Today' : bookingState.date,
-        time: bookingState.scheduleType === 'now' ? 'Immediate' : bookingState.time,
+        date: bookingState.scheduleType === 'now' ? new Date().toISOString().split('T')[0] : bookingState.date,
+        time: bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : bookingState.time,
         transmission: bookingState.transmission,
         carModel: carModel || 'Personal Car',
         carPlate: carPlate || 'AP-29-MJ-4412',
         forWhom: forWhomStr,
-        area: bookingState.tripType === 'outside' && bookingState.outstationDestinationName
-          ? `${address} ➔ ${deliveryAddress}`
-          : address,
+        area: `${address} ➔ ${deliveryAddress}`,
         estimatedFare: total,
+        notes: bookingNotes,
       });
 
       setSubmittedBookingId(newId);

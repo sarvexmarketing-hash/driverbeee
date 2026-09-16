@@ -21,6 +21,7 @@ export type BookingStatus = DBBooking['status'];
 export interface LiveBooking {
   id: string;
   createdAt: string;
+  customerId?: string | null;
   customerName: string;
   customerPhone: string;
   tripType: TripType;
@@ -63,6 +64,7 @@ function mapBooking(b: DBBooking): LiveBooking {
   return {
     id: b.id,
     createdAt: b.created_at,
+    customerId: b.customer_id,
     customerName: b.customer_name,
     customerPhone: b.customer_phone ?? '',
     tripType: b.trip_type as TripType,
@@ -267,16 +269,20 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   ): Promise<string> => {
     const id = `DB-${Math.floor(100000 + Math.random() * 900000)}`;
 
+    const validDate = data.date && data.date !== 'Today'
+      ? data.date
+      : new Date().toISOString().split('T')[0];
+
     try {
-      const { error } = await sbCreateBooking({
+      const { data: created, error } = await sbCreateBooking({
         id,
-        customer_id: null,
+        customer_id: data.customerId || null,
         customer_name: data.customerName,
         customer_phone: data.customerPhone,
         trip_type: data.tripType,
         duration: data.duration,
         schedule_type: data.scheduleType,
-        scheduled_date: data.date || null,
+        scheduled_date: validDate,
         scheduled_time: data.time || null,
         transmission: data.transmission,
         car_model: data.carModel,
@@ -284,9 +290,12 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         for_whom: data.forWhom,
         area: data.area,
         estimated_fare: data.estimatedFare,
+        notes: data.notes || null,
       });
       if (error) {
         console.warn('[DriverBee] Supabase insert warning:', error);
+      } else {
+        console.log('[DriverBee] Booking persisted to Supabase successfully:', id, created);
       }
     } catch (err) {
       console.warn('[DriverBee] Supabase network error during booking:', err);

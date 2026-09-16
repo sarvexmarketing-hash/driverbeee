@@ -161,7 +161,9 @@ export const App: React.FC = () => {
         driver: driverMatch,
         status: b.status as any,
         forWhom: b.forWhom || 'Myself',
-        carName: b.carModel || 'Personal Car'
+        carName: b.carModel || 'Personal Car',
+        area: b.area,
+        notes: b.notes,
       };
     });
   }, [contextBookings]);

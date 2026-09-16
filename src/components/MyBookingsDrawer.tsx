@@ -77,6 +77,12 @@ export const MyBookingsDrawer: React.FC<MyBookingsDrawerProps> = ({
                   <Car className="w-3.5 h-3.5 text-navy-400" />
                   <span>{booking.carName} • Booked for {booking.forWhom}</span>
                 </div>
+                {booking.area && (
+                  <div className="flex items-start gap-1.5 text-navy-600 text-[11.5px] pt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-bee-600 flex-shrink-0 mt-0.5" />
+                    <span className="line-clamp-2 leading-tight">{booking.area}</span>
+                  </div>
+                )}
               </div>
 
               {/* Driver info: Pending vs Assigned */}
