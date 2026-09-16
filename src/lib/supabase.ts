@@ -123,10 +123,16 @@ export async function getProfile(userId: string): Promise<DBProfile | null> {
 // ─── Booking Helpers ─────────────────────────────────────────────────────────
 
 export async function createBooking(booking: Omit<DBBooking, 'created_at' | 'updated_at' | 'completed_at' | 'status' | 'assigned_driver_id' | 'assigned_driver_name' | 'notes'>) {
-  return supabase.from('bookings').insert({
+  const insertPayload = {
     ...booking,
-    status: 'pending',
-  }).select().single();
+    status: 'pending' as const,
+  };
+  const { error } = await supabase.from('bookings').insert(insertPayload);
+  if (error) {
+    console.error('[DriverBee] Supabase createBooking error:', error);
+    return { data: null, error };
+  }
+  return { data: insertPayload as DBBooking, error: null };
 }
 
 export async function fetchAllBookings(): Promise<DBBooking[]> {

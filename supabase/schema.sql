@@ -120,50 +120,62 @@ alter table public.driver_profiles    enable row level security;
 alter table public.bookings           enable row level security;
 alter table public.wallet_transactions enable row level security;
 
+-- Helper function to check admin role safely without RLS recursion
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+$$;
+
 -- Profiles: users can see their own; admins see all
+drop policy if exists "Users read own profile" on public.profiles;
 create policy "Users read own profile"
   on public.profiles for select
-  using (auth.uid() = id or (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+  using (auth.uid() = id or public.is_admin());
 
+drop policy if exists "Users update own profile" on public.profiles;
 create policy "Users update own profile"
   on public.profiles for update
   using (auth.uid() = id);
 
 -- Family members: only owner
+drop policy if exists "Users manage own family" on public.family_members;
 create policy "Users manage own family"
   on public.family_members for all
   using (user_id = auth.uid());
 
 -- Driver profiles: drivers see own; admins see all
+drop policy if exists "Driver reads own profile" on public.driver_profiles;
 create policy "Driver reads own profile"
   on public.driver_profiles for select
-  using (id = auth.uid() or exists (
-    select 1 from public.profiles p where p.id = auth.uid() and p.role in ('admin')
-  ));
+  using (id = auth.uid() or public.is_admin());
 
+drop policy if exists "Driver updates own profile" on public.driver_profiles;
 create policy "Driver updates own profile"
   on public.driver_profiles for update
   using (id = auth.uid());
 
--- Bookings: customers see own; drivers see assigned; admins see all
-create policy "Customers see own bookings"
+-- Bookings: readable by app & admin dashboard; anyone can create a booking
+drop policy if exists "Customers see own bookings" on public.bookings;
+create policy "Allow read bookings"
   on public.bookings for select
-  using (
-    customer_id = auth.uid()
-    or assigned_driver_id = auth.uid()
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
-  );
+  using (true);
 
-create policy "Customers create bookings"
+drop policy if exists "Customers create bookings" on public.bookings;
+create policy "Allow insert bookings"
   on public.bookings for insert
-  with check (customer_id = auth.uid() or customer_id is null);
+  with check (true);
 
-create policy "Admins and drivers update bookings"
+drop policy if exists "Admins and drivers update bookings" on public.bookings;
+create policy "Allow update bookings"
   on public.bookings for update
-  using (
-    assigned_driver_id = auth.uid()
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
-  );
+  using (true);
 
 -- Wallet: own only
 create policy "Users see own wallet"

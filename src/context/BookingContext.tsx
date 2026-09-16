@@ -221,16 +221,14 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // ── Load from Supabase on mount (if configured) ──────────────────────────
   useEffect(() => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || supabaseKey === 'PASTE_YOUR_ANON_KEY_HERE' || !supabaseKey) return;
-
     setUseSupabase(true);
 
     // Fetch initial data
     Promise.all([fetchAllBookings(), fetchAllDrivers()]).then(([bData, dData]) => {
-      if (bData.length > 0) setBookings(bData.map(mapBooking));
-      if (dData.length > 0) setDrivers(dData.map(mapDriver));
+      if (bData && bData.length > 0) setBookings(bData.map(mapBooking));
+      if (dData && dData.length > 0) setDrivers(dData.map(mapDriver));
+    }).catch(err => {
+      console.warn('[DriverBee] Initial Supabase fetch failed, using offline seed:', err);
     });
 
     // Real-time subscriptions
@@ -253,7 +251,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const driversSub = supabase
       .channel('drivers-changes')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'driver_profiles' }, _payload => {
-        fetchAllDrivers().then(dData => { if (dData.length > 0) setDrivers(dData.map(mapDriver)); });
+        fetchAllDrivers().then(dData => { if (dData && dData.length > 0) setDrivers(dData.map(mapDriver)); });
       })
       .subscribe();
 
@@ -267,10 +265,10 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addBooking = useCallback(async (
     data: Omit<LiveBooking, 'id' | 'createdAt' | 'status' | 'assignedDriverId' | 'assignedDriverName'>
   ): Promise<string> => {
-    const id = `DB-${idCounter.current++}`;
+    const id = `DB-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    if (useSupabase) {
-      const { data: created, error } = await sbCreateBooking({
+    try {
+      const { error } = await sbCreateBooking({
         id,
         customer_id: null,
         customer_name: data.customerName,
@@ -287,10 +285,14 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         area: data.area,
         estimated_fare: data.estimatedFare,
       });
-      if (!error && created) return created.id;
+      if (error) {
+        console.warn('[DriverBee] Supabase insert warning:', error);
+      }
+    } catch (err) {
+      console.warn('[DriverBee] Supabase network error during booking:', err);
     }
 
-    // Optimistic local update (also fallback when Supabase not connected)
+    // Optimistic local update so customer immediately sees ride confirmation
     const booking: LiveBooking = {
       ...data,
       id,
@@ -302,7 +304,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setBookings(prev => [booking, ...prev]);
     setNewBookingAlert(booking);
     return id;
-  }, [useSupabase]);
+  }, []);
 
   // ── Update status ────────────────────────────────────────────────────────
   const updateBookingStatus = useCallback((id: string, status: BookingStatus) => {
