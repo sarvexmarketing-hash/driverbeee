@@ -29,6 +29,11 @@ export interface BookingState {
   passengerType: 'self' | 'family';
   familyMemberName?: string;
   notes?: string;
+  outstationDestinationId?: string;
+  outstationDestinationName?: string;
+  outstationDistrict?: string;
+  outstationDays?: 1 | 2;
+  outstationPrice?: number;
 }
 
 export interface Driver {

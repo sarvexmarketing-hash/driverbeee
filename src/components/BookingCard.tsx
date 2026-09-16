@@ -1,6 +1,7 @@
 import React from 'react';
 import { TripSelector } from './TripSelector';
 import { DurationSelector } from './DurationSelector';
+import { OutstationDestinationSelector } from './OutstationDestinationSelector';
 import { ScheduleSelector } from './ScheduleSelector';
 import { TripType, DurationOption, ScheduleType, BookingState } from '../types';
 import { ArrowRight } from 'lucide-react';
@@ -58,15 +59,45 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         {/* SECTION 1: Trip Category Selector */}
         <TripSelector
           selectedTrip={bookingState.tripType}
-          onSelectTrip={(tripType: TripType) => updateBookingState({ tripType })}
+          onSelectTrip={(tripType: TripType) => {
+            if (tripType === 'outside') {
+              updateBookingState({
+                tripType,
+                outstationDestinationId: bookingState.outstationDestinationId || 'hyderabad',
+                outstationDestinationName: bookingState.outstationDestinationName || 'Hyderabad',
+                outstationDistrict: bookingState.outstationDistrict || 'Hyderabad',
+                outstationDays: bookingState.outstationDays || 1,
+                outstationPrice: bookingState.outstationPrice || 2000,
+              });
+            } else {
+              updateBookingState({ tripType });
+            }
+          }}
         />
 
-        {/* SECTION 2: Duration Selector */}
-        <DurationSelector
-          selectedDuration={bookingState.duration}
-          onSelectDuration={(duration: DurationOption) => updateBookingState({ duration })}
-          tripType={bookingState.tripType}
-        />
+        {/* SECTION 2: Duration (for City) OR Outstation Destination Selector (for Outside) */}
+        {bookingState.tripType === 'outside' ? (
+          <OutstationDestinationSelector
+            selectedDestinationId={bookingState.outstationDestinationId || 'hyderabad'}
+            selectedDays={bookingState.outstationDays || 1}
+            onSelectDestination={(dest, opt) => {
+              updateBookingState({
+                outstationDestinationId: dest.id,
+                outstationDestinationName: dest.destination,
+                outstationDistrict: dest.district,
+                outstationDays: opt.days,
+                outstationPrice: opt.price,
+                duration: (opt.days === 1 ? 8 : 8) as DurationOption,
+              });
+            }}
+          />
+        ) : (
+          <DurationSelector
+            selectedDuration={bookingState.duration}
+            onSelectDuration={(duration: DurationOption) => updateBookingState({ duration })}
+            tripType={bookingState.tripType}
+          />
+        )}
 
         {/* SECTION 3: Schedule Timing Selector */}
         <ScheduleSelector

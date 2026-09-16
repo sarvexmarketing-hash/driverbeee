@@ -22,13 +22,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const { profile } = useAuth();
   const { bookings, addBooking, acceptBooking } = useBookings();
   const [address, setAddress] = useState('Flat 402, Royal Palms, Hanamkonda, Warangal');
-  const [deliveryAddress, setDeliveryAddress] = useState('Hunter Road / Destination, Warangal');
+  const [deliveryAddress, setDeliveryAddress] = useState(
+    bookingState.tripType === 'outside' && bookingState.outstationDestinationName
+      ? `${bookingState.outstationDestinationName}, ${bookingState.outstationDistrict || ''}, Telangana`
+      : 'Hunter Road / Destination, Warangal'
+  );
   const [phone, setPhone] = useState('9845012345');
   const [carPlate, setCarPlate] = useState('TS-03-MJ-4412');
   const [carModel, setCarModel] = useState('Honda City / Luxury Sedan');
   const [isProcessing, setIsProcessing] = useState(false);
   const [submittedBookingId, setSubmittedBookingId] = useState<string | null>(null);
   const [hasCelebrated, setHasCelebrated] = useState(false);
+
+  // Synchronize delivery address when outstation destination is selected
+  useEffect(() => {
+    if (isOpen) {
+      if (bookingState.tripType === 'outside' && bookingState.outstationDestinationName) {
+        setDeliveryAddress(`${bookingState.outstationDestinationName}, ${bookingState.outstationDistrict || ''}, Telangana`);
+      }
+    }
+  }, [isOpen, bookingState.tripType, bookingState.outstationDestinationName, bookingState.outstationDistrict]);
 
   // Live lookup of this booking from shared context
   const liveBooking = submittedBookingId ? bookings.find(b => b.id === submittedBookingId) : null;
@@ -66,6 +79,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const getBaseRate = () => {
     const isOutside = bookingState.tripType === 'outside';
     if (isOutside) {
+      if (bookingState.outstationPrice) {
+        return bookingState.outstationPrice;
+      }
       switch (bookingState.duration) {
         case 2: return 400;
         case 4: return 800;
@@ -105,7 +121,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         carModel: carModel || 'Personal Car',
         carPlate: carPlate || 'AP-29-MJ-4412',
         forWhom: forWhomStr,
-        area: address,
+        area: bookingState.tripType === 'outside' && bookingState.outstationDestinationName
+          ? `${address} ➔ ${deliveryAddress}`
+          : address,
         estimatedFare: total,
       });
 
@@ -172,9 +190,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span className="text-navy-400 font-medium block">Duration</span>
+                  <span className="text-navy-400 font-medium block">
+                    {bookingState.tripType === 'outside' ? 'Destination & Package' : 'Duration'}
+                  </span>
                   <span className="font-bold text-navy-950 text-sm">
-                    {bookingState.duration} Hours
+                    {bookingState.tripType === 'outside'
+                      ? `${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDays || 1} Day)`
+                      : `${bookingState.duration} Hours`}
                   </span>
                 </div>
                 <div>
@@ -271,9 +293,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div className="pt-3 border-t border-navy-100 flex justify-between items-center">
               <div>
                 <span className="text-sm sm:text-base font-extrabold text-navy-950 block">Total Payable</span>
-                <span className="text-xs text-navy-500 font-medium">Driver Service ({bookingState.duration} Hours)</span>
+                <span className="text-xs text-navy-500 font-medium">
+                  {bookingState.tripType === 'outside'
+                    ? `Driver Service (${bookingState.outstationDays || 1} Day - ${bookingState.outstationDestinationName || 'Outstation'})`
+                    : `Driver Service (${bookingState.duration} Hours)`}
+                </span>
               </div>
-              <span className="text-bee-700 text-xl font-black">₹{total}</span>
+              <span className="text-bee-700 text-xl font-black">₹{total.toLocaleString('en-IN')}</span>
             </div>
 
             {/* Confirm CTA */}
@@ -370,7 +396,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
               <div className="flex justify-between pt-1 border-t border-navy-100">
                 <span className="text-navy-500 font-medium">Estimated Total</span>
-                <span className="font-bold text-bee-700">₹{total} (Pay on Completion)</span>
+                <span className="font-bold text-bee-700">₹{total.toLocaleString('en-IN')} (Pay on Completion)</span>
               </div>
             </div>
 
@@ -440,7 +466,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
               <div className="flex justify-between pt-1 border-t border-navy-100">
                 <span className="text-navy-500 font-medium">Total Payable</span>
-                <span className="font-bold text-bee-700">₹{total} (Pay on Completion)</span>
+                <span className="font-bold text-bee-700">₹{total.toLocaleString('en-IN')} (Pay on Completion)</span>
               </div>
             </div>
 
