@@ -18,6 +18,7 @@ import { BookingModal } from './components/BookingModal';
 import { MyBookingsDrawer } from './components/MyBookingsDrawer';
 import { FamilyManagerModal } from './components/FamilyManagerModal';
 import { AuthModal } from './components/AuthModal';
+import { LocationModal } from './components/LocationModal';
 import { BookingState, BookingRecord, Driver, FamilyMember, TripType } from './types';
 import { useBookings } from './context/BookingContext';
 import { useAuth } from './context/AuthContext';
@@ -130,6 +131,7 @@ export const App: React.FC = () => {
   const [isBookingsDrawerOpen, setIsBookingsDrawerOpen] = useState(false);
   const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
 
   // User State
@@ -226,7 +228,7 @@ export const App: React.FC = () => {
           el?.scrollIntoView({ behavior: 'smooth' });
         }}
         selectedCity={selectedCity}
-        onOpenCitySelector={detectLocation}
+        onOpenCitySelector={() => setIsLocationModalOpen(true)}
         onOpenNotifications={() => {}}
         onOpenAuth={handleOpenAuth}
       />
@@ -329,6 +331,21 @@ export const App: React.FC = () => {
         isOpen={isAuthModalOpen}
         initialMode={authModalMode}
         onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      {/* City / Area Selector Modal for Mobile & Desktop */}
+      <LocationModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        selectedCity={selectedCity}
+        onSelectCity={(city) => {
+          setSelectedCity(city);
+          try {
+            localStorage.setItem('driverbee_user_location', city);
+          } catch {}
+        }}
+        onDetectLocation={detectLocation}
+        isDetectingLocation={isDetectingLocation}
       />
 
     </div>

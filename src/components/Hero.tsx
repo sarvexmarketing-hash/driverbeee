@@ -49,10 +49,12 @@ export const Hero: React.FC<HeroProps> = ({
             {/* Right: City Selector + Notification Bell + Auth */}
             <div className="flex items-center gap-1.5">
               <button
+                type="button"
                 onClick={onOpenCitySelector}
-                className="flex items-center gap-1 px-2.5 py-1 bg-white/85 backdrop-blur-xs rounded-full shadow-xs border border-white/60 text-[11.5px] font-bold text-navy-900"
+                className="flex items-center gap-1 px-2.5 py-1 bg-white/95 active:scale-95 backdrop-blur-xs rounded-full shadow-xs border border-white/80 text-[11.5px] font-bold text-navy-900 cursor-pointer transition-all"
+                title="Change Location"
               >
-                <MapPin className="w-3 h-3 text-bee-600 flex-shrink-0" />
+                <MapPin className="w-3 h-3 text-bee-600 flex-shrink-0 fill-bee-600/20" />
                 <span className="truncate max-w-[85px] sm:max-w-[110px]">{selectedCity.split(',')[0]}</span>
                 <ChevronDown className="w-3 h-3 text-navy-400" />
               </button>
