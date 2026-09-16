@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, HeartHandshake, Clock, Bell, ChevronDown, LogIn, User, MapPin, Sparkles } from 'lucide-react';
+import { ShieldCheck, HeartHandshake, Clock, ChevronDown, LogIn, User, MapPin, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { DriverBeeLogo } from './DriverBeeLogo';
 
@@ -57,14 +57,6 @@ export const Hero: React.FC<HeroProps> = ({
                 <MapPin className="w-3 h-3 text-bee-600 flex-shrink-0 fill-bee-600/20" />
                 <span className="truncate max-w-[85px] sm:max-w-[110px]">{selectedCity.split(',')[0]}</span>
                 <ChevronDown className="w-3 h-3 text-navy-400" />
-              </button>
-
-              <button
-                onClick={onOpenNotifications}
-                className="w-7 h-7 rounded-full bg-white/85 backdrop-blur-xs shadow-xs border border-white/60 flex items-center justify-center text-navy-800"
-                aria-label="Notifications"
-              >
-                <Bell className="w-3.5 h-3.5" />
               </button>
 
               {user ? (

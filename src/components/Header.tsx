@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   MapPin, 
-  Bell, 
   ChevronDown, 
   User, 
   Menu, 
@@ -61,7 +60,6 @@ export const Header: React.FC<HeaderProps> = ({
   const { user, profile, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isCityOpen, setIsCityOpen] = useState(false);
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
@@ -202,50 +200,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Notification Bell */}
-          <div className="relative">
-            <button
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative p-2 rounded-full hover:bg-navy-100 text-navy-700 hover:text-navy-950 transition-colors"
-              aria-label="Notifications"
-            >
-              <Bell className="w-5 h-5" />
-              {/* Unread dot */}
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white animate-pulse" />
-            </button>
 
-            {isNotifOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setIsNotifOpen(false)} />
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-card border border-navy-200 p-3 z-20 animate-fade-in">
-                  <div className="flex items-center justify-between pb-2 border-b border-navy-100">
-                    <span className="text-xs font-bold uppercase tracking-wider text-navy-900">Notifications</span>
-                    <span className="text-[11px] text-bee-700 font-semibold cursor-pointer">Mark read</span>
-                  </div>
-                  <div className="space-y-2.5 py-2">
-                    <div className="p-2.5 bg-bee-50/70 rounded-xl border border-bee-200/50">
-                      <div className="text-xs font-bold text-navy-900 flex items-center justify-between">
-                        <span>Weekend Outstation Offer</span>
-                        <span className="text-[10px] text-navy-400">10m ago</span>
-                      </div>
-                      <p className="text-[11px] text-navy-600 mt-1">
-                        Book a driver to Mysore or Coorg this weekend and enjoy zero overnight allowance fees.
-                      </p>
-                    </div>
-                    <div className="p-2.5 hover:bg-navy-50 rounded-xl border border-navy-100">
-                      <div className="text-xs font-bold text-navy-900 flex items-center justify-between">
-                        <span>Driver Rajesh Kumar verified</span>
-                        <span className="text-[10px] text-navy-400">2h ago</span>
-                      </div>
-                      <p className="text-[11px] text-navy-600 mt-1">
-                        Your favourite driver Rajesh is on duty today in Benz Circle.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
 
           {/* User Profile / Auth State */}
           {user && profile?.role === 'admin' ? (
