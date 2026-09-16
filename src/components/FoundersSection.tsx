@@ -124,7 +124,7 @@ export const FoundersSection: React.FC<FoundersSectionProps> = ({ onBookClick })
               <div className="relative bg-navy-50/60 rounded-3xl p-5 sm:p-7 border border-navy-100/90 text-navy-700 text-sm sm:text-[15px] leading-relaxed">
                 <Quote className="w-8 h-8 text-bee-500/40 mb-2 transform -scale-x-100" />
                 <p className="font-normal text-navy-800">
-                  When I observed the daily commuting challenges in Andhra Pradesh, one thing stood out: car owners love their vehicles, but chaotic traffic, parking headaches, late-night returns, and highway fatigue turn driving into a daily chore.
+                  When I observed the daily commuting challenges in both Telugu states (Andhra Pradesh and Telangana), one thing stood out: car owners love their vehicles, but chaotic traffic, parking headaches, late-night returns, and highway fatigue turn driving into a daily chore.
                 </p>
                 <p className="mt-3 font-normal text-navy-800">
                   At <strong className="text-navy-950">DriverBee</strong>, we asked a fundamental question: <em className="text-bee-700 font-medium">Why buy a second car or hire expensive cabs when you can have a verified, courteous driver take the wheel of your own car?</em>
@@ -196,7 +196,7 @@ export const FoundersSection: React.FC<FoundersSectionProps> = ({ onBookClick })
               <div className="text-xs font-medium text-navy-500 mt-0.5">Background Verified Drivers</div>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-blue-600">15 Min</div>
+              <div className="text-2xl sm:text-3xl font-black text-blue-600">30 Min</div>
               <div className="text-xs font-medium text-navy-500 mt-0.5">Average Express Dispatch</div>
             </div>
           </div>
