@@ -35,6 +35,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [submittedBookingId, setSubmittedBookingId] = useState<string | null>(null);
   const [hasCelebrated, setHasCelebrated] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(true);
 
   // Synchronize delivery address when outstation destination or distance slab is selected
   useEffect(() => {
@@ -319,11 +320,58 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <span className="text-bee-700 text-xl font-black">₹{total.toLocaleString('en-IN')}</span>
             </div>
 
+            {/* Terms and Conditions Notice */}
+            <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl space-y-2 text-xs text-navy-900">
+              <div className="flex items-center gap-1.5 font-extrabold text-amber-950 uppercase tracking-wider text-[11px]">
+                <AlertCircle className="w-4 h-4 text-bee-600 flex-shrink-0" />
+                <span>Terms & Conditions / Driver Guidelines</span>
+              </div>
+              <ul className="space-y-1.5 text-[11.5px] text-navy-800 leading-relaxed">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-bee-600 mt-1.5 flex-shrink-0" />
+                  <span>
+                    <strong>1 Day Package:</strong> Means <strong>12 Hours</strong> (Morning <strong>8:00 AM to 8:00 PM</strong>).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-bee-600 mt-1.5 flex-shrink-0" />
+                  <span>
+                    <strong>Overtime Charges:</strong> After 12 hours, overtime charges are <strong>₹100 per hour</strong>.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-bee-600 mt-1.5 flex-shrink-0" />
+                  <span>
+                    <strong>Night Stay Allowance:</strong> If the trip includes a night stay, driver <strong>food and stay allowance</strong> must be provided by the client.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-bee-600 mt-1.5 flex-shrink-0" />
+                  <span>
+                    <strong>Tolls & Fuel:</strong> Fuel, FASTag toll gates, and parking charges are covered directly by the car owner.
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Agreement Checkbox */}
+            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-navy-700 select-none px-1">
+              <input
+                type="checkbox"
+                checked={agreedTerms}
+                onChange={(e) => setAgreedTerms(e.target.checked)}
+                className="w-4 h-4 mt-0.5 text-bee-600 rounded border-navy-300 focus:ring-bee-500 accent-bee-600 cursor-pointer"
+              />
+              <span className="leading-snug">
+                I understand and agree to the <strong>12-hr package policy</strong>, <strong>₹100/hr overtime</strong> after 12 hrs, and <strong>driver food & stay allowance</strong> for night stays.
+              </span>
+            </label>
+
             {/* Confirm CTA */}
             <button
               onClick={handleConfirm}
-              disabled={isProcessing}
-              className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200"
+              disabled={isProcessing || !agreedTerms}
+              className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200"
             >
               {isProcessing ? (
                 <>

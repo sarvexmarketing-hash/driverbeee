@@ -506,6 +506,14 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
         <span>Return Trip Covered</span>
       </div>
 
+      {/* Policy & Terms Notice */}
+      <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-navy-800">
+        <Info className="w-4 h-4 text-bee-600 flex-shrink-0 mt-0.5" />
+        <div className="text-[11.5px] leading-relaxed">
+          <strong>Trip Guidelines:</strong> 1 Day Package = <strong>12 Hours (Morning 8:00 AM to Night 8:00 PM)</strong>. After 12 hours, overtime is <strong>₹100/hour</strong>. If trip includes a night stay, driver <strong>food and stay allowance</strong> must be provided by the client.
+        </div>
+      </div>
+
       {/* Full 31 Districts Tariff Table + Distance Slabs Modal */}
       {isChartModalOpen && (
         <div className="fixed inset-0 z-50 bg-navy-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
@@ -639,9 +647,15 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
               </table>
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-3.5 border-t border-navy-100 bg-[#FAFBFD] text-center text-xs text-navy-500">
-              Fuel, tolls, and parking charges are covered by car owner. Driver overnight stay/meals covered by customer for 2-day packages.
+            {/* Modal Footer with full terms */}
+            <div className="p-4 border-t border-navy-100 bg-[#FAFBFD] text-xs text-navy-700 space-y-1">
+              <div className="font-extrabold text-navy-950 text-[11px] uppercase tracking-wider">Outside City Terms & Conditions:</div>
+              <div className="text-[11px] text-navy-600 leading-relaxed grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                <div>• <strong>1 Day Package:</strong> 12 Hours (Morning 8:00 AM to Night 8:00 PM).</div>
+                <div>• <strong>Overtime Charges:</strong> ₹100 per hour beyond 12 hours.</div>
+                <div>• <strong>Night Stay:</strong> Client provides driver food & stay allowance.</div>
+                <div>• <strong>Vehicle Expenses:</strong> Tolls, fuel & parking borne by car owner.</div>
+              </div>
             </div>
           </div>
         </div>

@@ -32,6 +32,10 @@ export const FaqSection: React.FC = () => {
     {
       q: 'How are tolls, fuel, and parking handled?',
       a: 'Since the trip takes place in your personal vehicle, fuel, FASTag tolls, and parking charges are covered by you just as during your regular driving. DriverBee charges only for the driver’s professional time.'
+    },
+    {
+      q: 'What are the timing, overtime, and night stay policies for 1-Day outside city trips?',
+      a: 'A 1-Day outside city package covers 12 hours from 8:00 AM to 8:00 PM. If the trip extends beyond 12 hours, an overtime fee of ₹100 per hour applies. If the trip includes a night stay, the client is requested to provide food and stay allowance/arrangements for the driver.'
     }
   ];
 
