@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Clock, User, Phone } from 'lucide-react';
+import { Home, Clock, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface BottomNavProps {
@@ -50,17 +50,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           <Clock className={`w-5 h-5 ${activeTab === 'bookings' ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
           <span className="text-[11px] mt-1 font-medium">Bookings</span>
         </button>
-
-        {/* Call Helpline */}
-        <a
-          href="tel:+917569402288"
-          className="flex flex-col items-center justify-center py-0.5 px-3 min-w-[60px] text-emerald-600 hover:text-emerald-700 active:scale-95 transition-all"
-          aria-label="Call Helpline"
-          title="Call Helpline: +91 75694 02288"
-        >
-          <Phone className="w-5 h-5 stroke-[2.2]" />
-          <span className="text-[11px] mt-1 font-bold">Call</span>
-        </a>
 
         {/* Account / Sign In */}
         <button
