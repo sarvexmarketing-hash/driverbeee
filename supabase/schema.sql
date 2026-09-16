@@ -1,0 +1,191 @@
+-- ============================================================
+-- DriverBee Supabase Schema
+-- Run this in: Supabase Dashboard → SQL Editor → New Query
+-- ============================================================
+
+-- Enable UUID extension
+create extension if not exists "uuid-ossp";
+
+-- ─────────────────────────────────────────────
+-- PROFILES (linked 1:1 with auth.users)
+-- ─────────────────────────────────────────────
+create table if not exists public.profiles (
+  id            uuid primary key references auth.users(id) on delete cascade,
+  full_name     text,
+  phone         text,
+  role          text not null default 'customer' check (role in ('customer', 'admin', 'driver')),
+  city          text default 'Warangal',
+  wallet_balance numeric(10,2) default 0,
+  avatar_url    text,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+
+-- Auto-create profile on signup
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into public.profiles (id, full_name, phone, role)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', ''),
+    coalesce(new.raw_user_meta_data->>'phone', ''),
+    coalesce(new.raw_user_meta_data->>'role', 'customer')
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- ─────────────────────────────────────────────
+-- FAMILY MEMBERS
+-- ─────────────────────────────────────────────
+create table if not exists public.family_members (
+  id          uuid primary key default uuid_generate_v4(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  name        text not null,
+  relation    text not null,
+  phone       text,
+  created_at  timestamptz default now()
+);
+
+-- ─────────────────────────────────────────────
+-- DRIVER PROFILES (extends profiles where role='driver')
+-- ─────────────────────────────────────────────
+create table if not exists public.driver_profiles (
+  id              uuid primary key references public.profiles(id) on delete cascade,
+  badge           text,
+  rating          numeric(3,2) default 5.0,
+  trips_count     integer default 0,
+  is_on_duty      boolean default false,
+  area            text,
+  photo_url       text,
+  today_earnings  numeric(10,2) default 0,
+  assigned_booking_id uuid,
+  created_at      timestamptz default now()
+);
+
+-- ─────────────────────────────────────────────
+-- BOOKINGS
+-- ─────────────────────────────────────────────
+create table if not exists public.bookings (
+  id                  text primary key,
+  created_at          timestamptz default now(),
+  customer_id         uuid references public.profiles(id),
+  customer_name       text not null,
+  customer_phone      text,
+  trip_type           text not null check (trip_type in ('city', 'outside', 'airport', 'intercity')),
+  duration            integer not null,
+  schedule_type       text not null check (schedule_type in ('now', 'later')),
+  scheduled_date      date,
+  scheduled_time      text,
+  transmission        text default 'automatic',
+  car_model           text,
+  car_plate           text,
+  for_whom            text,
+  area                text,
+  estimated_fare      numeric(10,2),
+  status              text not null default 'pending'
+                        check (status in ('pending','assigned','accepted','active','completed','cancelled')),
+  assigned_driver_id  uuid references public.profiles(id),
+  assigned_driver_name text,
+  notes               text,
+  completed_at        timestamptz,
+  updated_at          timestamptz default now()
+);
+
+-- ─────────────────────────────────────────────
+-- WALLET TRANSACTIONS
+-- ─────────────────────────────────────────────
+create table if not exists public.wallet_transactions (
+  id          uuid primary key default uuid_generate_v4(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  type        text not null check (type in ('credit', 'debit')),
+  amount      numeric(10,2) not null,
+  description text,
+  booking_id  text references public.bookings(id),
+  created_at  timestamptz default now()
+);
+
+-- ─────────────────────────────────────────────
+-- ROW LEVEL SECURITY (RLS)
+-- ─────────────────────────────────────────────
+alter table public.profiles           enable row level security;
+alter table public.family_members     enable row level security;
+alter table public.driver_profiles    enable row level security;
+alter table public.bookings           enable row level security;
+alter table public.wallet_transactions enable row level security;
+
+-- Profiles: users can see their own; admins see all
+create policy "Users read own profile"
+  on public.profiles for select
+  using (auth.uid() = id or (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+
+create policy "Users update own profile"
+  on public.profiles for update
+  using (auth.uid() = id);
+
+-- Family members: only owner
+create policy "Users manage own family"
+  on public.family_members for all
+  using (user_id = auth.uid());
+
+-- Driver profiles: drivers see own; admins see all
+create policy "Driver reads own profile"
+  on public.driver_profiles for select
+  using (id = auth.uid() or exists (
+    select 1 from public.profiles p where p.id = auth.uid() and p.role in ('admin')
+  ));
+
+create policy "Driver updates own profile"
+  on public.driver_profiles for update
+  using (id = auth.uid());
+
+-- Bookings: customers see own; drivers see assigned; admins see all
+create policy "Customers see own bookings"
+  on public.bookings for select
+  using (
+    customer_id = auth.uid()
+    or assigned_driver_id = auth.uid()
+    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+  );
+
+create policy "Customers create bookings"
+  on public.bookings for insert
+  with check (customer_id = auth.uid() or customer_id is null);
+
+create policy "Admins and drivers update bookings"
+  on public.bookings for update
+  using (
+    assigned_driver_id = auth.uid()
+    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+  );
+
+-- Wallet: own only
+create policy "Users see own wallet"
+  on public.wallet_transactions for select
+  using (user_id = auth.uid());
+
+create policy "Users create wallet transactions"
+  on public.wallet_transactions for insert
+  with check (user_id = auth.uid());
+
+-- ─────────────────────────────────────────────
+-- REALTIME: enable on bookings for live feed
+-- ─────────────────────────────────────────────
+alter publication supabase_realtime add table public.bookings;
+alter publication supabase_realtime add table public.driver_profiles;
+
+-- ─────────────────────────────────────────────
+-- SEED: Sample driver accounts
+-- (Run AFTER creating driver auth accounts via Supabase Auth dashboard)
+-- ─────────────────────────────────────────────
+-- Example (replace UUIDs with actual auth user IDs):
+-- insert into public.driver_profiles (id, badge, rating, trips_count, is_on_duty, area, photo_url)
+-- values
+--   ('uuid-here', 'Master Chauffeur', 4.98, 1420, true, 'Benz Circle', 'https://...'),
+--   ('uuid-here', 'Outstation Specialist', 4.95, 980, true, 'Kondapalli', 'https://...');
