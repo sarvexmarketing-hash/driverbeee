@@ -263,7 +263,177 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        {!isConfirmed ? (
+        {isConfirmed ? (
+          /* ─────────────────────────────────────────────────────────────────
+             State 3: Confirmed State (ONLY after Admin Accepts / Assigns)
+             ───────────────────────────────────────────────────────────────── */
+          <div className="p-6 sm:p-8 text-center space-y-5">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md animate-bounce">
+              <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+            </div>
+
+            <div>
+              <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full uppercase tracking-wider border border-emerald-200">
+                Booking ID: {submittedBookingId}
+              </span>
+              <h4 className="text-2xl font-extrabold text-navy-950 mt-2">
+                Your Driver Is Dispatched!
+              </h4>
+              <p className="text-xs sm:text-sm text-navy-600 mt-1 max-w-sm mx-auto leading-relaxed">
+                Admin accepted your ride! Driver <strong className="text-navy-950 font-bold">{liveBooking?.assignedDriverName || 'Rajesh Kumar'}</strong> has accepted and is navigating to your address in {bookingState.scheduleType === 'now' ? '14 minutes' : `time for ${bookingState.time}`}.
+              </p>
+            </div>
+
+            {/* Trip badge summary */}
+            <div className="p-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-xs text-left space-y-2">
+              <div className="flex justify-between">
+                <span className="text-navy-500">Pickup Address</span>
+                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{address}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-navy-500">Delivery Address</span>
+                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{deliveryAddress}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-navy-500">Your Phone</span>
+                <span className="font-bold text-navy-950">+91 {phone}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-navy-500">Driver Assigned</span>
+                <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  {liveBooking?.assignedDriverName || 'Rajesh Kumar'} (+91 98450 78210)
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-navy-500">Vehicle</span>
+                <span className="font-bold text-navy-950">{carModel} ({carPlate})</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-navy-100">
+                <span className="text-navy-500 font-medium">Total Payable</span>
+                <span className="font-bold text-bee-700">₹{total.toLocaleString('en-IN')} (Pay on Completion)</span>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  try { localStorage.removeItem('driverbee_pending_booking_id'); } catch {}
+                  setSubmittedBookingId(null);
+                  onClose();
+                }}
+                className="w-full py-3.5 px-4 rounded-full bg-navy-950 hover:bg-navy-800 text-white font-bold text-xs sm:text-sm transition-colors shadow-sm"
+              >
+                Done & View Dashboard
+              </button>
+            </div>
+          </div>
+        ) : isWaitingAdminAcceptance ? (
+          /* ─────────────────────────────────────────────────────────────────
+             State 2: Awaiting Admin Acceptance (Completely replaces form)
+             ───────────────────────────────────────────────────────────────── */
+          <div className="p-6 sm:p-8 text-center space-y-5 max-h-[85vh] overflow-y-auto">
+            {/* Animated Pulsing Status Ring */}
+            <div className="relative w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-300 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
+              <div className="absolute inset-0 rounded-full bg-amber-400/25 animate-ping" />
+              <Clock className="w-8 h-8 stroke-[2.5] text-amber-600 relative z-10" />
+            </div>
+
+            <div>
+              <span className="text-xs font-extrabold text-amber-800 bg-amber-100/90 px-3 py-1 rounded-full uppercase tracking-wider border border-amber-300">
+                Booking ID: {submittedBookingId}
+              </span>
+              <h4 className="text-xl sm:text-2xl font-extrabold text-navy-950 mt-2.5">
+                Waiting for Admin Acceptance...
+              </h4>
+              <p className="text-xs sm:text-sm text-navy-600 mt-1.5 max-w-md mx-auto leading-relaxed">
+                Your ride request has been submitted to DriverBee Dispatch. As soon as the admin accepts and assigns your driver, your booking will show <strong>Confirmed</strong> with driver contact details.
+              </p>
+            </div>
+
+            {/* Live Step Tracker */}
+            <div className="p-3.5 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-left space-y-2.5">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs flex-shrink-0">✓</div>
+                <div className="text-xs">
+                  <div className="font-bold text-navy-950">1. Booking Request Placed</div>
+                  <div className="text-[10px] text-gray-500">Pickup, route, and vehicle details received by dispatch</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs flex-shrink-0 animate-pulse">⏳</div>
+                <div className="text-xs">
+                  <div className="font-bold text-amber-900">2. Awaiting Admin Acceptance</div>
+                  <div className="text-[10px] text-amber-700 font-medium">Operations team is reviewing and assigning an on-duty driver</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 opacity-40">
+                <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-xs flex-shrink-0">3</div>
+                <div className="text-xs">
+                  <div className="font-bold text-gray-700">3. Driver Dispatched</div>
+                  <div className="text-[10px] text-gray-400">Driver navigates to your doorstep</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Trip details summary */}
+            <div className="p-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-xs text-left space-y-2">
+              <div className="flex justify-between">
+                <span className="text-navy-500">Pickup Address</span>
+                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{address}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-navy-500">Delivery Address</span>
+                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{deliveryAddress}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-navy-500">Your Phone</span>
+                <span className="font-bold text-navy-950">+91 {phone}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-navy-500">Driver Assignment</span>
+                <span className="font-bold text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-lg border border-amber-200 text-[11px] animate-pulse">
+                  Pending Admin Assignment...
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-navy-500">Vehicle</span>
+                <span className="font-bold text-navy-950 capitalize">{carType} • {carModel} ({carPlate})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-navy-500">Transmission</span>
+                <span className="font-bold text-navy-950 capitalize">{bookingState.transmission} Drive</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-navy-100">
+                <span className="text-navy-500 font-medium">Estimated Total</span>
+                <span className="font-bold text-bee-700">₹{total.toLocaleString('en-IN')} (Pay on Completion)</span>
+              </div>
+            </div>
+
+            {/* Waiting CTA button - Cannot click again until admin accepts */}
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                disabled={true}
+                className="w-full h-12 sm:h-14 rounded-full font-bold text-sm sm:text-base flex items-center justify-center gap-2 bg-amber-500 text-navy-950 border border-amber-600/30 cursor-not-allowed opacity-95 shadow-none select-none"
+              >
+                <Clock className="w-5 h-5 animate-pulse text-navy-950 stroke-[2.5]" />
+                <span>Waiting Admin Acceptance</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 px-4 text-xs font-semibold text-navy-500 hover:text-navy-900 transition-colors"
+              >
+                Close & track in background
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* ─────────────────────────────────────────────────────────────────
+             State 1: Initial Booking Form (Before Placing Request)
+             ───────────────────────────────────────────────────────────────── */
           <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
             
             {/* Value reminder banner */}
@@ -515,46 +685,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </span>
             </label>
 
-            {/* Live Awaiting Admin Banner if currently waiting */}
-            {isWaitingAdminAcceptance && (
-              <div className="p-3.5 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center gap-3 text-xs text-amber-950 shadow-xs animate-pulse">
-                <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-4 h-4 text-amber-800 stroke-[2.5]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-extrabold flex items-center gap-1.5">
-                    <span>Booking Request Placed</span>
-                    <span className="text-[10px] bg-amber-200/90 px-1.5 py-0.5 rounded font-mono font-bold">
-                      {submittedBookingId}
-                    </span>
-                  </div>
-                  <p className="text-[11.5px] text-amber-850 mt-0.5 leading-tight">
-                    Waiting for DriverBee admin to accept your booking. You cannot submit again until accepted.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Confirm / Waiting CTA */}
+            {/* Confirm CTA */}
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={isProcessing || !agreedTerms || isWaitingAdminAcceptance}
-              className={`w-full h-12 sm:h-14 rounded-full font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all duration-200 select-none ${
-                isWaitingAdminAcceptance
-                  ? 'bg-amber-500 hover:bg-amber-500 text-navy-950 border border-amber-600/30 cursor-not-allowed opacity-95 shadow-none'
-                  : 'bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-cta'
-              }`}
+              disabled={isProcessing || !agreedTerms}
+              className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200"
             >
               {isProcessing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Placing Booking Request...</span>
-                </>
-              ) : isWaitingAdminAcceptance ? (
-                <>
-                  <Clock className="w-5 h-5 animate-pulse text-navy-950 stroke-[2.5]" />
-                  <span>Waiting Admin Acceptance</span>
                 </>
               ) : (
                 <>
@@ -564,71 +705,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               )}
             </button>
 
-          </div>
-        ) : (
-          /* ─────────────────────────────────────────────────────────────────
-             State 3: Confirmed State (ONLY after Admin Accepts / Assigns)
-             ───────────────────────────────────────────────────────────────── */
-          <div className="p-6 sm:p-8 text-center space-y-5">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-md animate-bounce">
-              <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
-            </div>
-
-            <div>
-              <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full uppercase tracking-wider border border-emerald-200">
-                Booking ID: {submittedBookingId}
-              </span>
-              <h4 className="text-2xl font-extrabold text-navy-950 mt-2">
-                Your Driver Is Dispatched!
-              </h4>
-              <p className="text-xs sm:text-sm text-navy-600 mt-1 max-w-sm mx-auto leading-relaxed">
-                Admin accepted your ride! Driver <strong className="text-navy-950 font-bold">{liveBooking?.assignedDriverName || 'Rajesh Kumar'}</strong> has accepted and is navigating to your address in {bookingState.scheduleType === 'now' ? '14 minutes' : `time for ${bookingState.time}`}.
-              </p>
-            </div>
-
-            {/* Trip badge summary */}
-            <div className="p-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-xs text-left space-y-2">
-              <div className="flex justify-between">
-                <span className="text-navy-500">Pickup Address</span>
-                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{address}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Delivery Address</span>
-                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{deliveryAddress}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Your Phone</span>
-                <span className="font-bold text-navy-950">+91 {phone}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-navy-500">Driver Assigned</span>
-                <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  {liveBooking?.assignedDriverName || 'Rajesh Kumar'} (+91 98450 78210)
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Vehicle</span>
-                <span className="font-bold text-navy-950">{carModel} ({carPlate})</span>
-              </div>
-              <div className="flex justify-between pt-1 border-t border-navy-100">
-                <span className="text-navy-500 font-medium">Total Payable</span>
-                <span className="font-bold text-bee-700">₹{total.toLocaleString('en-IN')} (Pay on Completion)</span>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                onClick={() => {
-                  try { localStorage.removeItem('driverbee_pending_booking_id'); } catch {}
-                  setSubmittedBookingId(null);
-                  onClose();
-                }}
-                className="w-full py-3.5 px-4 rounded-full bg-navy-950 hover:bg-navy-800 text-white font-bold text-xs sm:text-sm transition-colors shadow-sm"
-              >
-                Done & View Dashboard
-              </button>
-            </div>
           </div>
         )}
 
