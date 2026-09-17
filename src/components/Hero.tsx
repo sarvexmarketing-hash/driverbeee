@@ -3,6 +3,8 @@ import { ShieldCheck, HeartHandshake, Clock, ChevronDown, LogIn, User, MapPin, S
 import { useAuth } from '../context/AuthContext';
 import { DriverBeeLogo } from './DriverBeeLogo';
 
+import { isWarangalLocation } from '../utils/location';
+
 interface HeroProps {
   onQuickBook?: () => void;
   selectedCity?: string;
@@ -19,6 +21,7 @@ export const Hero: React.FC<HeroProps> = ({
   onOpenAuth
 }) => {
   const { user, profile } = useAuth();
+  const isWarangal = isWarangalLocation(selectedCity);
 
   return (
     <>
@@ -56,6 +59,11 @@ export const Hero: React.FC<HeroProps> = ({
               >
                 <MapPin className="w-3 h-3 text-bee-600 flex-shrink-0 fill-bee-600/20" />
                 <span className="truncate max-w-[85px] sm:max-w-[110px]">{selectedCity.split(',')[0]}</span>
+                {!isWarangal && (
+                  <span className="text-[9px] bg-amber-200 text-amber-950 font-black px-1.5 py-0.2 rounded shrink-0">
+                    Soon
+                  </span>
+                )}
                 <ChevronDown className="w-3 h-3 text-navy-400" />
               </button>
 

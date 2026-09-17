@@ -92,10 +92,6 @@ export const FaqSection: React.FC = () => {
           })}
         </div>
 
-        <div className="mt-10 p-5 rounded-2xl bg-navy-50 border border-navy-200 text-center text-xs text-navy-600">
-          Have more questions? Call our 24/7 Warangal concierge team at <span className="font-bold text-navy-950">+91 80 4710 9900</span> or email <span className="font-bold text-bee-700">support@driverbee.in</span>
-        </div>
-
       </div>
     </section>
   );

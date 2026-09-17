@@ -1,6 +1,6 @@
 import React from 'react';
 import { TripType } from '../types';
-import { CityIcon, OutsideCityIcon, AirportIcon, IntercityIcon } from './CustomTripIcons';
+import { CityIcon, OutsideCityIcon } from './CustomTripIcons';
 
 interface TripSelectorProps {
   selectedTrip: TripType;

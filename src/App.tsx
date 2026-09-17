@@ -19,6 +19,8 @@ import { MyBookingsDrawer } from './components/MyBookingsDrawer';
 import { FamilyManagerModal } from './components/FamilyManagerModal';
 import { AuthModal } from './components/AuthModal';
 import { LocationModal } from './components/LocationModal';
+import { ComingSoonModal } from './components/ComingSoonModal';
+import { isWarangalLocation } from './utils/location';
 import { BookingState, BookingRecord, Driver, FamilyMember, TripType } from './types';
 import { useBookings } from './context/BookingContext';
 import { useAuth } from './context/AuthContext';
@@ -132,7 +134,23 @@ export const App: React.FC = () => {
   const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
+
+  const handleSwitchToWarangal = () => {
+    setSelectedCity('Warangal, Telangana');
+    try {
+      localStorage.setItem('driverbee_user_location', 'Warangal, Telangana');
+    } catch {}
+  };
+
+  const handleBookNow = () => {
+    if (!isWarangalLocation(selectedCity)) {
+      setIsComingSoonModalOpen(true);
+    } else {
+      setIsBookingModalOpen(true);
+    }
+  };
 
   // User State
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(INITIAL_FAMILY);
@@ -245,7 +263,9 @@ export const App: React.FC = () => {
             <BookingCard
               bookingState={bookingState}
               updateBookingState={updateBookingState}
-              onBookNow={() => setIsBookingModalOpen(true)}
+              onBookNow={handleBookNow}
+              selectedCity={selectedCity}
+              onSwitchToWarangal={handleSwitchToWarangal}
             />
           </div>
 
@@ -344,8 +364,19 @@ export const App: React.FC = () => {
             localStorage.setItem('driverbee_user_location', city);
           } catch {}
         }}
+        onNonWarangalSelected={() => {
+          setIsComingSoonModalOpen(true);
+        }}
         onDetectLocation={detectLocation}
         isDetectingLocation={isDetectingLocation}
+      />
+
+      {/* Non-Warangal "Coming Soon" Alert Modal */}
+      <ComingSoonModal
+        isOpen={isComingSoonModalOpen}
+        onClose={() => setIsComingSoonModalOpen(false)}
+        city={selectedCity}
+        onSwitchToWarangal={handleSwitchToWarangal}
       />
 
     </div>

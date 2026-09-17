@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BookingState, FamilyMember, formatDisplayDate } from '../types';
-import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle, Car } from 'lucide-react';
+import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle, Car, ShieldCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
 import { useBookings } from '../context/BookingContext';
+import { isWarangalLocation } from '../utils/location';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -22,11 +23,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const { profile } = useAuth();
   const { bookings, addBooking, acceptBooking } = useBookings();
   const [address, setAddress] = useState('Flat 402, Royal Palms, Hanamkonda, Warangal');
+  const stateName = bookingState.outstationState === 'andhra' ? 'Andhra Pradesh' : 'Telangana';
   const [deliveryAddress, setDeliveryAddress] = useState(
     bookingState.tripType === 'outside'
-      ? bookingState.outstationMode === 'distance'
-        ? `Destination (${bookingState.outstationDistanceRange || 'Distance Slab'})`
-        : `${bookingState.outstationDestinationName || 'Destination'}, ${bookingState.outstationDistrict || ''}, Telangana`
+      ? `${bookingState.outstationDestinationName || 'Destination'}, ${bookingState.outstationDistrict || ''}, ${stateName}`
       : 'Hunter Road / Destination, Warangal'
   );
   const [phone, setPhone] = useState('9845012345');
@@ -39,25 +39,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [hasCelebrated, setHasCelebrated] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
 
-  // Synchronize delivery address when outstation destination or distance slab is selected
+  // Synchronize delivery address when outstation destination is selected
   useEffect(() => {
     if (isOpen) {
       setTransmission(bookingState.transmission || 'automatic');
       if (bookingState.tripType === 'outside') {
-        if (bookingState.outstationMode === 'distance') {
-          setDeliveryAddress(`Destination (${bookingState.outstationDistanceRange || 'Distance Slab'})`);
-        } else if (bookingState.outstationDestinationName) {
-          setDeliveryAddress(`${bookingState.outstationDestinationName}, ${bookingState.outstationDistrict || ''}, Telangana`);
+        if (bookingState.outstationDestinationName) {
+          const sName = bookingState.outstationState === 'andhra' ? 'Andhra Pradesh' : 'Telangana';
+          setDeliveryAddress(`${bookingState.outstationDestinationName}, ${bookingState.outstationDistrict || ''}, ${sName}`);
         }
       }
     }
   }, [
     isOpen,
     bookingState.tripType,
-    bookingState.outstationMode,
+    bookingState.outstationState,
     bookingState.outstationDestinationName,
     bookingState.outstationDistrict,
-    bookingState.outstationDistanceRange,
+    bookingState.transmission,
   ]);
 
   // Live lookup of this booking from shared context
@@ -133,6 +132,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const handleConfirm = async () => {
     if (isProcessing || isWaitingAdminAcceptance) return;
+    if (!isWarangalLocation(address)) {
+      alert('Currently, driver bookings only happen from Warangal. Driver pickups outside Warangal are coming soon. Please ensure your pickup address is within Warangal, Hanamkonda, or Kazipet.');
+      return;
+    }
     setIsProcessing(true);
 
     const forWhomStr = bookingState.passengerType === 'self' 
@@ -142,41 +145,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     // Build comprehensive, structured notes detailing every choice made by the customer
     let bookingNotes = '';
     if (bookingState.tripType === 'outside') {
-      if (bookingState.outstationMode === 'distance') {
-        bookingNotes = [
-          `[OUTSIDE CITY TRIP - BY DISTANCE SLAB]`,
-          `• Distance Slab: ${bookingState.outstationDistanceRange || '100 – 150 km'} (from customer doorstep)`,
-          `• Package Duration: ${bookingState.outstationDays || 1} Day Package`,
-          `• Daily Service Window: 12 Hours (8:00 AM – 8:00 PM)`,
-          `• Overtime Charges: ₹100 per hour beyond 12 hours`,
-          `• Driver Night Stay: Client provides food & basic accommodation`,
-          `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
-          `• Car Type: ${carType.toUpperCase()}`,
-          `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
-          `• Booked For: ${forWhomStr}`,
-          `• Pickup Doorstep: ${address}`,
-          `• Destination Address: ${deliveryAddress}`,
-          `• Fixed Driver Fare: ₹${total.toLocaleString('en-IN')}`,
-          `• Terms & Conditions Accepted: Yes`,
-        ].join('\n');
-      } else {
-        bookingNotes = [
-          `[OUTSIDE CITY TRIP - BY DISTRICT / DESTINATION]`,
-          `• Destination: ${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDistrict || 'Telangana'} District)`,
-          `• Package Duration: ${bookingState.outstationDays || 1} Day Package`,
-          `• Daily Service Window: 12 Hours (8:00 AM – 8:00 PM)`,
-          `• Overtime Charges: ₹100 per hour beyond 12 hours`,
-          `• Driver Night Stay: Client provides food & basic accommodation`,
-          `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
-          `• Car Type: ${carType.toUpperCase()}`,
-          `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
-          `• Booked For: ${forWhomStr}`,
-          `• Pickup Doorstep: ${address}`,
-          `• Destination Address: ${deliveryAddress}`,
-          `• Fixed Driver Fare: ₹${total.toLocaleString('en-IN')}`,
-          `• Terms & Conditions Accepted: Yes`,
-        ].join('\n');
-      }
+      const stateStr = bookingState.outstationState === 'andhra' ? 'Andhra Pradesh' : 'Telangana';
+      const outDays = bookingState.outstationDays || 1;
+      bookingNotes = [
+        `[OUTSIDE CITY TRIP - BY DISTRICT / DESTINATION]`,
+        `• Destination: ${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDistrict || ''} • ${stateStr})`,
+        `• Package Duration: ${outDays} Day${outDays > 1 ? 's' : ''} Package`,
+        `• Daily Service Window: 12 Hours (8:00 AM – 8:00 PM)`,
+        `• Overtime Charges: ₹100 per hour beyond 12 hours`,
+        `• Driver Night Stay: Client provides food & basic accommodation`,
+        `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
+        `• Car Type: ${carType.toUpperCase()}`,
+        `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
+        `• Booked For: ${forWhomStr}`,
+        `• Pickup Doorstep: ${address}`,
+        `• Destination Address: ${deliveryAddress}`,
+        `• Fixed Driver Fare: ₹${total.toLocaleString('en-IN')}`,
+        `• Terms & Conditions Accepted: Yes`,
+      ].join('\n');
     } else {
       bookingNotes = [
         `[WITHIN THE CITY TRIP (Warangal / Local)]`,
@@ -457,9 +443,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </span>
                   <span className="font-bold text-navy-950 text-sm">
                     {bookingState.tripType === 'outside'
-                      ? bookingState.outstationMode === 'distance'
-                        ? `${bookingState.outstationDistanceRange || 'Distance Slab'} (${bookingState.outstationDays || 1} Day)`
-                        : `${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDays || 1} Day)`
+                      ? `${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDays || 1} Day${(bookingState.outstationDays || 1) > 1 ? 's' : ''})`
                       : `${bookingState.duration} Hours`}
                   </span>
                 </div>
@@ -489,9 +473,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   rows={2}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Enter house/flat no., street, landmark, pickup area"
+                  placeholder="Enter house/flat no., street, landmark, pickup area in Warangal"
                   className="w-full px-4 py-3 text-sm font-semibold bg-white border border-navy-200/90 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal resize-none shadow-xs transition-all leading-relaxed"
                 />
+                {!isWarangalLocation(address) && address.trim().length > 3 ? (
+                  <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11.5px] text-amber-900 flex items-start gap-1.5 animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Pickup Notice:</strong> Currently, driver bookings only happen from <strong>Warangal</strong> (Tri-City). Pickups from outside Warangal are <strong>Coming Soon</strong>.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-700 font-semibold">
+                    <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Pickup zone: Warangal Tri-City (Hanamkonda, Kazipet & Warangal)</span>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -663,9 +660,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <span className="text-sm sm:text-base font-extrabold text-navy-950 block">Total Payable</span>
                 <span className="text-xs text-navy-500 font-medium">
                   {bookingState.tripType === 'outside'
-                    ? bookingState.outstationMode === 'distance'
-                      ? `Driver Service (${bookingState.outstationDays || 1} Day - ${bookingState.outstationDistanceRange || 'Distance Slab'})`
-                      : `Driver Service (${bookingState.outstationDays || 1} Day - ${bookingState.outstationDestinationName || 'Outstation'})`
+                    ? `Driver Service (${bookingState.outstationDays || 1} Day${(bookingState.outstationDays || 1) > 1 ? 's' : ''} - ${bookingState.outstationDestinationName || 'Outstation'})`
                     : `Driver Service (${bookingState.duration} Hours)`}
                 </span>
               </div>

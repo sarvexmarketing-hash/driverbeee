@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { MapPin, Crosshair, Search, Check, X, ShieldCheck, Sparkles, Navigation } from 'lucide-react';
 
+import { isWarangalLocation } from '../utils/location';
+
 interface LocationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -8,18 +10,19 @@ interface LocationModalProps {
   onSelectCity: (city: string) => void;
   onDetectLocation: () => void;
   isDetectingLocation: boolean;
+  onNonWarangalSelected?: (city: string) => void;
 }
 
 const PRIMARY_CITIES = [
-  { name: 'Warangal, Telangana', hub: 'Primary Hub (30-min arrival)', badge: 'Active' },
-  { name: 'Hanamkonda, Warangal', hub: 'Tri-City Hub (30-min arrival)', badge: 'Active' },
-  { name: 'Kazipet, Warangal', hub: 'Station & Junction Hub', badge: 'Active' },
-  { name: 'Hyderabad, Telangana', hub: 'Extended Service / Outstation Hub', badge: 'Active' },
-  { name: 'Visakhapatnam, Andhra Pradesh', hub: 'Coastal Hub & City Drives', badge: 'Active' },
-  { name: 'Vijayawada, Andhra Pradesh', hub: 'Capital Region Hub', badge: 'Active' },
-  { name: 'Karimnagar, Telangana', hub: 'Northern Telangana Hub', badge: 'Active' },
-  { name: 'Khammam, Telangana', hub: 'Eastern Hub', badge: 'Active' },
-  { name: 'Guntur, Andhra Pradesh', hub: 'Active Hub', badge: 'Active' },
+  { name: 'Warangal, Telangana', hub: 'Primary Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Hanamkonda, Warangal', hub: 'Tri-City Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Kazipet, Warangal', hub: 'Station & Junction Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Hyderabad, Telangana', hub: 'Driver dispatch launching soon', badge: 'Coming Soon' },
+  { name: 'Visakhapatnam, Andhra Pradesh', hub: 'Coastal Hub launching soon', badge: 'Coming Soon' },
+  { name: 'Vijayawada, Andhra Pradesh', hub: 'Capital Region launching soon', badge: 'Coming Soon' },
+  { name: 'Karimnagar, Telangana', hub: 'Northern Hub launching soon', badge: 'Coming Soon' },
+  { name: 'Khammam, Telangana', hub: 'Eastern Hub launching soon', badge: 'Coming Soon' },
+  { name: 'Guntur, Andhra Pradesh', hub: 'Hub expansion launching soon', badge: 'Coming Soon' },
 ];
 
 const LOCAL_WARANGAL_AREAS = [
@@ -42,6 +45,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   onSelectCity,
   onDetectLocation,
   isDetectingLocation,
+  onNonWarangalSelected,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -60,6 +64,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const handleSelect = (city: string) => {
     onSelectCity(city);
     onClose();
+    if (!isWarangalLocation(city)) {
+      onNonWarangalSelected?.(city);
+    }
   };
 
   const handleCustomSubmit = (e: React.FormEvent) => {
@@ -154,28 +161,40 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               <span className="text-[10px] text-bee-700 font-bold lowercase">active service</span>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {filteredCities.map((city) => {
                 const isSelected = selectedCity.toLowerCase().includes(city.name.split(',')[0].toLowerCase());
+                const isWarangal = isWarangalLocation(city.name);
                 return (
                   <button
                     key={city.name}
                     type="button"
                     onClick={() => handleSelect(city.name)}
-                    className={`w-full p-2.5 rounded-xl text-left text-xs transition-all flex items-center justify-between ${
+                    className={`w-full p-2.5 rounded-xl text-left text-xs transition-all flex items-center justify-between cursor-pointer ${
                       isSelected
                         ? 'bg-bee-500/15 border border-bee-500 text-navy-950 font-bold'
                         : 'bg-white hover:bg-navy-50 border border-transparent hover:border-navy-100 text-navy-800 font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-bee-600' : 'bg-navy-300'}`} />
+                      <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-bee-600' : isWarangal ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                       <div>
-                        <div className="font-bold text-navy-950">{city.name}</div>
+                        <div className="font-bold text-navy-950 flex items-center gap-1.5">
+                          <span>{city.name}</span>
+                          <span
+                            className={`text-[9.5px] font-black uppercase px-1.5 py-0.2 rounded ${
+                              isWarangal
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/80'
+                                : 'bg-amber-100 text-amber-900 border border-amber-200/80'
+                            }`}
+                          >
+                            {city.badge}
+                          </span>
+                        </div>
                         <div className="text-[10px] text-navy-500 font-normal">{city.hub}</div>
                       </div>
                     </div>
-                    {isSelected && <Check className="w-4 h-4 text-bee-600 stroke-[3]" />}
+                    {isSelected && <Check className="w-4 h-4 text-bee-600 stroke-[3] shrink-0" />}
                   </button>
                 );
               })}

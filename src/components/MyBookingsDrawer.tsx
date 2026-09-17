@@ -67,7 +67,9 @@ export const MyBookingsDrawer: React.FC<MyBookingsDrawerProps> = ({
               {/* Trip specs */}
               <div className="text-xs text-navy-700 space-y-1">
                 <div className="font-bold text-sm text-navy-950 capitalize">
-                  {booking.tripType === 'city' ? 'Within City Drive' : booking.tripType === 'outside' ? 'Outstation Drive' : booking.tripType === 'airport' ? 'Airport Transfer' : 'Intercity Trip'} • {booking.duration}h
+                  {booking.tripType === 'city'
+                    ? `Within City Drive • ${booking.duration}h`
+                    : `Outside City Drive • ${booking.duration} Day${booking.duration > 1 ? 's' : ''}`}
                 </div>
                 <div className="flex items-center gap-2 text-navy-500">
                   <Calendar className="w-3.5 h-3.5 text-navy-400" />

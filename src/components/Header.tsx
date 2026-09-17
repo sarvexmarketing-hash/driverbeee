@@ -21,6 +21,8 @@ import {
 import { DriverBeeLogo } from './DriverBeeLogo';
 import { useAuth } from '../context/AuthContext';
 
+import { isWarangalLocation } from '../utils/location';
+
 interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -60,6 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth
 }) => {
   const { user, profile, logout } = useAuth();
+  const isWarangal = isWarangalLocation(selectedCity);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isCityOpen, setIsCityOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -139,6 +142,11 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="truncate max-w-[105px] sm:max-w-[130px]">
                 {isDetectingLocation ? 'Locating...' : selectedCity.split(',')[0]}
               </span>
+              {!isWarangal && (
+                <span className="text-[9px] bg-amber-100 text-amber-900 border border-amber-300/80 px-1 py-0.2 rounded font-black">
+                  Soon
+                </span>
+              )}
               <ChevronDown className="w-3 h-3 text-navy-500" />
             </button>
 
@@ -146,6 +154,26 @@ export const Header: React.FC<HeaderProps> = ({
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsCityOpen(false)} />
                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-card border border-navy-200 p-2.5 z-20 animate-fade-in">
+                  {!isWarangal && (
+                    <div className="p-2.5 mb-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-950">
+                      <div className="font-extrabold text-[11px] text-amber-900 mb-0.5">
+                        📍 DriverBee is live in Warangal
+                      </div>
+                      <p className="text-[11px] text-amber-900/90 leading-tight mb-1.5">
+                        Bookings currently only happen from Warangal. Driver service in {selectedCity.split(',')[0]} is coming soon!
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCity('Warangal, Telangana');
+                          setIsCityOpen(false);
+                        }}
+                        className="w-full py-1 px-2 rounded-lg bg-bee-500 hover:bg-bee-600 text-white text-[11px] font-bold transition-colors cursor-pointer text-center"
+                      >
+                        Switch to Warangal
+                      </button>
+                    </div>
+                  )}
                   
                   {/* GPS Auto-Detect Button */}
                   <button

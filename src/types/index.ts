@@ -30,12 +30,13 @@ export interface BookingState {
   familyMemberName?: string;
   notes?: string;
   outstationMode?: 'district' | 'distance';
+  outstationState?: 'telangana' | 'andhra';
   outstationDestinationId?: string;
   outstationDestinationName?: string;
   outstationDistrict?: string;
   outstationDistanceSlabId?: string;
   outstationDistanceRange?: string;
-  outstationDays?: 1 | 2;
+  outstationDays?: number;
   outstationPrice?: number;
 }
 
@@ -67,7 +68,7 @@ export interface BookingRecord {
   date: string;
   time: string;
   tripType: TripType;
-  duration: DurationOption;
+  duration: number;
   amount: number;
   driver?: Driver | null;
   status: 'pending' | 'assigned' | 'accepted' | 'upcoming' | 'completed' | 'ongoing' | 'cancelled';

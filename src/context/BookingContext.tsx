@@ -25,7 +25,7 @@ export interface LiveBooking {
   customerName: string;
   customerPhone: string;
   tripType: TripType;
-  duration: DurationOption;
+  duration: number;
   scheduleType: 'now' | 'later';
   date: string;
   time: string;
@@ -68,7 +68,7 @@ function mapBooking(b: DBBooking): LiveBooking {
     customerName: b.customer_name,
     customerPhone: b.customer_phone ?? '',
     tripType: b.trip_type as TripType,
-    duration: b.duration as DurationOption,
+    duration: b.duration,
     scheduleType: b.schedule_type,
     date: b.scheduled_date ?? '',
     time: b.scheduled_time ?? '',
