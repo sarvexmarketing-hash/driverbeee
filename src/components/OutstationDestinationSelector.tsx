@@ -10,12 +10,10 @@ import {
 import {
   MapPin,
   Search,
-  ChevronDown,
   Check,
   ShieldCheck,
   Calendar,
   X,
-  Sparkles,
   Info,
   Plus,
   Minus,
@@ -38,7 +36,6 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
 }) => {
   const [activeState, setActiveState] = useState<StateRegion>(selectedState);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [modalStateTab, setModalStateTab] = useState<StateRegion>(selectedState);
 
@@ -139,8 +136,6 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
       rateNote: currentDays === 1 ? dest.rateNote : undefined,
     };
     onSelectDestination(dest, targetOpt);
-    setIsDropdownOpen(false);
-    setSearchQuery('');
   };
 
   const handleDaysChange = (newDays: number) => {
@@ -172,33 +167,11 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
 
   return (
     <div className="space-y-4">
-      {/* Top Header & Tariff Chart Button */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg sm:text-xl font-extrabold text-navy-950 tracking-tight">
-              Outside City Pricing
-            </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-bee-100 text-bee-800 border border-bee-200">
-              Verified Drivers
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-navy-500 font-normal mt-0.5">
-            Select destination in <strong>Telangana</strong> or <strong>Andhra Pradesh</strong>
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setModalStateTab(activeState);
-            setIsChartModalOpen(true);
-          }}
-          className="text-xs font-bold text-bee-700 hover:text-bee-800 hover:underline flex items-center gap-1 self-start sm:self-auto cursor-pointer"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-bee-600" />
-          <span>View Outside Tariffs Chart</span>
-        </button>
+      {/* Header */}
+      <div>
+        <h2 className="text-xl sm:text-2xl font-extrabold text-navy-950 tracking-tight">
+          Select Destination
+        </h2>
       </div>
 
       {/* State Selector Tabs: Telangana vs Andhra Pradesh */}
@@ -240,140 +213,141 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
         </button>
       </div>
 
-      {/* Destination Selection Section */}
-      <div className="space-y-3">
-        {/* Popular Destination Quick Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-navy-400 whitespace-nowrap mr-1">
-            Popular:
+      {/* Inline Vertical Destination List */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-xs font-bold text-navy-800">
+            {activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'} Destinations
           </span>
-          {popularDests.map((d) => {
-            const isSelected = d.id === activeDest.id;
-            const minPrice = d.options[0].price;
-            return (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => handlePickDest(d)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isSelected
-                    ? 'bg-bee-600 text-white shadow-xs'
-                    : 'bg-[#F6F4EE] hover:bg-[#EFECE3] text-navy-800 border border-transparent'
-                }`}
-              >
-                <span>{d.destination}</span>
-                <span className={`text-[10px] ${isSelected ? 'text-bee-100' : 'text-navy-500 font-semibold'}`}>
-                  ₹{minPrice.toLocaleString('en-IN')}{d.rateNote ? ` ${d.rateNote}` : ''}{d.options.length > 1 ? '+' : ''}
-                </span>
-              </button>
-            );
-          })}
+          <span className="text-[11px] font-semibold text-navy-500">
+            {filteredDestinations.length} {filteredDestinations.length === 1 ? 'district' : 'districts'} available
+          </span>
         </div>
 
-        {/* Destination Dropdown Selector */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="w-full flex items-center justify-between p-3.5 sm:p-4 bg-white border border-navy-200/90 rounded-2xl shadow-2xs hover:border-bee-500 transition-colors text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-bee-50 border border-bee-200 flex items-center justify-center text-bee-700 flex-shrink-0">
-                <MapPin className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-xs text-navy-400 font-medium">
-                  {activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'} Destination
-                </div>
-                <div className="text-sm sm:text-base font-extrabold text-navy-950">
-                  {activeDest.destination}
-                  <span className="text-xs font-medium text-navy-500 ml-1.5">
-                    ({activeDest.district} District)
-                  </span>
-                </div>
-              </div>
+        <div className="bg-white border border-navy-200/90 rounded-2xl shadow-2xs overflow-hidden">
+          {/* Search bar & Popular quick-filter bar */}
+          <div className="p-3 border-b border-navy-100 bg-[#FAFBFD] space-y-2.5">
+            <div className="relative">
+              <Search className="w-4 h-4 text-navy-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search ${activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'} districts (${activeState === 'andhra' ? 'Vijayawada, Vizag, Guntur...' : 'Hyderabad, Karimnagar, Nizamabad...'})...`}
+                className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-navy-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500 text-navy-900 placeholder:text-navy-400"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600 p-0.5 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-navy-500 hidden sm:inline">Change</span>
-              <ChevronDown className={`w-4 h-4 text-navy-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            {/* Popular Quick Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-navy-400 whitespace-nowrap">
+                Popular:
+              </span>
+              {popularDests.map((d) => {
+                const isSelected = d.id === activeDest.id;
+                const oneDayOpt = d.options.find((o) => o.days === 1) || d.options[0];
+                const oneDayPrice = oneDayOpt ? oneDayOpt.price : 1500;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => handlePickDest(d)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                      isSelected
+                        ? 'bg-bee-600 text-white shadow-2xs'
+                        : 'bg-white hover:bg-navy-100/70 text-navy-700 border border-navy-200/80'
+                    }`}
+                  >
+                    <span>{d.destination}</span>
+                    <span className={`text-[10px] ${isSelected ? 'text-bee-100' : 'text-navy-500 font-semibold'}`}>
+                      ₹{oneDayPrice.toLocaleString('en-IN')}{d.rateNote ? ` ${d.rateNote}` : ''}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </button>
+          </div>
 
-          {/* Dropdown Menu */}
-          {isDropdownOpen && (
-            <div className="absolute left-0 right-0 top-full mt-2 z-40 bg-white border border-navy-200 rounded-2xl shadow-xl overflow-hidden animate-fade-in">
-              <div className="p-3 border-b border-navy-100 bg-[#FAFBFD]">
-                <div className="relative">
-                  <Search className="w-4 h-4 text-navy-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={`Search ${activeState === 'andhra' ? 'Andhra' : 'Telangana'} districts (e.g. ${activeState === 'andhra' ? 'Vijayawada, Vizag, Guntur, Tirupati' : 'Hyderabad, Karimnagar, Nizamabad'})...`}
-                    className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-navy-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500 text-navy-900"
-                    autoFocus
-                  />
-                </div>
+          {/* Vertical Scrollable List of Destinations */}
+          <div className="max-h-64 sm:max-h-72 overflow-y-auto divide-y divide-navy-100/70">
+            {filteredDestinations.length === 0 ? (
+              <div className="p-6 text-center text-xs text-navy-400">
+                No district matching "{searchQuery}" in {activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'}
               </div>
+            ) : (
+              filteredDestinations.map((dest) => {
+                const isSelected = dest.id === activeDest.id;
+                const oneDayOpt = dest.options.find((o) => o.days === 1) || dest.options[0];
+                const oneDayPrice = oneDayOpt ? oneDayOpt.price : 1500;
 
-              <div className="max-h-64 overflow-y-auto divide-y divide-navy-50">
-                {filteredDestinations.length === 0 ? (
-                  <div className="p-4 text-center text-xs text-navy-400">
-                    No district matching "{searchQuery}" in {activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'}
-                  </div>
-                ) : (
-                  filteredDestinations.map((dest) => {
-                    const isSelected = dest.id === activeDest.id;
-                    const priceRange = dest.options
-                      .map((o) => `₹${o.price.toLocaleString('en-IN')}${o.rateNote ? ` ${o.rateNote}` : ''}`)
-                      .join(' / ');
-
-                    return (
-                      <button
-                        key={dest.id}
-                        type="button"
-                        onClick={() => handlePickDest(dest)}
-                        className={`w-full px-4 py-2.5 flex items-center justify-between text-left hover:bg-navy-50/80 transition-colors cursor-pointer ${
-                          isSelected ? 'bg-bee-50/70 font-semibold' : ''
+                return (
+                  <button
+                    key={dest.id}
+                    type="button"
+                    onClick={() => handlePickDest(dest)}
+                    className={`w-full px-3.5 py-2.5 flex items-center justify-between text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-bee-50/90 hover:bg-bee-100/70 border-l-4 border-l-bee-600'
+                        : 'hover:bg-navy-50/70 border-l-4 border-l-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <div
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                          isSelected ? 'bg-bee-600 text-white shadow-2xs' : 'bg-navy-100/80 text-navy-600'
                         }`}
                       >
-                        <div>
-                          <div className="text-xs font-bold text-navy-950 flex items-center gap-1.5">
-                            <span>{dest.destination}</span>
-                            {dest.distanceKm && (
-                              <span className="text-[10px] font-semibold text-navy-500 font-mono">
-                                ({dest.distanceKm} km)
-                              </span>
-                            )}
-                            {dest.popular && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
-                                Popular
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-navy-500">
-                            {dest.district} District • {dest.packageType}
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <div className="text-xs font-extrabold text-bee-700">
-                            {priceRange}
-                          </div>
-                          {isSelected && (
-                            <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5 justify-end">
-                              <Check className="w-3 h-3" /> Selected
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs sm:text-sm font-extrabold text-navy-950 flex items-center gap-1.5 flex-wrap">
+                          <span className="truncate">{dest.destination}</span>
+                          {dest.distanceKm && (
+                            <span className="text-[10px] font-semibold text-navy-500 font-mono">
+                              ({dest.distanceKm} km)
+                            </span>
+                          )}
+                          {dest.popular && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                              Popular
                             </span>
                           )}
                         </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
+                        <div className="text-[11px] text-navy-500 truncate">
+                          {dest.district} District
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-xs font-extrabold text-bee-700">
+                        ₹{oneDayPrice.toLocaleString('en-IN')}{dest.rateNote ? ` ${dest.rateNote}` : ''}
+                      </div>
+                      {isSelected ? (
+                        <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5 justify-end mt-0.5">
+                          <Check className="w-3 h-3" /> Selected
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-navy-400 font-medium">
+                          per day
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
 
         {/* Selected Destination Summary Card */}
@@ -626,9 +600,8 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
                 </thead>
                 <tbody className="divide-y divide-navy-100">
                   {filteredModalDestinations.map((item, idx) => {
-                    const priceStr = item.options
-                      .map((o) => `₹${o.price.toLocaleString('en-IN')}${o.rateNote ? ` ${o.rateNote}` : ''}`)
-                      .join(' / ');
+                    const oneDayOpt = item.options.find((o) => o.days === 1) || item.options[0];
+                    const priceStr = `₹${(oneDayOpt?.price || 1500).toLocaleString('en-IN')}${item.rateNote ? ` ${item.rateNote}` : ''}`;
                     const isCurrent = item.id === activeDest.id;
                     return (
                       <tr key={item.id} className={`hover:bg-navy-50/60 transition-colors ${isCurrent ? 'bg-bee-50/50' : ''}`}>

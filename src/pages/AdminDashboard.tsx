@@ -63,7 +63,7 @@ const AdminLogin: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
       onLogin();
     } else {
       setIsLoading(false);
-      setError('Invalid admin credentials. Please enter email: admin@driverbee.in and password: Admin@2026');
+      setError('Invalid admin credentials. Please check your email and password.');
     }
   };
 
@@ -125,7 +125,7 @@ const AdminLogin: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Enter admin password (Admin@2026)"
+                  placeholder="Enter admin password"
                   required
                   className="w-full pl-10 pr-11 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500 text-sm font-semibold"
                   autoFocus
