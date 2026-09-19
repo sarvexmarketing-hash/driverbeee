@@ -246,7 +246,7 @@ const BookingDetailDrawer: React.FC<{
               ].map(([label, val]) => (
                 <div key={label}>
                   <span className="text-gray-400 block">{label}</span>
-                  <span className="text-navy-900 font-bold capitalize">{val}</span>
+                  <span className={`capitalize ${label === 'Area' ? 'text-gray-600 font-normal text-xs' : 'text-navy-900 font-bold'}`}>{val}</span>
                 </div>
               ))}
               <div>

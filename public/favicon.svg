@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFC107" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+  </defs>
+  <!-- Background Badge -->
+  <circle cx="50" cy="50" r="47" fill="#F59E0B" />
+  <circle cx="50" cy="50" r="45" fill="url(#goldGrad)" />
+
+  <!-- Steering Wheel Outer Rim -->
+  <circle cx="50" cy="50" r="32" stroke="#0B1020" stroke-width="8.8" fill="none" />
+
+  <!-- Horizontal and Vertical Spokes -->
+  <line x1="18" y1="50" x2="39" y2="50" stroke="#0B1020" stroke-width="7.5" stroke-linecap="round" />
+  <line x1="61" y1="50" x2="82" y2="50" stroke="#0B1020" stroke-width="7.5" stroke-linecap="round" />
+  <line x1="50" y1="58" x2="50" y2="82" stroke="#0B1020" stroke-width="7.5" stroke-linecap="round" />
+
+  <!-- Center Horn Hub -->
+  <circle cx="50" cy="50" r="11.5" fill="#0B1020" />
+  <circle cx="50" cy="50" r="6.5" fill="#FFB800" />
+  <circle cx="50" cy="50" r="3" fill="#0B1020" />
+</svg>

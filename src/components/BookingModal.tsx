@@ -38,6 +38,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [submittedBookingId, setSubmittedBookingId] = useState<string | null>(null);
   const [hasCelebrated, setHasCelebrated] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Synchronize delivery address when outstation destination is selected
   useEffect(() => {
@@ -78,6 +79,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setSubmittedBookingId(null);
       setHasCelebrated(false);
       setIsProcessing(false);
+      setFormError(null);
       try {
         localStorage.removeItem('driverbee_pending_booking_id');
       } catch {}
@@ -132,10 +134,31 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const handleConfirm = async () => {
     if (isProcessing || isWaitingAdminAcceptance) return;
-    if (!isWarangalLocation(address)) {
-      alert('Currently, driver bookings only happen from Warangal. Driver pickups outside Warangal are coming soon. Please ensure your pickup address is within Warangal, Hanamkonda, or Kazipet.');
+    setFormError(null);
+
+    const cleanAddress = address.trim();
+    if (!cleanAddress) {
+      setFormError('Pickup / Doorstep Address is compulsory. Please enter your address.');
       return;
     }
+
+    if (!isWarangalLocation(cleanAddress)) {
+      setFormError('Currently, driver bookings only happen from Warangal. Driver pickups outside Warangal are coming soon. Please ensure your pickup address is within Warangal, Hanamkonda, or Kazipet.');
+      return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setFormError('Phone number is compulsory. Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    const cleanDelivery = deliveryAddress.trim();
+    if (!cleanDelivery) {
+      setFormError('Delivery / drop-off destination address is compulsory.');
+      return;
+    }
+
     setIsProcessing(true);
 
     const forWhomStr = bookingState.passengerType === 'self' 
@@ -266,11 +289,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div className="p-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-xs text-left space-y-2">
               <div className="flex justify-between">
                 <span className="text-navy-500">Pickup Address</span>
-                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{address}</span>
+                <span className="font-normal text-navy-600 text-right max-w-[220px] truncate">{address}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Delivery Address</span>
-                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{deliveryAddress}</span>
+                <span className="font-normal text-navy-600 text-right max-w-[220px] truncate">{deliveryAddress}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Your Phone</span>
@@ -285,7 +308,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Vehicle</span>
-                <span className="font-bold text-navy-950">{carModel} ({carPlate})</span>
+                <span className="font-normal text-navy-600">{carModel} ({carPlate})</span>
               </div>
               <div className="flex justify-between pt-1 border-t border-navy-100">
                 <span className="text-navy-500 font-medium">Total Payable</span>
@@ -358,11 +381,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div className="p-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-xs text-left space-y-2">
               <div className="flex justify-between">
                 <span className="text-navy-500">Pickup Address</span>
-                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{address}</span>
+                <span className="font-normal text-navy-600 text-right max-w-[220px] truncate">{address}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Delivery Address</span>
-                <span className="font-bold text-navy-950 text-right max-w-[220px] truncate">{deliveryAddress}</span>
+                <span className="font-normal text-navy-600 text-right max-w-[220px] truncate">{deliveryAddress}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Your Phone</span>
@@ -376,11 +399,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Vehicle</span>
-                <span className="font-bold text-navy-950 capitalize">{carType} • {carModel} ({carPlate})</span>
+                <span className="font-normal text-navy-600 capitalize">{carType} • {carModel} ({carPlate})</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Transmission</span>
-                <span className="font-bold text-navy-950 capitalize">{transmission} Drive</span>
+                <span className="font-normal text-navy-600 capitalize">{transmission} Drive</span>
               </div>
               <div className="flex justify-between pt-1 border-t border-navy-100">
                 <span className="text-navy-500 font-medium">Estimated Total</span>
@@ -465,18 +488,32 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             {/* Pickup & Delivery / Destination Addresses (Bigger inputs) */}
             <div className="space-y-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/90 p-4 sm:p-5">
               <div>
-                <label className="block text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 mb-1.5 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-bee-600 flex-shrink-0" />
-                  <span>Pickup / Doorstep Address</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-bee-600 flex-shrink-0" />
+                    <span>Pickup / Doorstep Address</span>
+                    <span className="text-red-500 font-bold text-sm leading-none">*</span>
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200/80">
+                    Compulsory
+                  </span>
+                </div>
                 <textarea
                   rows={2}
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    if (formError) setFormError(null);
+                  }}
                   placeholder="Enter house/flat no., street, landmark, pickup area in Warangal"
-                  className="w-full px-4 py-3 text-sm font-semibold bg-white border border-navy-200/90 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal resize-none shadow-xs transition-all leading-relaxed"
+                  className={`w-full px-4 py-3 text-sm font-normal bg-white border ${!address.trim() ? 'border-red-400 ring-2 ring-red-400/20' : 'border-navy-200/90'} rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-600 placeholder:text-navy-400 placeholder:font-normal resize-none shadow-xs transition-all leading-relaxed`}
                 />
-                {!isWarangalLocation(address) && address.trim().length > 3 ? (
+                {!address.trim() ? (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-red-600 font-semibold animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Pickup address is compulsory. Please enter your address.</span>
+                  </div>
+                ) : !isWarangalLocation(address) && address.trim().length > 3 ? (
                   <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11.5px] text-amber-900 flex items-start gap-1.5 animate-fade-in">
                     <AlertCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
                     <span>
@@ -499,17 +536,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <textarea
                   rows={2}
                   value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  onChange={(e) => {
+                    setDeliveryAddress(e.target.value);
+                    if (formError) setFormError(null);
+                  }}
                   placeholder="Enter drop-off destination address or city landmark"
-                  className="w-full px-4 py-3 text-sm font-semibold bg-white border border-navy-200/90 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal resize-none shadow-xs transition-all leading-relaxed"
+                  className="w-full px-4 py-3 text-sm font-normal bg-white border border-navy-200/90 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-600 placeholder:text-navy-400 placeholder:font-normal resize-none shadow-xs transition-all leading-relaxed"
                 />
               </div>
 
               <div>
-                <label className="block text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 mb-1.5 flex items-center gap-2">
-                  <PhoneCall className="w-4 h-4 text-bee-600 flex-shrink-0" />
-                  <span>Your Phone Number</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 flex items-center gap-1.5">
+                    <PhoneCall className="w-4 h-4 text-bee-600 flex-shrink-0" />
+                    <span>Your Phone Number</span>
+                    <span className="text-red-500 font-bold text-sm leading-none">*</span>
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200/80">
+                    Compulsory
+                  </span>
+                </div>
                 <div className="flex gap-2">
                   <span className="inline-flex items-center px-4 py-3 text-sm font-bold bg-navy-100/80 border border-navy-200/90 rounded-xl sm:rounded-2xl text-navy-800 select-none">
                     +91
@@ -517,11 +563,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    onChange={(e) => {
+                      setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+                      if (formError) setFormError(null);
+                    }}
                     placeholder="Enter 10-digit mobile number"
-                    className="flex-1 px-4 py-3 text-sm font-semibold bg-white border border-navy-200/90 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all"
+                    className={`flex-1 px-4 py-3 text-sm font-semibold bg-white border ${phone.replace(/\D/g, '').length !== 10 ? 'border-amber-300 ring-1 ring-amber-300/30' : 'border-navy-200/90'} rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all`}
                   />
                 </div>
+                {phone.replace(/\D/g, '').length !== 10 ? (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-red-600 font-semibold animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>
+                      10-digit phone number is compulsory ({phone.replace(/\D/g, '').length}/10 digits entered).
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-700 font-semibold">
+                    <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Valid 10-digit number for driver arrival coordinates</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -634,7 +696,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     value={carPlate}
                     onChange={(e) => setCarPlate(e.target.value.toUpperCase())}
                     placeholder="e.g. TS-03-MJ-4412"
-                    className="w-full px-3.5 py-2.5 text-xs font-semibold bg-white border border-navy-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all uppercase"
+                    className="w-full px-3.5 py-2.5 text-xs font-normal bg-white border border-navy-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-600 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all uppercase"
                   />
                 </div>
                 <div>
@@ -646,7 +708,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     value={carModel}
                     onChange={(e) => setCarModel(e.target.value)}
                     placeholder="e.g. Honda City / Creta / Swift"
-                    className="w-full px-3.5 py-2.5 text-xs font-semibold bg-white border border-navy-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all"
+                    className="w-full px-3.5 py-2.5 text-xs font-normal bg-white border border-navy-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-600 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all"
                   />
                 </div>
               </div>
@@ -714,11 +776,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </span>
             </label>
 
+            {/* Validation Error Banner */}
+            {formError && (
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-2.5 text-red-700 text-xs font-semibold animate-fade-in">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
+                <span>{formError}</span>
+              </div>
+            )}
+
             {/* Confirm CTA */}
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={isProcessing || !agreedTerms}
+              disabled={isProcessing || !agreedTerms || !address.trim() || phone.replace(/\D/g, '').length !== 10}
               className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200"
             >
               {isProcessing ? (
