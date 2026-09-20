@@ -284,28 +284,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
             </div>
           )}
 
-          {/* Google Auth Button for Customer Portal */}
-          {portal === 'customer' && (
-            <>
-              <button
-                type="button"
-                onClick={handleGoogleAuth}
-                disabled={loading}
-                className="w-full py-3 rounded-2xl bg-white hover:bg-gray-50 active:scale-[0.99] text-navy-950 font-bold text-xs sm:text-sm border border-gray-200 shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-3 disabled:opacity-60 cursor-pointer mb-3"
-              >
-                <GoogleIcon />
-                <span>{mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}</span>
-              </button>
-
-              <div className="relative flex items-center justify-center mb-4">
-                <div className="border-t border-gray-100 w-full" />
-                <span className="bg-white px-3 text-[10.5px] font-bold uppercase tracking-wider text-gray-400 select-none">
-                  or continue with email
-                </span>
-              </div>
-            </>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
 
             {/* Full Name (signup only) */}

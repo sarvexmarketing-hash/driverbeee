@@ -268,25 +268,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
-          {/* Google Sign In / Sign Up CTA */}
-          <button
-            type="button"
-            onClick={handleGoogleAuth}
-            disabled={loading}
-            className="w-full h-11 sm:h-12 rounded-2xl bg-white hover:bg-navy-50/80 active:scale-[0.99] text-navy-950 font-bold text-xs sm:text-sm border border-navy-200/90 shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-3 disabled:opacity-60 cursor-pointer mb-3"
-          >
-            <GoogleIcon />
-            <span>{mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}</span>
-          </button>
-
-          {/* Divider */}
-          <div className="relative flex items-center justify-center mb-3.5">
-            <div className="border-t border-navy-100 w-full" />
-            <span className="bg-white px-3 text-[10.5px] font-bold uppercase tracking-wider text-navy-400 select-none">
-              or continue with email
-            </span>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
             {/* Full Name (Sign Up only) */}
             {mode === 'signup' && (

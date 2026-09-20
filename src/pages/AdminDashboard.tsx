@@ -299,9 +299,21 @@ const BookingDetailDrawer: React.FC<{
         <div className="flex-1 p-6 space-y-5">
           {/* Status */}
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${statusColor[booking.status]}`}>
-              {statusLabel[booking.status]}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${statusColor[booking.status]}`}>
+                {statusLabel[booking.status]}
+              </span>
+              {booking.notes?.includes('WhatsApp Admin Accepted') && (
+                <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                  💬 WhatsApp Accepted
+                </span>
+              )}
+              {booking.notes?.includes('WhatsApp Admin Rejected') && (
+                <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300 flex items-center gap-1">
+                  💬 WhatsApp Rejected
+                </span>
+              )}
+            </div>
             <span className="text-xs text-gray-400">{timeAgo(booking.createdAt)}</span>
           </div>
 

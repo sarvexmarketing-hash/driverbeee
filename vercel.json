@@ -37,7 +37,15 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/webhooks/whatsapp",
+      "destination": "/api/webhooks/whatsapp"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/((?!api|webhooks).*)",
       "destination": "/index.html"
     }
   ]

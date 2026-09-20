@@ -522,6 +522,39 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         assignedDriverName: driverName || undefined,
         assignedDriverPhone: driverPhone || undefined,
       }).catch((err) => console.warn('[DriverBee] Email dispatch error:', err));
+
+      // Dispatch WhatsApp Business Cloud API notification to Admin (asynchronous & failsafe)
+      try {
+        fetch('/api/notify-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: newId,
+            booking: {
+              id: newId,
+              customer_name: cleanCustomerName,
+              customer_phone: phone.startsWith('+91') ? phone : `+91 ${phone}`,
+              customer_email: resolvedEmail,
+              trip_type: bookingState.tripType,
+              duration: bookingState.tripType === 'outside' ? (bookingState.outstationDays || 1) : bookingState.duration,
+              schedule_type: bookingState.scheduleType,
+              scheduled_date: bookingState.scheduleType === 'now' ? new Date().toISOString().split('T')[0] : bookingState.date,
+              scheduled_time: bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : bookingState.time,
+              transmission: transmission,
+              car_model: `${carType.toUpperCase()} • ${carModel || 'Personal Car'}`,
+              car_plate: carPlate || 'TS-03-MJ-4412',
+              area: `${cleanAddress} ➔ ${cleanDelivery}`,
+              estimated_fare: total,
+              status: 'pending',
+            },
+          }),
+        }).catch((waErr) => {
+          // WhatsApp external failure must NEVER cause booking failure
+          console.warn('[DriverBee WhatsApp] Admin notification dispatch error:', waErr);
+        });
+      } catch (waDispatchErr) {
+        console.warn('[DriverBee WhatsApp] Dispatch initiation notice:', waDispatchErr);
+      }
     } catch (err) {
       console.error('Booking failed', err);
     } finally {

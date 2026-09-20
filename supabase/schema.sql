@@ -207,3 +207,46 @@ alter publication supabase_realtime add table public.driver_profiles;
 -- values
 --   ('uuid-here', 'Master Chauffeur', 4.98, 1420, true, 'Benz Circle', 'https://...'),
 --   ('uuid-here', 'Outstation Specialist', 4.95, 980, true, 'Kondapalli', 'https://...');
+
+-- ─────────────────────────────────────────────
+-- WHATSAPP BUSINESS NOTIFICATIONS & AUDIT
+-- ─────────────────────────────────────────────
+alter table public.bookings 
+  add column if not exists accepted_at timestamptz,
+  add column if not exists accepted_by text,
+  add column if not exists rejected_at timestamptz,
+  add column if not exists rejected_by text,
+  add column if not exists rejection_reason text;
+
+create table if not exists public.whatsapp_notifications (
+  id                  uuid primary key default uuid_generate_v4(),
+  booking_id          text references public.bookings(id) on delete cascade,
+  recipient_phone     text not null,
+  message_type        text not null,
+  provider_message_id text unique,
+  status              text not null check (status in ('sent', 'delivered', 'failed', 'received', 'processed')),
+  payload             jsonb,
+  error_message       text,
+  sent_at             timestamptz default now(),
+  created_at          timestamptz default now(),
+  updated_at          timestamptz default now()
+);
+
+create index if not exists idx_whatsapp_notifications_booking_id on public.whatsapp_notifications (booking_id);
+create index if not exists idx_whatsapp_notifications_provider_msg_id on public.whatsapp_notifications (provider_message_id);
+create index if not exists idx_whatsapp_notifications_created_at on public.whatsapp_notifications (created_at desc);
+
+alter table public.whatsapp_notifications enable row level security;
+
+create policy "Allow read whatsapp notifications"
+  on public.whatsapp_notifications for select
+  using (true);
+
+create policy "Allow insert whatsapp notifications"
+  on public.whatsapp_notifications for insert
+  with check (true);
+
+create policy "Allow update whatsapp notifications"
+  on public.whatsapp_notifications for update
+  using (true);
+
