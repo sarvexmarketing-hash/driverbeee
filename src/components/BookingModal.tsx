@@ -101,6 +101,40 @@ const RadarSearchVisual: React.FC = () => {
   );
 };
 
+const WARANGAL_SEARCH_AREAS = [
+  'Hanamkonda, Warangal',
+  'Kazipet, Warangal',
+  'Hunter Road, Warangal',
+  'Subedari, Warangal',
+  'Nakkalagutta, Warangal',
+  'Ramnagar, Warangal',
+  'Balasamudram, Warangal',
+  'Pochamma Maidan, Warangal',
+  'Waddepally, Warangal',
+  'Kishanpura, Hanamkonda',
+  'Kakatiya University Area, Hanamkonda',
+  'Mandi Bazar, Warangal',
+  'Adalath Circle, Hanamkonda',
+  'Bheemaram, Hanamkonda',
+  'Madikonda, Warangal',
+  'Fatima Nagar, Kazipet',
+  'Warangal Railway Station, Warangal',
+  'Kazipet Railway Junction, Kazipet',
+  'Bhupalpally, Telangana',
+  'Jangaon, Telangana',
+  'Mahabubabad, Telangana',
+  'Mulugu, Telangana',
+  'Narsampet, Telangana',
+  'Parkal, Warangal',
+  'Karimnagar, Telangana',
+  'Hyderabad, Telangana',
+  'Khammam, Telangana',
+  'Siddipet, Telangana',
+  'Vijayawada, Andhra Pradesh',
+  'Visakhapatnam, Andhra Pradesh',
+  'Guntur, Andhra Pradesh',
+];
+
 export const BookingModal: React.FC<BookingModalProps> = ({
   isOpen,
   onClose,
@@ -131,6 +165,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [hasCelebrated, setHasCelebrated] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
+  const [showDropSuggestions, setShowDropSuggestions] = useState(false);
+
+  const matchingPickupAreas = address.trim().length >= 2
+    ? WARANGAL_SEARCH_AREAS.filter(a => a.toLowerCase().includes(address.toLowerCase().trim()))
+    : [];
+  const matchingDropAreas = deliveryAddress.trim().length >= 2
+    ? WARANGAL_SEARCH_AREAS.filter(a => a.toLowerCase().includes(deliveryAddress.toLowerCase().trim()))
+    : [];
 
   // Auto-sync customer email when user signs in
   useEffect(() => {
@@ -923,64 +966,134 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
             </div>
 
-            {/* Pickup & Delivery / Destination Addresses (Bigger inputs) */}
-            <div className="space-y-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/90 p-4 sm:p-5">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-bee-600 flex-shrink-0" />
-                    <span>Pickup / Doorstep Address</span>
-                    <span className="text-red-500 font-bold text-sm leading-none">*</span>
-                  </label>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200/80">
-                    Compulsory
-                  </span>
-                </div>
-                <textarea
-                  rows={2}
-                  value={address}
-                  onChange={(e) => {
-                    setAddress(e.target.value);
-                    if (formError) setFormError(null);
-                  }}
-                  placeholder="Enter house/flat no., street, landmark, pickup area in Warangal"
-                  className={`w-full px-4 py-3 text-sm font-normal bg-white border ${!address.trim() ? 'border-red-400 ring-2 ring-red-400/20' : 'border-navy-200/90'} rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-600 placeholder:text-navy-400 placeholder:font-normal resize-none shadow-xs transition-all leading-relaxed`}
-                />
-                {!address.trim() ? (
-                  <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-red-600 font-semibold animate-fade-in">
-                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>Pickup address is compulsory. Please enter your address.</span>
-                  </div>
-                ) : !isWarangalLocation(address) && address.trim().length > 3 ? (
-                  <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11.5px] text-amber-900 flex items-start gap-1.5 animate-fade-in">
-                    <AlertCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Pickup Notice:</strong> Currently, driver bookings only happen from <strong>Warangal</strong> (Tri-City). Pickups from outside Warangal are <strong>Coming Soon</strong>.
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-700 font-semibold">
-                    <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>Pickup zone: Warangal Tri-City (Hanamkonda, Kazipet & Warangal)</span>
-                  </div>
-                )}
+            {/* Choose Location Section (Matches reference screenshot) */}
+            <div className="space-y-3 bg-[#FAFBFD] rounded-2xl border border-navy-200/90 p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <label className="text-sm sm:text-base font-bold text-navy-950">
+                  Choose Location
+                </label>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200/80">
+                  Pickup * Compulsory
+                </span>
               </div>
 
-              <div>
-                <label className="block text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 mb-1.5 flex items-center gap-2">
-                  <Navigation className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>Delivery / Drop-off Address</span>
-                </label>
-                <textarea
-                  rows={2}
-                  value={deliveryAddress}
-                  onChange={(e) => {
-                    setDeliveryAddress(e.target.value);
-                    if (formError) setFormError(null);
-                  }}
-                  placeholder="Enter drop-off destination address or city landmark"
-                  className="w-full px-4 py-3 text-sm font-normal bg-white border border-navy-200/90 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-600 placeholder:text-navy-400 placeholder:font-normal resize-none shadow-xs transition-all leading-relaxed"
-                />
+              {/* Location Inputs Stack */}
+              <div className="space-y-2.5">
+                {/* PickUp Location Input */}
+                <div className="relative">
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => {
+                        setAddress(e.target.value);
+                        if (formError) setFormError(null);
+                      }}
+                      onFocus={() => setShowPickupSuggestions(true)}
+                      placeholder="Enter 4 letters to Search PickUp Location"
+                      className={`w-full px-4 py-3 text-sm font-medium bg-white border ${
+                        !address.trim() ? 'border-red-400 ring-2 ring-red-400/20' : 'border-navy-200/90 hover:border-navy-300'
+                      } rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-2xs transition-all`}
+                    />
+                    {address && (
+                      <button
+                        type="button"
+                        onClick={() => setAddress('')}
+                        className="absolute right-3 p-1 text-navy-400 hover:text-navy-600 cursor-pointer"
+                        title="Clear pickup address"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Suggestions dropdown when typing */}
+                  {showPickupSuggestions && matchingPickupAreas.length > 0 && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setShowPickupSuggestions(false)} />
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-navy-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-navy-50 animate-fade-in">
+                        {matchingPickupAreas.map((loc) => (
+                          <button
+                            key={loc}
+                            type="button"
+                            onClick={() => {
+                              setAddress(loc);
+                              setShowPickupSuggestions(false);
+                            }}
+                            className="w-full text-left px-3.5 py-2.5 text-xs font-medium text-navy-800 hover:bg-bee-50 hover:text-bee-900 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-bee-600 flex-shrink-0" />
+                            <span>{loc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {!address.trim() ? (
+                    <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-red-600 font-semibold animate-fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>Pickup address is compulsory. Please enter your address.</span>
+                    </div>
+                  ) : !isWarangalLocation(address) && address.trim().length > 3 ? (
+                    <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11.5px] text-amber-900 flex items-start gap-1.5 animate-fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Pickup Notice:</strong> Currently, driver bookings only happen from <strong>Warangal</strong> (Tri-City). Pickups from outside Warangal are <strong>Coming Soon</strong>.
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Drop Location Input */}
+                <div className="relative">
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={deliveryAddress}
+                      onChange={(e) => {
+                        setDeliveryAddress(e.target.value);
+                        if (formError) setFormError(null);
+                      }}
+                      onFocus={() => setShowDropSuggestions(true)}
+                      placeholder="Enter 4 letters to Search Drop Location"
+                      className="w-full px-4 py-3 text-sm font-medium bg-white border border-navy-200/90 hover:border-navy-300 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-2xs transition-all"
+                    />
+                    {deliveryAddress && (
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryAddress('')}
+                        className="absolute right-3 p-1 text-navy-400 hover:text-navy-600 cursor-pointer"
+                        title="Clear drop address"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Suggestions dropdown when typing */}
+                  {showDropSuggestions && matchingDropAreas.length > 0 && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setShowDropSuggestions(false)} />
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-navy-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto divide-y divide-navy-50 animate-fade-in">
+                        {matchingDropAreas.map((loc) => (
+                          <button
+                            key={loc}
+                            type="button"
+                            onClick={() => {
+                              setDeliveryAddress(loc);
+                              setShowDropSuggestions(false);
+                            }}
+                            className="w-full text-left px-3.5 py-2.5 text-xs font-medium text-navy-800 hover:bg-bee-50 hover:text-bee-900 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                            <span>{loc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Customer Full Name */}

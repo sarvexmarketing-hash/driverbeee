@@ -18,6 +18,7 @@ import {
   Info,
   Plus,
   Minus,
+  ChevronDown,
 } from 'lucide-react';
 
 interface OutstationDestinationSelectorProps {
@@ -37,6 +38,7 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
 }) => {
   const [activeState, setActiveState] = useState<StateRegion>(selectedState);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [modalStateTab, setModalStateTab] = useState<StateRegion>(selectedState);
   const { getPriceForKm } = usePricing();
@@ -130,6 +132,8 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
       rateNote: currentDays === 1 ? dest.rateNote : undefined,
     };
     onSelectDestination(dest, targetOpt);
+    setIsDropdownOpen(false);
+    setSearchQuery('');
   };
 
   const handleDaysChange = (newDays: number) => {
@@ -206,140 +210,196 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
         </button>
       </div>
 
-      {/* Inline Vertical Destination List */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-0.5">
-          <span className="text-xs font-bold text-navy-800">
-            {activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'} Destinations
+      {/* Destination Selector Dropdown */}
+      <div className="space-y-2.5">
+        {/* Popular Quick Chips for 1-Tap Selection */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-navy-400 whitespace-nowrap">
+            Popular:
           </span>
-          <span className="text-[11px] font-semibold text-navy-500">
-            {filteredDestinations.length} {filteredDestinations.length === 1 ? 'district' : 'districts'} available
-          </span>
+          {popularDests.map((d) => {
+            const isSelected = d.id === activeDest.id;
+            const oneDayPrice = getPriceForKm(d.distanceKm);
+            return (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => handlePickDest(d)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+                  isSelected
+                    ? 'bg-bee-600 text-white shadow-2xs'
+                    : 'bg-white hover:bg-navy-100/70 text-navy-700 border border-navy-200/80'
+                }`}
+              >
+                <span>{d.destination}</span>
+                <span className={`text-[10px] ${isSelected ? 'text-bee-100' : 'text-navy-500 font-semibold'}`}>
+                  ₹{oneDayPrice.toLocaleString('en-IN')}{d.rateNote ? ` ${d.rateNote}` : ''}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="bg-white border border-navy-200/90 rounded-2xl shadow-2xs overflow-hidden">
-          {/* Search bar & Popular quick-filter bar */}
-          <div className="p-3 border-b border-navy-100 bg-[#FAFBFD] space-y-2.5">
-            <div className="relative">
-              <Search className="w-4 h-4 text-navy-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Search ${activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'} districts (${activeState === 'andhra' ? 'Vijayawada, Vizag, Guntur...' : 'Hyderabad, Karimnagar, Nizamabad...'})...`}
-                className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-navy-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500 text-navy-900 placeholder:text-navy-400"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600 p-0.5 cursor-pointer"
-                  title="Clear search"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Popular Quick Chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-navy-400 whitespace-nowrap">
-                Popular:
-              </span>
-              {popularDests.map((d) => {
-                const isSelected = d.id === activeDest.id;
-                const oneDayPrice = getPriceForKm(d.distanceKm);
-                return (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => handlePickDest(d)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
-                      isSelected
-                        ? 'bg-bee-600 text-white shadow-2xs'
-                        : 'bg-white hover:bg-navy-100/70 text-navy-700 border border-navy-200/80'
-                    }`}
-                  >
-                    <span>{d.destination}</span>
-                    <span className={`text-[10px] ${isSelected ? 'text-bee-100' : 'text-navy-500 font-semibold'}`}>
-                      ₹{oneDayPrice.toLocaleString('en-IN')}{d.rateNote ? ` ${d.rateNote}` : ''}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Vertical Scrollable List of Destinations */}
-          <div className="max-h-64 sm:max-h-72 overflow-y-auto divide-y divide-navy-100/70">
-            {filteredDestinations.length === 0 ? (
-              <div className="p-6 text-center text-xs text-navy-400">
-                No district matching "{searchQuery}" in {activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'}
+        {/* Dropdown Selector Button & Collapsible Menu */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-white border border-navy-200/90 rounded-2xl shadow-2xs hover:border-bee-500 transition-colors text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+              <div className="w-9 h-9 rounded-xl bg-bee-500/15 text-bee-700 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-4 h-4 fill-bee-600/20 text-bee-600" />
               </div>
-            ) : (
-              filteredDestinations.map((dest) => {
-                const isSelected = dest.id === activeDest.id;
-                const oneDayPrice = getPriceForKm(dest.distanceKm);
+              <div className="min-w-0">
+                <div className="text-[10px] sm:text-[11px] text-navy-500 font-bold uppercase tracking-wider">
+                  {activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'} Destination
+                </div>
+                <div className="text-xs sm:text-sm font-extrabold text-navy-950 flex items-center gap-1.5 flex-wrap">
+                  <span className="truncate">{activeDest.destination}</span>
+                  {activeDest.distanceKm && (
+                    <span className="text-[10px] font-semibold text-navy-500 font-mono">
+                      ({activeDest.distanceKm} km)
+                    </span>
+                  )}
+                  <span className="text-[11px] font-medium text-navy-500">
+                    • {activeDest.district} District
+                  </span>
+                  {activeDest.popular && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                      Popular
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                return (
-                  <button
-                    key={dest.id}
-                    type="button"
-                    onClick={() => handlePickDest(dest)}
-                    className={`w-full px-3.5 py-2.5 flex items-center justify-between text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-bee-50/90 hover:bg-bee-100/70 border-l-4 border-l-bee-600'
-                        : 'hover:bg-navy-50/70 border-l-4 border-l-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
-                          isSelected ? 'bg-bee-600 text-white shadow-2xs' : 'bg-navy-100/80 text-navy-600'
-                        }`}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-xs font-bold text-bee-700 hidden sm:inline">
+                {isDropdownOpen ? 'Close' : 'Change'}
+              </span>
+              <ChevronDown className={`w-4 h-4 text-navy-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-bee-600' : ''}`} />
+            </div>
+          </button>
+
+          {/* Collapsible Dropdown Menu */}
+          {isDropdownOpen && (
+            <>
+              {/* Backdrop to close when clicking outside */}
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setIsDropdownOpen(false)}
+              />
+
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white border border-navy-200/90 rounded-2xl shadow-xl overflow-hidden animate-fade-in">
+                {/* Search Header inside Dropdown Menu */}
+                <div className="p-3 border-b border-navy-100 bg-[#FAFBFD] space-y-2">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-xs font-bold text-navy-800">
+                      Select {activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'} District
+                    </span>
+                    <span className="text-[11px] font-semibold text-navy-500">
+                      {filteredDestinations.length} available
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-navy-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={`Search ${activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'} districts...`}
+                      className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-navy-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-bee-500 text-navy-900 placeholder:text-navy-400"
+                      autoFocus
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600 p-0.5 cursor-pointer"
+                        title="Clear search"
                       >
-                        <MapPin className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs sm:text-sm font-extrabold text-navy-950 flex items-center gap-1.5 flex-wrap">
-                          <span className="truncate">{dest.destination}</span>
-                          {dest.distanceKm && (
-                            <span className="text-[10px] font-semibold text-navy-500 font-mono">
-                              ({dest.distanceKm} km)
-                            </span>
-                          )}
-                          {dest.popular && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
-                              Popular
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-navy-500 truncate">
-                          {dest.district} District
-                        </div>
-                      </div>
-                    </div>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs font-extrabold text-bee-700">
-                        ₹{oneDayPrice.toLocaleString('en-IN')}{dest.rateNote ? ` ${dest.rateNote}` : ''}
-                      </div>
-                      {isSelected ? (
-                        <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5 justify-end mt-0.5">
-                          <Check className="w-3 h-3" /> Selected
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-navy-400 font-medium">
-                          per day
-                        </span>
-                      )}
+                {/* Vertical Scrollable List of Destinations */}
+                <div className="max-h-64 sm:max-h-72 overflow-y-auto divide-y divide-navy-100/70">
+                  {filteredDestinations.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-navy-400">
+                      No district matching "{searchQuery}" in {activeState === 'andhra' ? 'Andhra Pradesh' : 'Telangana'}
                     </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
+                  ) : (
+                    filteredDestinations.map((dest) => {
+                      const isSelected = dest.id === activeDest.id;
+                      const oneDayPrice = getPriceForKm(dest.distanceKm);
+
+                      return (
+                        <button
+                          key={dest.id}
+                          type="button"
+                          onClick={() => handlePickDest(dest)}
+                          className={`w-full px-3.5 py-2.5 flex items-center justify-between text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-bee-50/90 hover:bg-bee-100/70 border-l-4 border-l-bee-600'
+                              : 'hover:bg-navy-50/70 border-l-4 border-l-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <div
+                              className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                                isSelected ? 'bg-bee-600 text-white shadow-2xs' : 'bg-navy-100/80 text-navy-600'
+                              }`}
+                            >
+                              <MapPin className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs sm:text-sm font-extrabold text-navy-950 flex items-center gap-1.5 flex-wrap">
+                                <span className="truncate">{dest.destination}</span>
+                                {dest.distanceKm && (
+                                  <span className="text-[10px] font-semibold text-navy-500 font-mono">
+                                    ({dest.distanceKm} km)
+                                  </span>
+                                )}
+                                {dest.popular && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                    Popular
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-navy-500 truncate">
+                                {dest.district} District
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-xs font-extrabold text-bee-700">
+                              ₹{oneDayPrice.toLocaleString('en-IN')}{dest.rateNote ? ` ${dest.rateNote}` : ''}
+                            </div>
+                            {isSelected ? (
+                              <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5 justify-end mt-0.5">
+                                <Check className="w-3 h-3" /> Selected
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-navy-400 font-medium">
+                                per day
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
+      </div>
 
         {/* Selected Destination Summary Card */}
         <div className="bg-[#FAFBFD] border border-navy-200/90 rounded-2xl p-4 space-y-3 shadow-2xs">
@@ -460,7 +520,6 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
             )}
           </div>
         </div>
-      </div>
 
       {/* Trust & Policy Perks info row */}
       <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-navy-600">

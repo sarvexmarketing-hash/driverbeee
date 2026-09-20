@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScheduleType, formatDisplayDate } from '../types';
 import { Clock } from 'lucide-react';
 
@@ -23,6 +23,12 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  useEffect(() => {
+    if (date !== todayStr && date !== tomorrowStr) {
+      setDate(todayStr);
+    }
+  }, [date, todayStr, tomorrowStr, setDate]);
   
   const quickTimes = ['08:00 AM', '10:30 AM', '02:00 PM', '05:30 PM', '08:00 PM'];
 
@@ -136,19 +142,14 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date"
-                value={date}
-                min={todayStr}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-navy-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-bee-500 font-medium text-navy-900"
-              />
+            <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => setDate(todayStr)}
-                className={`px-2 py-1.5 text-[10.5px] rounded-xl font-bold whitespace-nowrap ${
-                  date === todayStr ? 'bg-bee-600 text-white' : 'bg-navy-100 text-navy-700'
+                className={`py-2 px-3 text-xs rounded-xl font-bold transition-all text-center cursor-pointer ${
+                  date === todayStr
+                    ? 'bg-bee-600 text-white shadow-xs'
+                    : 'bg-white border border-navy-200 text-navy-700 hover:bg-navy-50'
                 }`}
               >
                 Today
@@ -156,8 +157,10 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
               <button
                 type="button"
                 onClick={() => setDate(tomorrowStr)}
-                className={`px-2 py-1.5 text-[10.5px] rounded-xl font-bold whitespace-nowrap ${
-                  date === tomorrowStr ? 'bg-bee-600 text-white' : 'bg-navy-100 text-navy-700'
+                className={`py-2 px-3 text-xs rounded-xl font-bold transition-all text-center cursor-pointer ${
+                  date === tomorrowStr
+                    ? 'bg-bee-600 text-white shadow-xs'
+                    : 'bg-white border border-navy-200 text-navy-700 hover:bg-navy-50'
                 }`}
               >
                 Tomorrow
