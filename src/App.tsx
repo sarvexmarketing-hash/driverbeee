@@ -20,28 +20,43 @@ import { FamilyManagerModal } from './components/FamilyManagerModal';
 import { AuthModal } from './components/AuthModal';
 import { LocationModal } from './components/LocationModal';
 import { ComingSoonModal } from './components/ComingSoonModal';
-import { isWarangalLocation } from './utils/location';
+import { EmailReceiptModal } from './components/EmailReceiptModal';
+import { CookieBanner } from './components/CookieBanner';
+import { getEmailByBookingId, getSentEmails, SentEmailRecord } from './services/emailService';
+import { isWarangalLocation, isWithin60kmOfWarangal } from './utils/location';
 import { BookingState, BookingRecord, Driver, FamilyMember, TripType } from './types';
 import { useBookings } from './context/BookingContext';
 import { useAuth } from './context/AuthContext';
 
 export const App: React.FC = () => {
-  const { bookings: contextBookings } = useBookings();
+  const { bookings: contextBookings, drivers } = useBookings();
   const { profile } = useAuth();
 
   // Navigation & City
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedCity, setSelectedCity] = useState<string>('Warangal, Telangana');
   const [isDetectingLocation, setIsDetectingLocation] = useState<boolean>(false);
+  // Store user GPS coords for accurate 60km radius check
+  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
+  // Track whether user has explicitly chosen their city (manual > auto-detect)
+  const [userManuallySelectedCity, setUserManuallySelectedCity] = useState<boolean>(false);
 
   // Automatically grasp the user's real GPS or network location
   const detectLocation = () => {
     setIsDetectingLocation(true);
 
-    const applyLocation = (loc: string) => {
+    const applyLocation = (loc: string, coords?: { lat: number; lon: number }, isManual = false) => {
+      // Never auto-overwrite a city the user has explicitly chosen
+      if (!isManual && userManuallySelectedCity) {
+        if (coords) setUserCoords(coords); // still capture GPS coords for accuracy
+        setIsDetectingLocation(false);
+        return;
+      }
       setSelectedCity(loc);
+      if (coords) setUserCoords(coords);
       try {
         localStorage.setItem('driverbee_user_location', loc);
+        if (coords) localStorage.setItem('driverbee_user_coords', JSON.stringify(coords));
       } catch {}
       setIsDetectingLocation(false);
     };
@@ -76,7 +91,7 @@ export const App: React.FC = () => {
               const city = data.city || data.principalSubdivision || 'Warangal';
               const state = data.principalSubdivisionCode ? (data.principalSubdivisionCode.split('-')[1] || data.principalSubdivision) : 'Telangana';
               const formatted = area ? `${area}, ${city}` : `${city}, ${state}`;
-              applyLocation(formatted);
+              applyLocation(formatted, { lat: latitude, lon: longitude });
               return;
             }
           } catch (e) {
@@ -96,16 +111,26 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // 1. Check if user already had a saved location
+    // 1. Restore previously saved location (explicit user choice or prior detection)
+    let hasSavedCity = false;
     try {
       const saved = localStorage.getItem('driverbee_user_location');
       if (saved) {
         setSelectedCity(saved);
+        hasSavedCity = true;
       }
+      const savedManual = localStorage.getItem('driverbee_user_manual_city');
+      if (savedManual === 'true') setUserManuallySelectedCity(true);
+      const savedCoords = localStorage.getItem('driverbee_user_coords');
+      if (savedCoords) setUserCoords(JSON.parse(savedCoords));
     } catch {}
 
-    // 2. Automatically grasp location on load
-    detectLocation();
+    // 2. Only auto-detect on first visit (no saved city yet)
+    if (!hasSavedCity) {
+      detectLocation();
+    } else {
+      setIsDetectingLocation(false);
+    }
   }, []);
 
   // Booking Form State
@@ -136,20 +161,52 @@ export const App: React.FC = () => {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
+  const [selectedEmailRecord, setSelectedEmailRecord] = useState<SentEmailRecord | null>(null);
+  const [isEmailReceiptModalOpen, setIsEmailReceiptModalOpen] = useState<boolean>(false);
+
+  const handleOpenEmailReceipt = (bookingId: string) => {
+    const record = getEmailByBookingId(bookingId);
+    if (record) {
+      setSelectedEmailRecord(record);
+      setIsEmailReceiptModalOpen(true);
+    } else {
+      const allSent = getSentEmails();
+      if (allSent.length > 0) {
+        setSelectedEmailRecord(allSent[0]);
+        setIsEmailReceiptModalOpen(true);
+      }
+    }
+  };
 
   const handleSwitchToWarangal = () => {
     setSelectedCity('Warangal, Telangana');
+    setUserManuallySelectedCity(true);
+    setUserCoords(null); // clear stale GPS coords when switching manually
     try {
       localStorage.setItem('driverbee_user_location', 'Warangal, Telangana');
+      localStorage.setItem('driverbee_user_manual_city', 'true');
+      localStorage.removeItem('driverbee_user_coords');
     } catch {}
   };
 
   const handleBookNow = () => {
-    if (!isWarangalLocation(selectedCity)) {
-      setIsComingSoonModalOpen(true);
-    } else {
+    // PRIMARY CHECK: if the user's selected city name is a Warangal-area location,
+    // always allow booking — this covers manual selections and correct auto-detections.
+    if (isWarangalLocation(selectedCity)) {
       setIsBookingModalOpen(true);
+      return;
     }
+    // SECONDARY CHECK: if we have GPS coords, use Haversine distance as the truth
+    if (userCoords) {
+      if (isWithin60kmOfWarangal(userCoords.lat, userCoords.lon)) {
+        setIsBookingModalOpen(true);
+      } else {
+        setIsComingSoonModalOpen(true);
+      }
+      return;
+    }
+    // FALLBACK: no GPS, no keyword match — show Coming Soon
+    setIsComingSoonModalOpen(true);
   };
 
   // User State
@@ -158,17 +215,33 @@ export const App: React.FC = () => {
   // Derive displayed bookings dynamically from shared contextBookings so Admin approvals instantly reflect
   const displayedBookings: BookingRecord[] = useMemo(() => {
     return contextBookings.map(b => {
-      const driverMatch = INITIAL_DRIVERS.find(d => d.id === b.assignedDriverId || d.name === b.assignedDriverName) || (b.assignedDriverName ? {
-        id: b.assignedDriverId || 'drv-1',
+      const driverMatch = drivers.find(d => d.id === b.assignedDriverId || d.name === b.assignedDriverName)
+        || INITIAL_DRIVERS.find(d => d.id === b.assignedDriverId || d.name === b.assignedDriverName);
+
+      const driver: Driver | null = driverMatch ? {
+        id: driverMatch.id,
+        name: driverMatch.name,
+        phone: driverMatch.phone || b.assignedDriverPhone || undefined,
+        rating: driverMatch.rating,
+        tripsCount: driverMatch.tripsCount,
+        experienceYears: 6,
+        languages: ['Telugu', 'English', 'Hindi'],
+        photo: driverMatch.photo,
+        badge: driverMatch.badge,
+        verified: true,
+        carSpecialty: (driverMatch as any).area || 'Professional Driver',
+      } : (b.assignedDriverName ? {
+        id: b.assignedDriverId || 'drv-assigned',
         name: b.assignedDriverName,
-        rating: 4.98,
-        tripsCount: 1420,
-        experienceYears: 7,
+        phone: b.assignedDriverPhone || '7569402288',
+        rating: 4.9,
+        tripsCount: 140,
+        experienceYears: 6,
         languages: ['Telugu', 'English', 'Hindi'],
         photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80',
-        badge: 'Master Driver',
+        badge: 'Verified Professional Driver',
         verified: true,
-        carSpecialty: 'Luxury Sedans'
+        carSpecialty: 'Driver',
       } : null);
 
       return {
@@ -178,7 +251,7 @@ export const App: React.FC = () => {
         tripType: b.tripType,
         duration: b.duration,
         amount: b.estimatedFare,
-        driver: driverMatch,
+        driver,
         status: b.status as any,
         forWhom: b.forWhom || 'Myself',
         carName: b.carModel || 'Personal Car',
@@ -186,7 +259,7 @@ export const App: React.FC = () => {
         notes: b.notes,
       };
     });
-  }, [contextBookings]);
+  }, [contextBookings, drivers]);
 
   const handleConfirmSuccess = (_bookingId: string) => {
     // Shared BookingContext automatically tracks the new booking
@@ -328,6 +401,7 @@ export const App: React.FC = () => {
         bookingState={bookingState}
         onConfirmSuccess={handleConfirmSuccess}
         familyMembers={familyMembers}
+        onOpenEmailReceipt={handleOpenEmailReceipt}
       />
 
       {/* My Bookings Drawer */}
@@ -335,6 +409,14 @@ export const App: React.FC = () => {
         isOpen={isBookingsDrawerOpen}
         onClose={() => setIsBookingsDrawerOpen(false)}
         bookings={displayedBookings}
+        onOpenEmailReceipt={handleOpenEmailReceipt}
+      />
+
+      {/* Sent Email Receipt Modal */}
+      <EmailReceiptModal
+        isOpen={isEmailReceiptModalOpen}
+        onClose={() => setIsEmailReceiptModalOpen(false)}
+        emailRecord={selectedEmailRecord}
       />
 
       {/* Family Hub Modal */}
@@ -360,8 +442,12 @@ export const App: React.FC = () => {
         selectedCity={selectedCity}
         onSelectCity={(city) => {
           setSelectedCity(city);
+          setUserManuallySelectedCity(true);
+          setUserCoords(null); // clear stale GPS when user manually picks a city
           try {
             localStorage.setItem('driverbee_user_location', city);
+            localStorage.setItem('driverbee_user_manual_city', 'true');
+            localStorage.removeItem('driverbee_user_coords');
           } catch {}
         }}
         onNonWarangalSelected={() => {
@@ -378,6 +464,9 @@ export const App: React.FC = () => {
         city={selectedCity}
         onSwitchToWarangal={handleSwitchToWarangal}
       />
+
+      {/* Cookie Consent Banner */}
+      <CookieBanner />
 
     </div>
   );

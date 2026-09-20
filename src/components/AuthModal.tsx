@@ -24,13 +24,34 @@ interface AuthModalProps {
   onSuccess?: () => void;
 }
 
+const GoogleIcon = () => (
+  <svg className="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24">
+    <path
+      fill="#4285F4"
+      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+    />
+    <path
+      fill="#34A853"
+      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+    />
+    <path
+      fill="#EA4335"
+      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+    />
+  </svg>
+);
+
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   initialMode = 'login',
   onSuccess
 }) => {
-  const { login, register } = useAuth();
+  const { login, loginWithGoogle, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -127,6 +148,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  const handleGoogleAuth = async () => {
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const { error: err, redirected } = await loginWithGoogle('customer');
+      if (err) {
+        setError(err);
+      } else if (!redirected) {
+        setSuccess('Signed in with Google successfully!');
+        setTimeout(() => {
+          onSuccess?.();
+          onClose();
+        }, 600);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Google authentication error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-fade-in">
       {/* Modal Dialog */}
@@ -217,6 +261,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Google Sign In / Sign Up CTA */}
+          <button
+            type="button"
+            onClick={handleGoogleAuth}
+            disabled={loading}
+            className="w-full h-11 sm:h-12 rounded-2xl bg-white hover:bg-navy-50/80 active:scale-[0.99] text-navy-950 font-bold text-xs sm:text-sm border border-navy-200/90 shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-3 disabled:opacity-60 cursor-pointer mb-3"
+          >
+            <GoogleIcon />
+            <span>{mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}</span>
+          </button>
+
+          {/* Divider */}
+          <div className="relative flex items-center justify-center mb-3.5">
+            <div className="border-t border-navy-100 w-full" />
+            <span className="bg-white px-3 text-[10.5px] font-bold uppercase tracking-wider text-navy-400 select-none">
+              or continue with email
+            </span>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
             {/* Full Name (Sign Up only) */}

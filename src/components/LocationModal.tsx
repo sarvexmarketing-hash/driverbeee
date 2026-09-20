@@ -17,12 +17,17 @@ const PRIMARY_CITIES = [
   { name: 'Warangal, Telangana', hub: 'Primary Hub (Live Bookings)', badge: 'Live Hub' },
   { name: 'Hanamkonda, Warangal', hub: 'Tri-City Hub (Live Bookings)', badge: 'Live Hub' },
   { name: 'Kazipet, Warangal', hub: 'Station & Junction Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Narsampet, Telangana', hub: '~25 km from Warangal • Live Bookings', badge: 'Live Hub' },
+  { name: 'Parkal, Warangal', hub: '~35 km from Warangal • Live Bookings', badge: 'Live Hub' },
+  { name: 'Bhupalpally, Telangana', hub: '~45 km from Warangal • Live Bookings', badge: 'Live Hub' },
+  { name: 'Jangaon, Telangana', hub: '~55 km from Warangal • Live Bookings', badge: 'Live Hub' },
+  { name: 'Mahabubabad, Telangana', hub: '~55 km from Warangal • Live Bookings', badge: 'Live Hub' },
+  { name: 'Mulugu, Telangana', hub: '~55 km from Warangal • Live Bookings', badge: 'Live Hub' },
   { name: 'Hyderabad, Telangana', hub: 'Driver dispatch launching soon', badge: 'Coming Soon' },
   { name: 'Visakhapatnam, Andhra Pradesh', hub: 'Coastal Hub launching soon', badge: 'Coming Soon' },
   { name: 'Vijayawada, Andhra Pradesh', hub: 'Capital Region launching soon', badge: 'Coming Soon' },
   { name: 'Karimnagar, Telangana', hub: 'Northern Hub launching soon', badge: 'Coming Soon' },
   { name: 'Khammam, Telangana', hub: 'Eastern Hub launching soon', badge: 'Coming Soon' },
-  { name: 'Guntur, Andhra Pradesh', hub: 'Hub expansion launching soon', badge: 'Coming Soon' },
 ];
 
 const LOCAL_WARANGAL_AREAS = [
@@ -98,7 +103,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 Select Your City / Area
               </h3>
               <p className="text-[11px] text-navy-500 font-medium">
-                Choose pickup city for driver dispatch
+                Service area: Warangal &amp; within 60 km radius
               </p>
             </div>
           </div>
@@ -157,8 +162,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           {/* Service Cities List */}
           <div>
             <div className="flex items-center justify-between text-[11px] uppercase tracking-wider font-extrabold text-navy-500 mb-2 px-1">
-              <span>Popular Service Hubs</span>
-              <span className="text-[10px] text-bee-700 font-bold lowercase">active service</span>
+              <span>Service Hubs (within 60 km)</span>
+              <span className="text-[10px] text-bee-700 font-bold lowercase">live bookings</span>
             </div>
 
             <div className="space-y-1.5">

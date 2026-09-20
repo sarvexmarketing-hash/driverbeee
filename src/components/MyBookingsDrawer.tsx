@@ -1,17 +1,19 @@
 import React from 'react';
 import { BookingRecord, formatDisplayDate } from '../types';
-import { X, Calendar, Clock, MapPin, Car, PhoneCall, Star, ChevronRight } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, Car, PhoneCall, Star, ChevronRight, Mail, CheckCircle2 } from 'lucide-react';
 
 interface MyBookingsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   bookings: BookingRecord[];
+  onOpenEmailReceipt?: (bookingId: string) => void;
 }
 
 export const MyBookingsDrawer: React.FC<MyBookingsDrawerProps> = ({
   isOpen,
   onClose,
-  bookings
+  bookings,
+  onOpenEmailReceipt,
 }) => {
   if (!isOpen) return null;
 
@@ -50,16 +52,22 @@ export const MyBookingsDrawer: React.FC<MyBookingsDrawerProps> = ({
                 <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
                   booking.status === 'pending'
                     ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
-                    : booking.status === 'upcoming' || booking.status === 'assigned'
-                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                    : booking.status === 'accepted' || booking.status === 'assigned' || booking.status === 'upcoming'
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                     : booking.status === 'ongoing'
-                    ? 'bg-emerald-100 text-emerald-800 animate-pulse border border-emerald-200'
+                    ? 'bg-blue-100 text-blue-800 animate-pulse border border-blue-200'
+                    : booking.status === 'completed'
+                    ? 'bg-gray-100 text-gray-700'
                     : 'bg-navy-100 text-navy-700'
                 }`}>
                   {booking.status === 'pending' 
                     ? 'Awaiting Admin Acceptance' 
+                    : booking.status === 'accepted'
+                    ? (booking.driver ? 'Accepted • Driver Assigned' : 'Accepted • Assigning Driver')
                     : booking.status === 'assigned' 
                     ? 'Driver Assigned' 
+                    : booking.status === 'ongoing'
+                    ? 'Trip In Progress'
                     : booking.status}
                 </span>
               </div>
@@ -87,15 +95,15 @@ export const MyBookingsDrawer: React.FC<MyBookingsDrawerProps> = ({
                 )}
               </div>
 
-              {/* Driver info: Pending vs Assigned */}
-              {booking.status === 'pending' || !booking.driver ? (
+              {/* Driver info: Pending vs Accepted vs Assigned */}
+              {booking.status === 'pending' ? (
                 <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200/80 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
                       <Clock className="w-4 h-4 animate-spin-slow" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-navy-950">Awaiting Admin Assignment</div>
+                      <div className="text-xs font-bold text-navy-950">Awaiting Admin Acceptance</div>
                       <div className="text-[10px] text-amber-700 font-medium">Driver assigned once admin accepts</div>
                     </div>
                   </div>
@@ -104,31 +112,91 @@ export const MyBookingsDrawer: React.FC<MyBookingsDrawerProps> = ({
                     <div className="text-[10px] text-gray-500 font-medium">Pay on Completion</div>
                   </div>
                 </div>
-              ) : (
-                <div className="p-2.5 bg-white rounded-xl border border-navy-100 flex items-center justify-between">
+              ) : !booking.driver ? (
+                <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200/80 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <img
-                      src={booking.driver.photo}
-                      alt={booking.driver.name}
-                      className="w-8 h-8 rounded-full object-cover"
-                    />
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                      <Clock className="w-4 h-4 animate-pulse" />
+                    </div>
                     <div>
-                      <div className="text-xs font-bold text-navy-950">
-                        {booking.driver.name}
-                      </div>
-                      <div className="text-[10px] text-navy-500 flex items-center gap-1">
-                        <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
-                        <span>{booking.driver.rating} • {booking.driver.badge}</span>
-                      </div>
+                      <div className="text-xs font-bold text-emerald-950">Ride Accepted by Admin</div>
+                      <div className="text-[10px] text-emerald-700 font-medium">Assigning verified driver to your trip...</div>
                     </div>
                   </div>
-
                   <div className="text-right">
                     <div className="text-xs font-extrabold text-navy-950">₹{booking.amount}</div>
                     <div className="text-[10px] text-emerald-600 font-semibold">Pay on Completion</div>
                   </div>
                 </div>
+              ) : (
+                <div className="p-3 bg-emerald-50/40 rounded-xl border border-emerald-200/70 space-y-2.5">
+                  <div className="flex items-center justify-between pb-1 border-b border-emerald-100/80">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300 inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>Driver Assigned</span>
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-semibold">Verified Driver</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={booking.driver.photo}
+                        alt={booking.driver.name}
+                        className="w-9 h-9 rounded-full object-cover flex-shrink-0 border border-emerald-200"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-xs font-extrabold text-navy-950 truncate">
+                          {booking.driver.name}
+                        </div>
+                        <div className="text-[10px] text-navy-500 flex items-center gap-1.5 flex-wrap">
+                          <span className="flex items-center gap-0.5 text-amber-600 font-bold">
+                            <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
+                            {booking.driver.rating}
+                          </span>
+                          <span>•</span>
+                          <span>{booking.driver.badge}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-xs font-extrabold text-navy-950">₹{booking.amount}</div>
+                      <div className="text-[10px] text-emerald-600 font-semibold">Pay on Completion</div>
+                    </div>
+                  </div>
+
+                  {/* Driver Contact Number & Direct Call — only for active rides */}
+                  {booking.driver.phone && booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                    <div className="pt-2 border-t border-emerald-100 flex items-center justify-between gap-2">
+                      <div className="text-[11px] font-semibold text-navy-800 flex items-center gap-1.5">
+                        <span className="text-gray-400 text-[10px]">Driver Contact:</span>
+                        <span className="font-mono font-bold text-navy-950">+91 {booking.driver.phone}</span>
+                      </div>
+                      <a
+                        href={`tel:${booking.driver.phone}`}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-colors flex items-center gap-1 shadow-2xs"
+                      >
+                        <PhoneCall className="w-2.5 h-2.5" />
+                        <span>Call Driver</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
               )}
+
+              {/* Email Receipt Quick Access */}
+              <div className="pt-2 border-t border-navy-100/90 flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={() => onOpenEmailReceipt?.(booking.id)}
+                  className="text-[11.5px] font-bold text-bee-700 hover:text-bee-800 flex items-center gap-1.5 transition-colors cursor-pointer py-1"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>View Email Receipt</span>
+                </button>
+                <span className="text-[10px] font-mono text-navy-400">ID: {booking.id}</span>
+              </div>
             </div>
           ))}
         </div>

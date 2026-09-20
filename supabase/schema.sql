@@ -3,6 +3,11 @@
 -- Run this in: Supabase Dashboard → SQL Editor → New Query
 -- ============================================================
 
+-- QUICK PATCH FOR EXISTING DATABASE (Run this if you already created tables earlier):
+-- ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS customer_email text;
+-- ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_customer_id_fkey;
+-- ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_assigned_driver_id_fkey;
+
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
@@ -75,9 +80,10 @@ create table if not exists public.driver_profiles (
 create table if not exists public.bookings (
   id                  text primary key,
   created_at          timestamptz default now(),
-  customer_id         uuid references public.profiles(id),
+  customer_id         uuid,
   customer_name       text not null,
   customer_phone      text,
+  customer_email      text,
   trip_type           text not null check (trip_type in ('city', 'outside', 'airport', 'intercity')),
   duration            integer not null,
   schedule_type       text not null check (schedule_type in ('now', 'later')),
@@ -91,7 +97,7 @@ create table if not exists public.bookings (
   estimated_fare      numeric(10,2),
   status              text not null default 'pending'
                         check (status in ('pending','assigned','accepted','active','completed','cancelled')),
-  assigned_driver_id  uuid references public.profiles(id),
+  assigned_driver_id  uuid,
   assigned_driver_name text,
   notes               text,
   completed_at        timestamptz,

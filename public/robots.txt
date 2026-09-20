@@ -1,0 +1,8 @@
+# Robots.txt for DriverBee (https://driverbee.in)
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /driver
+
+# Sitemap location
+Sitemap: https://driverbee.in/sitemap.xml

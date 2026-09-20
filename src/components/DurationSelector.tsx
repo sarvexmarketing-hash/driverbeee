@@ -1,6 +1,7 @@
 import React from 'react';
 import { DurationOption, TripType } from '../types';
 import { Clock } from 'lucide-react';
+import { usePricing } from '../context/PricingContext';
 
 interface DurationSelectorProps {
   selectedDuration: DurationOption;
@@ -14,12 +15,18 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
   tripType = 'city',
 }) => {
   const isOutside = tripType === 'outside';
+  const { getCityFare, getOutsideFare, cityHourlyRate, outsideHourlyRate } = usePricing();
+
+  const getFare = (hours: DurationOption) => {
+    if (isOutside) return getOutsideFare(hours);
+    return getCityFare(hours);
+  };
 
   const durations: { hours: DurationOption; price: number; perLabel: string }[] = [
-    { hours: 2, price: isOutside ? 400 : 300, perLabel: '(per 2 hours)' },
-    { hours: 4, price: isOutside ? 800 : 600, perLabel: '(per 4 hours)' },
-    { hours: 6, price: isOutside ? 1200 : 900, perLabel: '(per 6 hours)' },
-    { hours: 8, price: isOutside ? 1600 : 1200, perLabel: '(per 8 hours)' },
+    { hours: 2, price: getFare(2), perLabel: '(per 2 hours)' },
+    { hours: 4, price: getFare(4), perLabel: '(per 4 hours)' },
+    { hours: 6, price: getFare(6), perLabel: '(per 6 hours)' },
+    { hours: 8, price: getFare(8), perLabel: '(per 8 hours)' },
   ];
 
   return (
@@ -32,13 +39,13 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
           </h2>
           <p className="text-xs sm:text-sm text-navy-500 font-normal mt-0.5">
             {isOutside
-              ? 'Outside City tariff (₹200/hr) • Highway experienced drivers'
-              : 'Choose how long you need the driver for (₹150/hr)'}
+              ? `Outside City tariff (₹${outsideHourlyRate}/hr) • Highway experienced drivers`
+              : `Choose how long you need the driver for (₹${cityHourlyRate}/hr)`}
           </p>
         </div>
         {isOutside && (
           <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-bee-500/10 text-bee-700 border border-bee-500/30">
-            Outstation Rate (₹200/hr)
+            Outstation Rate (₹{outsideHourlyRate}/hr)
           </span>
         )}
       </div>

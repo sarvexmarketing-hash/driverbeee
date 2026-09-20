@@ -123,14 +123,14 @@ export const Footer: React.FC = () => {
           <div>
             © {new Date().getFullYear()} DriverBee Technologies Pvt. Ltd. All rights reserved.
           </div>
-          <div className="flex items-center gap-4 text-[11px]">
-            <a href="#" className="hover:text-navy-950">Privacy Policy</a>
+          <div className="flex flex-wrap items-center gap-4 text-[11px]">
+            <a href="/privacy" className="hover:text-navy-950 transition-colors">Privacy Policy</a>
             <span>•</span>
-            <a href="#" className="hover:text-navy-950">Terms of Service</a>
+            <a href="/terms" className="hover:text-navy-950 transition-colors">Terms of Service</a>
             <span>•</span>
-            <a href="#" className="hover:text-navy-950">Safety Standards</a>
+            <a href="#why-choose-section" className="hover:text-navy-950 transition-colors">Safety Standards</a>
             <span>•</span>
-            <a href="#" className="hover:text-navy-950">Join as Driver Partner</a>
+            <a href="/driver" className="hover:text-navy-950 transition-colors font-medium">Join as Driver Partner</a>
           </div>
         </div>
 

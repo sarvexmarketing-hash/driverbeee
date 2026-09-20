@@ -9,6 +9,9 @@ import {
   fetchAllDrivers,
   createBooking as sbCreateBooking,
   updateBookingStatus as sbUpdateStatus,
+  updateBookingCustomerName as sbUpdateCustomerName,
+  deleteBooking as sbDeleteBooking,
+  isRemovedBooking,
   toggleDriverDuty as sbToggleDuty,
 } from '../lib/supabase';
 
@@ -38,6 +41,7 @@ export interface LiveBooking {
   status: BookingStatus;
   assignedDriverId: string | null;
   assignedDriverName: string | null;
+  assignedDriverPhone?: string | null;
   notes?: string;
   completedAt?: string;
 }
@@ -61,6 +65,34 @@ export interface DriverProfile {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function mapBooking(b: DBBooking): LiveBooking {
+  let driverName = b.assigned_driver_name || null;
+  let driverId = b.assigned_driver_id || null;
+  let driverPhone: string | null = null;
+
+  // Restore cached driver info if Supabase column was null or to retrieve driverPhone
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('driverbee_driver_' + b.id);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.name && !driverName) driverName = parsed.name;
+        if (parsed.id && !driverId) driverId = parsed.id;
+        if (parsed.phone) driverPhone = parsed.phone;
+      }
+    } catch {}
+  }
+
+  // Also if driverName is in DB, cache it locally so it survives refreshes
+  if (driverName && typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('driverbee_driver_' + b.id, JSON.stringify({
+        name: driverName,
+        phone: driverPhone || '+91 75694 02288',
+        id: driverId,
+      }));
+    } catch {}
+  }
+
   return {
     id: b.id,
     createdAt: b.created_at,
@@ -78,9 +110,10 @@ function mapBooking(b: DBBooking): LiveBooking {
     forWhom: b.for_whom ?? '',
     area: b.area ?? '',
     estimatedFare: Number(b.estimated_fare),
-    status: b.status,
-    assignedDriverId: b.assigned_driver_id,
-    assignedDriverName: b.assigned_driver_name,
+    status: (driverName && (b.status === 'accepted' || b.status === 'pending')) ? 'assigned' : b.status,
+    assignedDriverId: driverId,
+    assignedDriverName: driverName,
+    assignedDriverPhone: driverPhone,
     notes: b.notes ?? undefined,
     completedAt: b.completed_at ?? undefined,
   };
@@ -106,56 +139,27 @@ function mapDriver(d: DBDriverProfile & { profiles?: DBProfile }): DriverProfile
 // Seed data (fallback when DB is empty or not yet configured)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SEED_BOOKINGS: LiveBooking[] = [
-  {
-    id: 'DB-100001',
-    createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    customerName: 'Aditya Sharma',
-    customerPhone: '+91 98450 11001',
-    tripType: 'city',
-    duration: 4,
-    scheduleType: 'now',
-    date: new Date().toISOString().split('T')[0],
-    time: 'Immediate',
-    transmission: 'automatic',
-    carModel: 'Honda City',
-    carPlate: 'TS-03-AB-1234',
-    forWhom: 'Self',
-    area: 'Hanamkonda',
-    estimatedFare: 630,
-    status: 'completed',
-    assignedDriverId: null,
-    assignedDriverName: 'Rajesh Kumar',
-    completedAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-  },
-  {
-    id: 'DB-100002',
-    createdAt: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-    customerName: 'Priya Menon',
-    customerPhone: '+91 98450 22002',
-    tripType: 'airport',
-    duration: 2,
-    scheduleType: 'later',
-    date: new Date().toISOString().split('T')[0],
-    time: '06:00 AM',
-    transmission: 'automatic',
-    carModel: 'Toyota Innova Crysta',
-    carPlate: 'TS-03-CD-5678',
-    forWhom: 'Savitri Devi (Parent)',
-    area: 'Kazipet',
-    estimatedFare: 315,
-    status: 'pending',
-    assignedDriverId: null,
-    assignedDriverName: null,
-  },
-];
+// No seed/demo bookings — real bookings come exclusively from Supabase
+const SEED_BOOKINGS: LiveBooking[] = [];
 
-const SEED_DRIVERS: DriverProfile[] = [
-  { id: 'drv-1', name: 'Rajesh Kumar', phone: '+91 98450 78210', rating: 4.98, tripsCount: 1420, isOnDuty: true, area: 'Hanamkonda', photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80', badge: 'Master Driver', todayEarnings: 1890, assignedBookingId: null },
-  { id: 'drv-2', name: 'Venkatesh Murthy', phone: '+91 98450 56321', rating: 4.95, tripsCount: 980, isOnDuty: true, area: 'Kazipet', photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80', badge: 'Outstation Specialist', todayEarnings: 2400, assignedBookingId: null },
-  { id: 'drv-3', name: 'Mohammed Zameer', phone: '+91 98450 44123', rating: 4.92, tripsCount: 1150, isOnDuty: false, area: 'Subedari', photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80', badge: 'Senior Citizen Care', todayEarnings: 0, assignedBookingId: null },
-  { id: 'drv-4', name: 'Suresh Gowda', phone: '+91 98450 99001', rating: 4.97, tripsCount: 840, isOnDuty: true, area: 'Hunter Road', photo: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=120&q=80', badge: 'Airport & Corporate', todayEarnings: 945, assignedBookingId: null },
-];
+const CUSTOM_DRIVERS_STORAGE_KEY = 'driverbee_admin_drivers';
+
+function loadCustomDrivers(): DriverProfile[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_DRIVERS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function saveCustomDrivers(list: DriverProfile[]) {
+  try {
+    localStorage.setItem(CUSTOM_DRIVERS_STORAGE_KEY, JSON.stringify(list));
+  } catch {}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Context
@@ -166,26 +170,100 @@ interface BookingContextValue {
   drivers: DriverProfile[];
   addBooking: (booking: Omit<LiveBooking, 'id' | 'createdAt' | 'status' | 'assignedDriverId' | 'assignedDriverName'>) => Promise<string>;
   updateBookingStatus: (id: string, status: BookingStatus) => void;
-  assignDriver: (bookingId: string, driverId: string) => void;
+  updateCustomerName: (id: string, customerName: string) => void;
+  deleteBooking: (id: string) => void;
+  assignDriver: (bookingId: string, driverId: string, driverName?: string, driverPhone?: string) => boolean | void;
   acceptBooking: (bookingId: string, driverId?: string) => void;
   toggleDriverDuty: (driverId: string) => void;
+  addDriver: (driver: Omit<DriverProfile, 'id' | 'todayEarnings' | 'tripsCount' | 'assignedBookingId'>) => DriverProfile;
+  updateDriver: (driverId: string, updates: Partial<DriverProfile>) => void;
+  deleteDriver: (driverId: string) => void;
   getBookingsForDriver: (driverId: string) => LiveBooking[];
   newBookingAlert: LiveBooking | null;
   clearNewBookingAlert: () => void;
   useSupabase: boolean;
+  refreshBookings: () => Promise<void>;
 }
 
 const BookingContext = createContext<BookingContextValue | null>(null);
 
+const BOOKING_BROADCAST_CHANNEL = 'driverbee_booking_channel';
+
+export function getDriverActiveBooking(
+  driver: { id: string; name: string; assignedBookingId?: string | null },
+  bookings: LiveBooking[]
+): LiveBooking | undefined {
+  const todayStr = new Date().toISOString().split('T')[0];
+  return bookings.find(b => {
+    const isThisDriver =
+      b.assignedDriverId === driver.id ||
+      (b.assignedDriverName && driver.name && b.assignedDriverName.toLowerCase().trim() === driver.name.toLowerCase().trim()) ||
+      (driver.assignedBookingId && b.id === driver.assignedBookingId && (!b.assignedDriverName || b.assignedDriverName.toLowerCase().trim() === driver.name.toLowerCase().trim()));
+
+    if (!isThisDriver) return false;
+
+    const isInProgress = b.status === 'assigned' || b.status === 'accepted' || b.status === 'active';
+    if (!isInProgress) return false;
+
+    // Active trips in progress are always busy
+    if (b.status === 'active') return true;
+
+    // For assigned / accepted rides, only count if scheduled today or in the future
+    const bookingDate = b.date && b.date.match(/^\d{4}-\d{2}-\d{2}$/)
+      ? b.date
+      : (b.createdAt ? b.createdAt.split('T')[0] : todayStr);
+    return bookingDate >= todayStr;
+  });
+}
+
 export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [bookings, setBookings] = useState<LiveBooking[]>(SEED_BOOKINGS);
-  const [drivers, setDrivers] = useState<DriverProfile[]>(SEED_DRIVERS);
+  const [bookings, setBookings] = useState<LiveBooking[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('driverbee_live_bookings');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [drivers, setDrivers] = useState<DriverProfile[]>(loadCustomDrivers);
   const [newBookingAlert, setNewBookingAlert] = useState<LiveBooking | null>(null);
   const [useSupabase, setUseSupabase] = useState(false);
   const idCounter = useRef(100004);
 
-  // Cross-tab sync (storage events only — do NOT write to localStorage to avoid stale data)
+  // Cross-tab sync via BroadcastChannel and StorageEvent
   useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel(BOOKING_BROADCAST_CHANNEL);
+      bc.onmessage = (e) => {
+        if (e.data?.type === 'BOOKING_ASSIGNED') {
+          const { bookingId, status, driverId, driverName, driverPhone } = e.data;
+          setBookings(prev =>
+            prev.map(b =>
+              b.id === bookingId
+                ? {
+                    ...b,
+                    status: (status || 'assigned') as BookingStatus,
+                    assignedDriverId: driverId,
+                    assignedDriverName: driverName,
+                    assignedDriverPhone: driverPhone,
+                  }
+                : b
+            )
+          );
+        } else if (e.data?.type === 'STATUS_UPDATED') {
+          const { bookingId, status } = e.data;
+          setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status } : b));
+        } else if (e.data?.type === 'BOOKINGS_SYNC' && Array.isArray(e.data.bookings)) {
+          setBookings(e.data.bookings);
+        }
+      };
+    }
+
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'driverbee_live_bookings' && e.newValue) {
         try {
@@ -195,32 +273,55 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           console.warn(err);
         }
       }
+      if (e.key === CUSTOM_DRIVERS_STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setDrivers(parsed);
+        } catch (err) {}
+      }
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      if (bc) bc.close();
+    };
   }, []);
+
+  const refreshFromSupabase = useCallback(() =>
+    Promise.all([fetchAllBookings(), fetchAllDrivers()]).then(([bData, dData]) => {
+      if (bData) {
+        const mapped = bData.map(mapBooking);
+        setBookings(mapped);
+        try {
+          localStorage.setItem('driverbee_live_bookings', JSON.stringify(mapped));
+        } catch {}
+      }
+      const custom = loadCustomDrivers();
+      if (dData && dData.length > 0) {
+        const sbDrivers = dData.map(mapDriver);
+        const merged = [...custom];
+        for (const s of sbDrivers) {
+          const idx = merged.findIndex(m => m.id === s.id);
+          if (idx >= 0) merged[idx] = s;
+          else merged.push(s);
+        }
+        setDrivers(merged);
+      } else {
+        setDrivers(custom);
+      }
+    }).catch(err => {
+      console.warn('[DriverBee] Supabase refresh failed:', err);
+    }), []);
 
   // ── Load from Supabase on mount (if configured) ──────────────────────────
   useEffect(() => {
     setUseSupabase(true);
 
-    // Clear any stale localStorage data so we always show fresh Supabase state
-    try { localStorage.removeItem('driverbee_live_bookings'); } catch {}
-
-    // Helper to refresh all data from Supabase
-    const refreshFromSupabase = () =>
-      Promise.all([fetchAllBookings(), fetchAllDrivers()]).then(([bData, dData]) => {
-        if (bData && bData.length > 0) setBookings(bData.map(mapBooking));
-        if (dData && dData.length > 0) setDrivers(dData.map(mapDriver));
-      }).catch(err => {
-        console.warn('[DriverBee] Supabase refresh failed:', err);
-      });
-
     // Fetch initial data immediately
     refreshFromSupabase();
 
-    // Poll every 15 seconds as a backup to real-time (ensures cross-device sync)
-    const pollInterval = setInterval(refreshFromSupabase, 15000);
+    // Fast polling every 2.5 seconds to guarantee immediate cross-window and cross-device sync
+    const pollInterval = setInterval(refreshFromSupabase, 2500);
 
     // Use unique channel name per session to avoid cross-client conflicts
     const sessionId = Math.random().toString(36).slice(2, 8);
@@ -230,15 +331,21 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       .channel(`bookings-changes-${sessionId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
         if (payload.eventType === 'INSERT') {
-          const newB = mapBooking(payload.new as DBBooking);
+          const raw = payload.new as DBBooking;
+          if (isRemovedBooking(raw)) return;
+          const newB = mapBooking(raw);
           setBookings(prev => {
-            // Avoid duplicates if optimistic update already added it
             if (prev.some(b => b.id === newB.id)) return prev;
             return [newB, ...prev];
           });
           setNewBookingAlert(newB);
         } else if (payload.eventType === 'UPDATE') {
-          const updatedB = mapBooking(payload.new as DBBooking);
+          const raw = payload.new as DBBooking;
+          if (isRemovedBooking(raw)) {
+            setBookings(prev => prev.filter(b => b.id !== raw.id));
+            return;
+          }
+          const updatedB = mapBooking(raw);
           setBookings(prev => prev.map(b => b.id === updatedB.id ? updatedB : b));
         } else if (payload.eventType === 'DELETE') {
           setBookings(prev => prev.filter(b => b.id !== (payload.old as DBBooking).id));
@@ -314,67 +421,206 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // ── Update status ────────────────────────────────────────────────────────
   const updateBookingStatus = useCallback((id: string, status: BookingStatus) => {
-    setBookings(prev =>
-      prev.map(b =>
+    setBookings(prev => {
+      const next = prev.map(b =>
         b.id === id
           ? { ...b, status, completedAt: status === 'completed' ? new Date().toISOString() : b.completedAt }
           : b
-      )
-    );
+      );
+      try {
+        localStorage.setItem('driverbee_live_bookings', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    // If ride completed or cancelled, free the assigned driver immediately
+    if (status === 'completed' || status === 'cancelled') {
+      setDrivers(prev => {
+        const updated = prev.map(d => (d.assignedBookingId === id ? { ...d, assignedBookingId: null } : d));
+        saveCustomDrivers(updated);
+        return updated;
+      });
+    }
+
     // Always persist to Supabase regardless of useSupabase flag
     sbUpdateStatus(id, status).then(({ error }: any) => {
       if (error) console.error('[DriverBee] updateBookingStatus failed:', error);
     });
   }, []);
 
-  // ── Assign driver ────────────────────────────────────────────────────────
-  const assignDriver = useCallback((bookingId: string, driverId: string) => {
-    const driver = drivers.find(d => d.id === driverId);
-    if (!driver) return;
+  // ── Update customer name ──────────────────────────────────────────────────
+  const updateCustomerName = useCallback((id: string, customerName: string) => {
     setBookings(prev =>
-      prev.map(b =>
-        b.id === bookingId
-          ? { ...b, status: 'assigned', assignedDriverId: driverId, assignedDriverName: driver.name }
-          : b
-      )
+      prev.map(b => (b.id === id ? { ...b, customerName } : b))
     );
-    setDrivers(prev =>
-      prev.map(d => d.id === driverId ? { ...d, assignedBookingId: bookingId } : d)
-    );
-    // Always persist to Supabase
-    sbUpdateStatus(bookingId, 'assigned', {
-      assigned_driver_id: driverId,
-      assigned_driver_name: driver.name,
-    }).then(({ error }: any) => {
-      if (error) console.error('[DriverBee] assignDriver failed:', error);
+    sbUpdateCustomerName(id, customerName).then(({ error }: any) => {
+      if (error) console.error('[DriverBee] updateCustomerName failed:', error);
     });
-  }, [drivers]);
+  }, []);
 
-  // ── Accept booking (One-click accept & assign) ──────────────────────────
+  // ── Delete booking ───────────────────────────────────────────────────────
+  const deleteBooking = useCallback((id: string) => {
+    setBookings(prev => prev.filter(b => b.id !== id));
+    sbDeleteBooking(id).then(({ error }: any) => {
+      if (error) console.error('[DriverBee] deleteBooking failed:', error);
+    });
+  }, []);
+
+  // ── Assign driver ────────────────────────────────────────────────────────
+  const assignDriver = useCallback((
+    bookingId: string,
+    driverId: string,
+    driverName?: string,
+    driverPhone?: string
+  ): boolean => {
+    let driver = drivers.find(d => d.id === driverId || d.name.toLowerCase() === driverId.toLowerCase());
+    if (!driver) {
+      const stored = loadCustomDrivers();
+      driver = stored.find(d => d.id === driverId || d.name.toLowerCase() === driverId.toLowerCase());
+    }
+
+    const finalName = driver?.name || driverName || (driverId.startsWith('drv-') ? 'Driver' : driverId);
+    const finalPhone = driver?.phone || driverPhone || '+91 75694 02288';
+    const finalId = driver?.id || driverId;
+
+    // Strict guard: If driver is already assigned to another active, in-progress ride, reject assignment
+    const todayStr = new Date().toISOString().split('T')[0];
+    const busyTrip = bookings.find(b => {
+      if (b.id === bookingId) return false;
+      const isThisDriver =
+        b.assignedDriverId === finalId ||
+        (b.assignedDriverName && finalName && b.assignedDriverName.toLowerCase().trim() === finalName.toLowerCase().trim());
+      if (!isThisDriver) return false;
+
+      const isInProgress = b.status === 'assigned' || b.status === 'accepted' || b.status === 'active';
+      if (!isInProgress) return false;
+
+      // Active trip is always busy
+      if (b.status === 'active') return true;
+
+      // For assigned / accepted rides, only count if scheduled today or in the future
+      const bookingDate = b.date && b.date.match(/^\d{4}-\d{2}-\d{2}$/)
+        ? b.date
+        : (b.createdAt ? b.createdAt.split('T')[0] : todayStr);
+      return bookingDate >= todayStr;
+    });
+
+    if (busyTrip) {
+      console.warn(`[DriverBee] Cannot assign ${finalName}: Busy on active booking #${busyTrip.id}`);
+      return false;
+    }
+
+    setBookings(prev => {
+      const next = prev.map(b =>
+        b.id === bookingId
+          ? {
+              ...b,
+              status: 'assigned' as BookingStatus,
+              assignedDriverId: finalId,
+              assignedDriverName: finalName,
+              assignedDriverPhone: finalPhone,
+            }
+          : b
+      );
+      try {
+        localStorage.setItem('driverbee_live_bookings', JSON.stringify(next));
+        localStorage.setItem('driverbee_driver_' + bookingId, JSON.stringify({
+          name: finalName,
+          phone: finalPhone,
+          id: finalId,
+        }));
+      } catch {}
+      return next;
+    });
+
+    // Cross-tab broadcast for instant UI response in customer portal
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(BOOKING_BROADCAST_CHANNEL);
+        bc.postMessage({
+          type: 'BOOKING_ASSIGNED',
+          bookingId,
+          status: 'assigned',
+          driverId: finalId,
+          driverName: finalName,
+          driverPhone: finalPhone,
+        });
+        bc.close();
+      }
+    } catch {}
+
+    setDrivers(prev => {
+      const updated = prev.map(d => {
+        if (d.assignedBookingId === bookingId && d.id !== finalId) {
+          return { ...d, assignedBookingId: null };
+        }
+        if (d.id === finalId || (finalName && d.name.toLowerCase().trim() === finalName.toLowerCase().trim())) {
+          return { ...d, assignedBookingId: bookingId, isOnDuty: true };
+        }
+        return d;
+      });
+      saveCustomDrivers(updated);
+      return updated;
+    });
+
+    // Always persist to Supabase immediately
+    sbUpdateStatus(bookingId, 'assigned', {
+      assigned_driver_id: finalId,
+      assigned_driver_name: finalName,
+    }).then(({ error }: any) => {
+      if (error) {
+        console.error('[DriverBee] assignDriver Supabase update failed:', error);
+      } else {
+        console.log('[DriverBee] Booking', bookingId, 'driver assigned →', finalName);
+        // Refresh to guarantee database sync
+        refreshFromSupabase();
+      }
+    });
+
+    return true;
+  }, [drivers, bookings, refreshFromSupabase]);
+
+  // ── Accept booking (One-click accept & next assign) ──────────────────────────
   const acceptBooking = useCallback((bookingId: string, driverId?: string) => {
-    const chosenDriver = driverId
-      ? drivers.find(d => d.id === driverId)
-      : (drivers.find(d => d.isOnDuty) || drivers[0]);
-
-    // If no real driver available, just mark as accepted without assigning
+    const chosenDriver = driverId ? drivers.find(d => d.id === driverId) : undefined;
     const newStatus: BookingStatus = chosenDriver ? 'assigned' : 'accepted';
 
-    setBookings(prev =>
-      prev.map(b =>
+    setBookings(prev => {
+      const next = prev.map(b =>
         b.id === bookingId
           ? {
               ...b,
               status: newStatus,
-              assignedDriverId: chosenDriver?.id ?? null,
-              assignedDriverName: chosenDriver?.name ?? null,
+              assignedDriverId: chosenDriver?.id ?? b.assignedDriverId ?? null,
+              assignedDriverName: chosenDriver?.name ?? b.assignedDriverName ?? null,
+              assignedDriverPhone: chosenDriver?.phone ?? b.assignedDriverPhone ?? null,
             }
           : b
-      )
-    );
-    if (chosenDriver) {
-      setDrivers(prev =>
-        prev.map(d => (d.id === chosenDriver.id ? { ...d, assignedBookingId: bookingId } : d))
       );
+      try {
+        localStorage.setItem('driverbee_live_bookings', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(BOOKING_BROADCAST_CHANNEL);
+        bc.postMessage({
+          type: 'STATUS_UPDATED',
+          bookingId,
+          status: newStatus,
+        });
+        bc.close();
+      }
+    } catch {}
+
+    if (chosenDriver) {
+      setDrivers(prev => {
+        const updated = prev.map(d => (d.id === chosenDriver.id ? { ...d, assignedBookingId: bookingId, isOnDuty: true } : d));
+        saveCustomDrivers(updated);
+        return updated;
+      });
     }
     // Always persist to Supabase immediately
     sbUpdateStatus(bookingId, newStatus, chosenDriver ? {
@@ -388,14 +634,52 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // ── Toggle duty ──────────────────────────────────────────────────────────
   const toggleDriverDuty = useCallback((driverId: string) => {
-    setDrivers(prev =>
-      prev.map(d => {
+    setDrivers(prev => {
+      const updated = prev.map(d => {
         if (d.id !== driverId) return d;
         const newDuty = !d.isOnDuty;
         sbToggleDuty(driverId, newDuty); // Always persist
         return { ...d, isOnDuty: newDuty };
-      })
-    );
+      });
+      saveCustomDrivers(updated);
+      return updated;
+    });
+  }, []);
+
+  // ── Add driver (Admin manually enters driver) ─────────────────────────────
+  const addDriver = useCallback((driverData: Omit<DriverProfile, 'id' | 'todayEarnings' | 'tripsCount' | 'assignedBookingId'>): DriverProfile => {
+    const id = `drv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newDriver: DriverProfile = {
+      ...driverData,
+      id,
+      todayEarnings: 0,
+      tripsCount: 0,
+      assignedBookingId: null,
+    };
+    setDrivers(prev => {
+      const updated = [newDriver, ...prev];
+      saveCustomDrivers(updated);
+      return updated;
+    });
+    return newDriver;
+  }, []);
+
+  // ── Update driver ────────────────────────────────────────────────────────
+  const updateDriver = useCallback((driverId: string, updates: Partial<DriverProfile>) => {
+    setDrivers(prev => {
+      const updated = prev.map(d => (d.id === driverId ? { ...d, ...updates } : d));
+      saveCustomDrivers(updated);
+      return updated;
+    });
+  }, []);
+
+  // ── Delete driver ────────────────────────────────────────────────────────
+  const deleteDriver = useCallback((driverId: string) => {
+    setDrivers(prev => {
+      const updated = prev.filter(d => d.id !== driverId);
+      saveCustomDrivers(updated);
+      return updated;
+    });
   }, []);
 
   const getBookingsForDriver = useCallback(
@@ -407,9 +691,9 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   return (
     <BookingContext.Provider value={{
-      bookings, drivers, addBooking, updateBookingStatus,
-      assignDriver, acceptBooking, toggleDriverDuty, getBookingsForDriver,
-      newBookingAlert, clearNewBookingAlert, useSupabase,
+      bookings, drivers, addBooking, updateBookingStatus, updateCustomerName, deleteBooking,
+      assignDriver, acceptBooking, toggleDriverDuty, addDriver, updateDriver, deleteDriver,
+      getBookingsForDriver, newBookingAlert, clearNewBookingAlert, useSupabase, refreshBookings: refreshFromSupabase,
     }}>
       {children}
     </BookingContext.Provider>

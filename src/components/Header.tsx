@@ -130,7 +130,10 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Location Selector Dropdown */}
           <div className="relative">
             <button
+              type="button"
               onClick={() => setIsCityOpen(!isCityOpen)}
+              aria-label="Select pickup city or area"
+              aria-expanded={isCityOpen}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-50 hover:bg-navy-100/80 border border-navy-200/70 rounded-full text-xs sm:text-[13px] font-medium text-navy-900 transition-colors"
               title="Change pickup location"
             >
@@ -252,7 +255,10 @@ export const Header: React.FC<HeaderProps> = ({
           ) : user && profile?.role !== 'admin' ? (
             <div className="relative">
               <button 
+                type="button"
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                aria-label="User account menu"
+                aria-expanded={isProfileMenuOpen}
                 className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full hover:bg-navy-100 cursor-pointer transition-colors border border-navy-200/60"
                 title="Account Menu"
               >

@@ -7,6 +7,7 @@ import {
   OutstationOption,
   StateRegion,
 } from '../data/telanganaPricing';
+import { usePricing } from '../context/PricingContext';
 import {
   MapPin,
   Search,
@@ -38,6 +39,7 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
   const [searchQuery, setSearchQuery] = useState('');
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [modalStateTab, setModalStateTab] = useState<StateRegion>(selectedState);
+  const { getPriceForKm } = usePricing();
 
   // Sync state if controlled from outside
   useEffect(() => {
@@ -59,22 +61,15 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
     return currentPricingList[0];
   }, [selectedDestinationId, currentPricingList]);
 
-  // Base daily rate for this destination
+  // Base daily rate: driven by admin pricing slabs based on destination distance
   const baseDailyPrice = useMemo(() => {
-    const oneDayOpt = activeDest.options.find((o) => o.days === 1);
-    if (oneDayOpt) return oneDayOpt.price;
-    if (activeDest.options.length > 0) {
-      return Math.round(activeDest.options[0].price / activeDest.options[0].days);
-    }
-    return 1500;
-  }, [activeDest]);
+    return getPriceForKm(activeDest.distanceKm);
+  }, [activeDest, getPriceForKm]);
 
   const currentDays = Math.max(1, selectedDays || 1);
 
-  // Active destination package option (dynamic for any number of days)
+  // Active destination package option (dynamic for any number of days, calculated from admin pricing)
   const activeOption = useMemo<OutstationOption>(() => {
-    const match = activeDest.options.find((opt) => opt.days === currentDays);
-    if (match) return match;
     return {
       days: currentDays,
       label: `${currentDays} Day${currentDays > 1 ? 's' : ''}`,
@@ -82,6 +77,11 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
       rateNote: currentDays === 1 ? activeDest.rateNote : undefined,
     };
   }, [activeDest, currentDays, baseDailyPrice]);
+
+  // Sync selected destination and dynamic price to parent whenever destination, days, or slab pricing changes
+  useEffect(() => {
+    onSelectDestination(activeDest, activeOption);
+  }, [activeDest.id, baseDailyPrice, currentDays]);
 
   // Filtered destinations for search dropdown
   const filteredDestinations = useMemo(() => {
@@ -109,14 +109,11 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
     const isCurrentInNewState = targetList.some((d) => d.id === activeDest.id);
     if (!isCurrentInNewState) {
       const defaultDest = targetList[0];
-      const oneDayPrice =
-        defaultDest.options.find((o) => o.days === 1)?.price ||
-        (defaultDest.options[0] ? Math.round(defaultDest.options[0].price / defaultDest.options[0].days) : 1500);
-      const matchedOpt = defaultDest.options.find((o) => o.days === currentDays);
-      const defaultOpt: OutstationOption = matchedOpt || {
+      const dailyPrice = getPriceForKm(defaultDest.distanceKm);
+      const defaultOpt: OutstationOption = {
         days: currentDays,
         label: `${currentDays} Day${currentDays > 1 ? 's' : ''}`,
-        price: oneDayPrice * currentDays,
+        price: dailyPrice * currentDays,
         rateNote: currentDays === 1 ? defaultDest.rateNote : undefined,
       };
       onSelectDestination(defaultDest, defaultOpt);
@@ -125,14 +122,11 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
   };
 
   const handlePickDest = (dest: OutstationDestination) => {
-    const oneDayPrice =
-      dest.options.find((o) => o.days === 1)?.price ||
-      (dest.options[0] ? Math.round(dest.options[0].price / dest.options[0].days) : 1500);
-    const matchedOpt = dest.options.find((o) => o.days === currentDays);
-    const targetOpt: OutstationOption = matchedOpt || {
+    const dailyPrice = getPriceForKm(dest.distanceKm);
+    const targetOpt: OutstationOption = {
       days: currentDays,
       label: `${currentDays} Day${currentDays > 1 ? 's' : ''}`,
-      price: oneDayPrice * currentDays,
+      price: dailyPrice * currentDays,
       rateNote: currentDays === 1 ? dest.rateNote : undefined,
     };
     onSelectDestination(dest, targetOpt);
@@ -140,8 +134,7 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
 
   const handleDaysChange = (newDays: number) => {
     const validDays = Math.max(1, newDays);
-    const matchedOpt = activeDest.options.find((o) => o.days === validDays);
-    const chosenOption: OutstationOption = matchedOpt || {
+    const chosenOption: OutstationOption = {
       days: validDays,
       label: `${validDays} Day${validDays > 1 ? 's' : ''}`,
       price: baseDailyPrice * validDays,
@@ -255,8 +248,7 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
               </span>
               {popularDests.map((d) => {
                 const isSelected = d.id === activeDest.id;
-                const oneDayOpt = d.options.find((o) => o.days === 1) || d.options[0];
-                const oneDayPrice = oneDayOpt ? oneDayOpt.price : 1500;
+                const oneDayPrice = getPriceForKm(d.distanceKm);
                 return (
                   <button
                     key={d.id}
@@ -287,8 +279,7 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
             ) : (
               filteredDestinations.map((dest) => {
                 const isSelected = dest.id === activeDest.id;
-                const oneDayOpt = dest.options.find((o) => o.days === 1) || dest.options[0];
-                const oneDayPrice = oneDayOpt ? oneDayOpt.price : 1500;
+                const oneDayPrice = getPriceForKm(dest.distanceKm);
 
                 return (
                   <button
@@ -600,8 +591,8 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
                 </thead>
                 <tbody className="divide-y divide-navy-100">
                   {filteredModalDestinations.map((item, idx) => {
-                    const oneDayOpt = item.options.find((o) => o.days === 1) || item.options[0];
-                    const priceStr = `₹${(oneDayOpt?.price || 1500).toLocaleString('en-IN')}${item.rateNote ? ` ${item.rateNote}` : ''}`;
+                    const oneDayPrice = getPriceForKm(item.distanceKm);
+                    const priceStr = `₹${oneDayPrice.toLocaleString('en-IN')}${item.rateNote ? ` ${item.rateNote}` : ''}`;
                     const isCurrent = item.id === activeDest.id;
                     return (
                       <tr key={item.id} className={`hover:bg-navy-50/60 transition-colors ${isCurrent ? 'bg-bee-50/50' : ''}`}>

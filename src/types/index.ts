@@ -1,4 +1,4 @@
-export type TripType = 'city' | 'outside' | 'airport' | 'intercity';
+export type TripType = 'city' | 'outside' | 'intercity';
 
 export type DurationOption = 1 | 2 | 4 | 6 | 8;
 
@@ -43,6 +43,7 @@ export interface BookingState {
 export interface Driver {
   id: string;
   name: string;
+  phone?: string;
   rating: number;
   tripsCount: number;
   experienceYears: number;

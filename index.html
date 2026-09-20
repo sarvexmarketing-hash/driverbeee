@@ -2,7 +2,7 @@
 <html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
-    <!-- Google Search & Browser Favicons (Google requires multiple of 48px square) -->
+    <!-- Google Search & Browser Favicons -->
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
@@ -12,13 +12,97 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#FFB800" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>DriverBee — Your car our driver, on demand</title>
-    <meta name="description" content="DriverBee provides verified, background-checked professional drivers on demand for your personal car in Warangal. Book hourly, daily, or for outstation trips." />
+    
+    <!-- Accessibility & Responsive Viewport (WCAG 2.2 Compliant) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    
+    <!-- Primary Meta Tags -->
+    <title>DriverBee — Verified Personal Drivers On Demand | Warangal</title>
+    <meta name="title" content="DriverBee — Verified Personal Drivers On Demand | Warangal" />
+    <meta name="description" content="Book verified, background-checked professional drivers on demand for your personal car in Warangal, Hanamkonda & Kazipet. Doorstep arrival in 30 mins, hourly city rides & outstation trips." />
+    <meta name="keywords" content="personal driver Warangal, driver on demand, hire car driver Hanamkonda, outstation car driver Kazipet, DriverBee, driver for personal car" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://driverbee.in/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://driverbee.in/" />
+    <meta property="og:site_name" content="DriverBee" />
+    <meta property="og:title" content="DriverBee — Verified Personal Drivers On Demand | Warangal" />
+    <meta property="og:description" content="Your car, our driver. Verified professional drivers at your doorstep in Warangal within 30 minutes. Hourly local and outstation trips." />
+    <meta property="og:image" content="https://driverbee.in/hero-driver-car.jpg" />
+    <meta property="og:locale" content="en_IN" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://driverbee.in/" />
+    <meta name="twitter:title" content="DriverBee — Verified Personal Drivers On Demand | Warangal" />
+    <meta name="twitter:description" content="Your car, our driver. Verified professional drivers at your doorstep in Warangal within 30 minutes." />
+    <meta name="twitter:image" content="https://driverbee.in/hero-driver-car.jpg" />
+
     <!-- Google Fonts: Plus Jakarta Sans & Caveat -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Structured Data (JSON-LD) for LocalBusiness & TransportationService -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "DriverBee",
+      "image": "https://driverbee.in/hero-driver-car.jpg",
+      "logo": "https://driverbee.in/driverbee-official-logo.png",
+      "@id": "https://driverbee.in/#organization",
+      "url": "https://driverbee.in",
+      "telephone": "+917569402288",
+      "priceRange": "₹₹",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Main Road, Hanamkonda",
+        "addressLocality": "Warangal",
+        "addressRegion": "Telangana",
+        "postalCode": "506001",
+        "addressCountry": "IN"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 17.9689,
+        "longitude": 79.5941
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        ],
+        "opens": "00:00",
+        "closes": "23:59"
+      },
+      "sameAs": [
+        "https://driverbee.in"
+      ],
+      "areaServed": [
+        {
+          "@type": "City",
+          "name": "Warangal"
+        },
+        {
+          "@type": "City",
+          "name": "Hanamkonda"
+        },
+        {
+          "@type": "City",
+          "name": "Kazipet"
+        }
+      ]
+    }
+    </script>
   </head>
   <body class="bg-[#F7FAFD] text-navy-900 antialiased selection:bg-bee-500/20 selection:text-navy-950 font-sans">
     <div id="root"></div>

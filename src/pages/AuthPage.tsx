@@ -39,8 +39,29 @@ const portalConfig = {
   },
 };
 
+const GoogleIcon = () => (
+  <svg className="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24">
+    <path
+      fill="#4285F4"
+      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+    />
+    <path
+      fill="#34A853"
+      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+    />
+    <path
+      fill="#EA4335"
+      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+    />
+  </svg>
+);
+
 export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initialMode = 'login', onSuccess }) => {
-  const { login, register } = useAuth();
+  const { login, loginWithGoogle, register } = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -82,12 +103,36 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
       if (err) {
         setError(err);
       } else {
-        setSuccess('Account created! Check your email to confirm, then sign in.');
-        setMode('login');
+        setSuccess('Account created successfully! Logging you in...');
+        setTimeout(() => {
+          onSuccess?.();
+        }, 600);
       }
     }
 
     setLoading(false);
+  };
+
+  const handleGoogleAuth = async () => {
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const { error: err, redirected } = await loginWithGoogle('customer');
+      if (err) {
+        setError(err);
+      } else if (!redirected) {
+        setSuccess('Signed in with Google successfully!');
+        setTimeout(() => {
+          onSuccess?.();
+        }, 600);
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Google authentication failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const accentBtn = {
@@ -109,62 +154,76 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
   }[portal];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-navy-950 via-navy-900 to-navy-950 flex flex-col items-center justify-center p-4">
+      {/* Brand Header */}
+      <div className="mb-8 flex flex-col items-center">
+        <a href="/" className="flex items-center gap-2 mb-2">
+          <DriverBeeLogo height={42} />
+        </a>
+        <p className="text-navy-300 text-xs tracking-wider uppercase font-semibold">
+          Professional On-Demand Drivers
+        </p>
+      </div>
 
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex flex-col items-center gap-2 mb-4">
-            <DriverBeeLogo height={38} />
-            <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-              {config.label}
+      {/* Auth Card */}
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+        
+        {/* Card Header Banner */}
+        <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-2xl ${config.iconBg} text-white flex items-center justify-center shadow-md`}>
+              <Icon className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="font-bold text-navy-950 text-base leading-tight">
+                {config.label}
+              </h1>
+              <p className="text-gray-400 text-xs">
+                {mode === 'login' ? 'Sign in to continue' : 'Create your account'}
+              </p>
             </div>
           </div>
-          <p className="text-gray-500 text-sm">
-            {mode === 'login' ? 'Welcome back! Sign in to continue.' : 'Create your account to get started.'}
-          </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm">
+        {/* Tab switch */}
+        <div className="flex border-b border-gray-100">
+          <button
+            type="button"
+            onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
+            className={`flex-1 py-3 text-xs font-bold transition-colors ${
+              mode === 'login'
+                ? `text-navy-950 border-b-2 border-bee-600 bg-white`
+                : 'text-gray-400 hover:text-gray-600 bg-gray-50/50'
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode('signup'); setError(''); setSuccess(''); }}
+            className={`flex-1 py-3 text-xs font-bold transition-colors ${
+              mode === 'signup'
+                ? `text-navy-950 border-b-2 border-bee-600 bg-white`
+                : 'text-gray-400 hover:text-gray-600 bg-gray-50/50'
+            }`}
+          >
+            Sign Up
+          </button>
+        </div>
 
-          {/* Tab Toggle */}
-          <div className="flex mb-6 bg-gray-100 rounded-2xl p-1">
-            {(['login', 'signup'] as const).map(m => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError(''); setSuccess(''); }}
-                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${
-                  mode === m
-                    ? 'bg-white text-navy-950 shadow-sm'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                {m === 'login' ? 'Sign In' : 'Sign Up'}
-              </button>
-            ))}
-          </div>
-
-          {/* Success message */}
-          {success && (
-            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-2 text-sm text-emerald-700">
-              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>{success}</span>
-            </div>
-          )}
-
-          {/* Error message */}
+        <div className="p-6 sm:p-8">
+          {/* Alerts */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2 text-sm text-red-600">
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-rose-800">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <div>{error}</div>
-                {portal === 'customer' && error.includes('/admin') && (
+                {error.includes('/admin') && (
                   <a
                     href="/admin"
-                    className="inline-flex items-center gap-1 text-bee-700 font-bold hover:underline mt-1.5 text-xs"
+                    className="inline-flex items-center gap-1 text-bee-700 font-bold hover:underline mt-1 text-[11px]"
                   >
-                    <span>Go to Admin Portal (/admin)</span>
+                    <span>Open Admin Portal</span>
                     <ArrowRight className="w-3 h-3" />
                   </a>
                 )}
@@ -172,34 +231,73 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
             </div>
           )}
 
-          {/* Admin Credentials Helper Callout */}
-          {portal === 'admin' && (
-            <div className="mb-5 p-3.5 bg-indigo-50/80 border border-indigo-200/80 rounded-2xl">
+          {success && (
+            <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-800">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>{success}</span>
+            </div>
+          )}
+
+          {/* Customer Credentials Helper Callout */}
+          {portal === 'customer' && mode === 'login' && (
+            <div className="mb-5 p-3.5 bg-bee-50/80 border border-bee-200/80 rounded-2xl">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-indigo-600" />
-                  Admin Access Credentials
+                <span className="text-xs font-bold text-bee-950 flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5 text-bee-600" />
+                  Customer Demo Account
                 </span>
                 <button
                   type="button"
                   onClick={() => {
                     setForm(prev => ({
                       ...prev,
-                      email: 'admin@driverbee.in',
-                      password: 'admin123'
+                      email: 'customer@driverbee.in',
+                      password: 'driverbeepassword'
                     }));
                     setError('');
                   }}
-                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-indigo-200"
+                  className="text-[11px] font-bold text-bee-700 hover:text-bee-900 underline cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-bee-300"
                 >
                   Auto-fill
                 </button>
               </div>
-              <div className="text-xs text-indigo-900 space-y-0.5">
-                <div>Email: <span className="font-mono font-bold text-indigo-950">admin@driverbee.in</span></div>
-                <div>Password: <span className="font-mono font-bold text-indigo-950">admin123</span></div>
+              <div className="text-xs text-bee-900 space-y-0.5">
+                <div>Email: <span className="font-mono font-bold text-bee-950">customer@driverbee.in</span></div>
+                <div>Password: <span className="font-mono font-bold text-bee-950">driverbeepassword</span></div>
               </div>
             </div>
+          )}
+
+          {/* Admin Portal Security Notice */}
+          {portal === 'admin' && (
+            <div className="mb-5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3">
+              <Shield className="w-4 h-4 text-navy-700 flex-shrink-0" />
+              <div className="text-xs text-navy-800 font-medium">
+                DriverBee Operations Security: Access is restricted to authorized personnel only.
+              </div>
+            </div>
+          )}
+
+          {/* Google Auth Button for Customer Portal */}
+          {portal === 'customer' && (
+            <>
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                disabled={loading}
+                className="w-full py-3 rounded-2xl bg-white hover:bg-gray-50 active:scale-[0.99] text-navy-950 font-bold text-xs sm:text-sm border border-gray-200 shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-3 disabled:opacity-60 cursor-pointer mb-3"
+              >
+                <GoogleIcon />
+                <span>{mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}</span>
+              </button>
+
+              <div className="relative flex items-center justify-center mb-4">
+                <div className="border-t border-gray-100 w-full" />
+                <span className="bg-white px-3 text-[10.5px] font-bold uppercase tracking-wider text-gray-400 select-none">
+                  or continue with email
+                </span>
+              </div>
+            </>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">

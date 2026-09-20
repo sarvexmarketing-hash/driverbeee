@@ -163,6 +163,8 @@ export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) =
                 <img
                   src={current.image}
                   alt={current.label}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-navy-950/50 via-transparent to-transparent" />

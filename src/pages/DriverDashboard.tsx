@@ -11,7 +11,29 @@ import {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 function tripLabel(t: string): string {
-  return t === 'city' ? 'Within City' : t === 'outside' ? 'Outstation' : t === 'airport' ? 'Airport Transfer' : 'Intercity';
+  return t === 'city' ? 'Within City' : t === 'outside' ? 'Outstation' : 'Intercity';
+}
+
+function extractDestination(b: LiveBooking): string {
+  if (b.notes) {
+    const destMatch = b.notes.match(/•\s*Destination:\s*([^\n\r]+)/i);
+    if (destMatch && destMatch[1]?.trim()) return destMatch[1].trim();
+    const destAddrMatch = b.notes.match(/•\s*Destination Address:\s*([^\n\r]+)/i);
+    if (destAddrMatch && destAddrMatch[1]?.trim()) return destAddrMatch[1].trim();
+    const slabMatch = b.notes.match(/•\s*Distance Slab:\s*([^\n\r]+)/i);
+    if (slabMatch && slabMatch[1]?.trim()) return slabMatch[1].trim();
+  }
+  if (b.area && b.area.includes('➔')) {
+    const parts = b.area.split('➔');
+    const dest = parts[1]?.trim();
+    if (dest) return dest;
+  }
+  if (b.area && b.area.includes('->')) {
+    const parts = b.area.split('->');
+    const dest = parts[1]?.trim();
+    if (dest) return dest;
+  }
+  return b.area || 'Outstation';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,12 +97,13 @@ const ActiveRideCard: React.FC<{ booking: LiveBooking; onComplete: () => void }>
       {[
         ['Passenger', booking.forWhom],
         ['Trip Type', tripLabel(booking.tripType)],
+        ...(booking.tripType === 'outside' ? [['Destination', extractDestination(booking)]] : []),
         ['Vehicle', booking.carModel],
-        ['Duration', `${booking.duration} Hours`],
+        ['Duration', booking.tripType === 'outside' ? `${booking.duration} Day${booking.duration > 1 ? 's' : ''}` : `${booking.duration} Hours`],
       ].map(([label, val]) => (
-        <div key={label} className="bg-white rounded-xl p-3 border border-emerald-100">
+        <div key={label} className={`bg-white rounded-xl p-3 border border-emerald-100 ${label === 'Destination' ? 'col-span-2 bg-purple-50/70 border-purple-200' : ''}`}>
           <div className="text-gray-400 font-medium mb-0.5">{label}</div>
-          <div className="font-bold text-navy-950">{val}</div>
+          <div className={`font-bold ${label === 'Destination' ? 'text-purple-950 text-sm' : 'text-navy-950'}`}>{val}</div>
           {label === 'Vehicle' && <div className="text-bee-600 text-[10px] font-bold">{booking.carPlate}</div>}
           {label === 'Duration' && <div className="text-bee-600 text-[10px] font-bold">₹{booking.estimatedFare}</div>}
         </div>
@@ -128,14 +151,15 @@ const NewBookingAlert: React.FC<{
       <div className="space-y-1 text-xs bg-gray-50 rounded-2xl p-4 border border-gray-100">
         {[
           ['Trip Type', tripLabel(booking.tripType)],
-          ['Duration', `${booking.duration} Hours`],
+          ...(booking.tripType === 'outside' ? [['Destination', extractDestination(booking)]] : []),
+          ['Duration', booking.tripType === 'outside' ? `${booking.duration} Day${booking.duration > 1 ? 's' : ''}` : `${booking.duration} Hours`],
           ['Schedule', booking.scheduleType === 'now' ? 'Immediate' : `${booking.date} at ${booking.time}`],
           ['Vehicle', `${booking.carModel} (${booking.carPlate})`],
           ['Pickup Area', booking.area],
         ].map(([label, val]) => (
           <div key={label} className="flex justify-between py-1.5 border-b border-gray-100 last:border-0">
             <span className="text-gray-400">{label}</span>
-            <span className="font-bold text-navy-950">{val}</span>
+            <span className={`font-bold ${label === 'Destination' ? 'text-purple-900 font-extrabold' : 'text-navy-950'}`}>{val}</span>
           </div>
         ))}
         <div className="flex justify-between py-1.5 pt-2">
@@ -325,7 +349,10 @@ export const DriverDashboard: React.FC = () => {
                 <div key={trip.id} className="flex items-center justify-between p-3.5 bg-white border border-gray-200 rounded-2xl text-xs shadow-sm">
                   <div>
                     <div className="font-bold text-bee-600">{trip.id}</div>
-                    <div className="text-gray-600 mt-0.5">{tripLabel(trip.tripType)} • {trip.duration}h • {trip.forWhom}</div>
+                    <div className="text-gray-600 mt-0.5">
+                      {tripLabel(trip.tripType)}
+                      {trip.tripType === 'outside' && ` (${extractDestination(trip)})`} • {trip.tripType === 'outside' ? `${trip.duration}d` : `${trip.duration}h`} • {trip.forWhom}
+                    </div>
                     <div className="text-gray-400">{trip.carModel} ({trip.carPlate})</div>
                   </div>
                   <div className="text-right">

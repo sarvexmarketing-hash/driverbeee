@@ -3,10 +3,16 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { BookingProvider } from './context/BookingContext';
 import { AuthProvider } from './context/AuthContext';
+import { PricingProvider } from './context/PricingContext';
 import App from './App';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { AuthPage } from './pages/AuthPage';
 import './index.css';
+
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AuthPage = React.lazy(() => import('./pages/AuthPage').then(m => ({ default: m.AuthPage })));
+const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
+const TermsAndConditions = React.lazy(() => import('./pages/TermsAndConditions').then(m => ({ default: m.TermsAndConditions })));
+const DriverDashboard = React.lazy(() => import('./pages/DriverDashboard').then(m => ({ default: m.DriverDashboard })));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 // ─── Loading Screen ──────────────────────────────────────────────────────────
 const LoadingScreen: React.FC = () => (
@@ -71,14 +77,24 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <AuthProvider>
         <BookingProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<App />} />
-              <Route path="/login" element={<AuthPage portal="customer" initialMode="login" onSuccess={() => (window.location.href = '/')} />} />
-              <Route path="/signup" element={<AuthPage portal="customer" initialMode="signup" onSuccess={() => (window.location.href = '/')} />} />
-              <Route path="/admin" element={<AdminRoute />} />
-            </Routes>
-          </BrowserRouter>
+          <PricingProvider>
+            <BrowserRouter>
+              <React.Suspense fallback={<LoadingScreen />}>
+                <Routes>
+                  <Route path="/" element={<App />} />
+                  <Route path="/login" element={<AuthPage portal="customer" initialMode="login" onSuccess={() => (window.location.href = '/')} />} />
+                  <Route path="/signup" element={<AuthPage portal="customer" initialMode="signup" onSuccess={() => (window.location.href = '/')} />} />
+                  <Route path="/admin" element={<AdminRoute />} />
+                  <Route path="/driver" element={<DriverDashboard />} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<TermsAndConditions />} />
+                  <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </React.Suspense>
+            </BrowserRouter>
+          </PricingProvider>
         </BookingProvider>
       </AuthProvider>
     </ErrorBoundary>

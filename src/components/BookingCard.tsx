@@ -6,6 +6,8 @@ import { ScheduleSelector } from './ScheduleSelector';
 import { TripType, DurationOption, ScheduleType, BookingState } from '../types';
 import { ArrowRight, Clock, MapPin, Sparkles } from 'lucide-react';
 import { isWarangalLocation, getCityDisplayName } from '../utils/location';
+import { usePricing } from '../context/PricingContext';
+import { ALL_OUTSTATION_PRICING, TELANGANA_DISTRICT_PRICING } from '../data/telanganaPricing';
 
 interface BookingCardProps {
   bookingState: BookingState;
@@ -22,6 +24,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   selectedCity = 'Warangal, Telangana',
   onSwitchToWarangal,
 }) => {
+  const { getPriceForKm } = usePricing();
   const isWarangal = isWarangalLocation(selectedCity);
   const cityName = getCityDisplayName(selectedCity);
 
@@ -100,14 +103,18 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           selectedTrip={bookingState.tripType}
           onSelectTrip={(tripType: TripType) => {
             if (tripType === 'outside') {
+              const destId = bookingState.outstationDestinationId || 'hyderabad';
+              const dest = ALL_OUTSTATION_PRICING.find((d) => d.id === destId) || TELANGANA_DISTRICT_PRICING[0];
+              const days = bookingState.outstationDays || 1;
+              const price = getPriceForKm(dest.distanceKm) * days;
               updateBookingState({
                 tripType,
                 outstationState: bookingState.outstationState || 'telangana',
-                outstationDestinationId: bookingState.outstationDestinationId || 'hyderabad',
-                outstationDestinationName: bookingState.outstationDestinationName || 'Hyderabad',
-                outstationDistrict: bookingState.outstationDistrict || 'Hyderabad',
-                outstationDays: bookingState.outstationDays || 1,
-                outstationPrice: bookingState.outstationPrice || 1500,
+                outstationDestinationId: dest.id,
+                outstationDestinationName: dest.destination,
+                outstationDistrict: dest.district,
+                outstationDays: days,
+                outstationPrice: price,
               });
             } else {
               updateBookingState({ tripType });

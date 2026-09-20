@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { BookingState, FamilyMember, formatDisplayDate } from '../types';
-import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle, Car, ShieldCheck } from 'lucide-react';
+import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle, Car, ShieldCheck, User, Mail } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
 import { useBookings } from '../context/BookingContext';
+import { usePricing } from '../context/PricingContext';
 import { isWarangalLocation } from '../utils/location';
+import { ALL_OUTSTATION_PRICING } from '../data/telanganaPricing';
+import { supabase } from '../lib/supabase';
+import { sendBookingConfirmationEmail } from '../services/emailService';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -12,6 +16,7 @@ interface BookingModalProps {
   bookingState: BookingState;
   onConfirmSuccess: (bookingId: string) => void;
   familyMembers: FamilyMember[];
+  onOpenEmailReceipt?: (bookingId: string) => void;
 }
 
 export const BookingModal: React.FC<BookingModalProps> = ({
@@ -19,9 +24,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onClose,
   bookingState,
   onConfirmSuccess,
+  familyMembers,
+  onOpenEmailReceipt,
 }) => {
-  const { profile } = useAuth();
-  const { bookings, addBooking, acceptBooking } = useBookings();
+  const { user, profile } = useAuth();
+  const { bookings, drivers, addBooking, acceptBooking, refreshBookings } = useBookings();
+  const { getCityFare, getOutsideFare, getPriceForKm } = usePricing();
   const [address, setAddress] = useState('Flat 402, Royal Palms, Hanamkonda, Warangal');
   const stateName = bookingState.outstationState === 'andhra' ? 'Andhra Pradesh' : 'Telangana';
   const [deliveryAddress, setDeliveryAddress] = useState(
@@ -29,7 +37,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       ? `${bookingState.outstationDestinationName || 'Destination'}, ${bookingState.outstationDistrict || ''}, ${stateName}`
       : 'Hunter Road / Destination, Warangal'
   );
-  const [phone, setPhone] = useState('9845012345');
+  const [customerName, setCustomerName] = useState(profile?.full_name || '');
+  const [phone, setPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState(user?.email || '');
   const [carType, setCarType] = useState<'hatchback' | 'sedan' | 'suv'>((bookingState.carType as any) || 'sedan');
   const [transmission, setTransmission] = useState<'automatic' | 'manual'>(bookingState.transmission || 'automatic');
   const [carPlate, setCarPlate] = useState('TS-03-MJ-4412');
@@ -39,6 +49,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [hasCelebrated, setHasCelebrated] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Auto-sync customer email when user signs in
+  useEffect(() => {
+    if (user?.email && !customerEmail) {
+      setCustomerEmail(user.email);
+    }
+  }, [user]);
+
+  // Active booking tracked directly or from context
+  const [directBooking, setDirectBooking] = useState<{
+    status: string;
+    assignedDriverId?: string | null;
+    assignedDriverName?: string | null;
+    assignedDriverPhone?: string | null;
+  } | null>(null);
 
   // Synchronize delivery address when outstation destination is selected
   useEffect(() => {
@@ -60,10 +85,97 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     bookingState.transmission,
   ]);
 
-  // Live lookup of this booking from shared context
-  const liveBooking = submittedBookingId ? bookings.find(b => b.id === submittedBookingId) : null;
+  // Live lookup of this booking from shared context or direct active fetch
+  const contextBooking = submittedBookingId ? bookings.find(b => b.id === submittedBookingId) : null;
+  const liveBooking = contextBooking ? {
+    ...contextBooking,
+    status: (directBooking?.status || contextBooking.status) as any,
+    assignedDriverId: directBooking?.assignedDriverId !== undefined ? directBooking.assignedDriverId : contextBooking.assignedDriverId,
+    assignedDriverName: directBooking?.assignedDriverName || contextBooking.assignedDriverName,
+    assignedDriverPhone: directBooking?.assignedDriverPhone || contextBooking.assignedDriverPhone,
+  } : (directBooking ? {
+    id: submittedBookingId!,
+    status: directBooking.status as any,
+    assignedDriverId: directBooking.assignedDriverId || null,
+    assignedDriverName: directBooking.assignedDriverName || null,
+    assignedDriverPhone: directBooking.assignedDriverPhone || null,
+    customerName,
+  } as any : null);
+
   const isConfirmed = !!liveBooking && (liveBooking.status === 'assigned' || liveBooking.status === 'accepted' || liveBooking.status === 'active');
   const isWaitingAdminAcceptance = !!submittedBookingId && !isConfirmed && liveBooking?.status !== 'cancelled';
+
+  // Resolve assigned driver from liveBooking and fleet drivers
+  const assignedDriver = drivers.find(d => d.id === liveBooking?.assignedDriverId || d.name === liveBooking?.assignedDriverName);
+  const driverName = assignedDriver?.name || liveBooking?.assignedDriverName || null;
+  const driverPhone = assignedDriver?.phone || liveBooking?.assignedDriverPhone || (driverName ? '7569402288' : null);
+  const driverPhoto = assignedDriver?.photo || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80';
+  const driverBadge = assignedDriver?.badge || 'Verified Professional Driver';
+  const driverRating = assignedDriver?.rating || 4.9;
+  const driverArea = assignedDriver?.area || 'Warangal Operations';
+
+  // Real-time polling & multi-tab listener while modal is open with an active booking
+  useEffect(() => {
+    if (!isOpen || !submittedBookingId) {
+      setDirectBooking(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    // Fast check directly from Supabase
+    const pollSupabase = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('id, status, assigned_driver_id, assigned_driver_name')
+          .eq('id', submittedBookingId)
+          .single();
+
+        if (data && !error && isMounted) {
+          setDirectBooking({
+            status: data.status,
+            assignedDriverId: data.assigned_driver_id,
+            assignedDriverName: data.assigned_driver_name,
+          });
+          if (data.assigned_driver_name) {
+            refreshBookings();
+          }
+        }
+      } catch (err) {}
+    };
+
+    pollSupabase();
+    const interval = setInterval(pollSupabase, 1200);
+
+    // Cross-tab broadcast channel listener
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('driverbee_booking_channel');
+      bc.onmessage = (e) => {
+        if (e.data?.bookingId === submittedBookingId) {
+          if (e.data.type === 'BOOKING_ASSIGNED') {
+            setDirectBooking({
+              status: e.data.status || 'assigned',
+              assignedDriverId: e.data.driverId,
+              assignedDriverName: e.data.driverName,
+              assignedDriverPhone: e.data.driverPhone,
+            });
+            refreshBookings();
+          } else if (e.data.type === 'STATUS_UPDATED') {
+            setDirectBooking(prev => prev ? { ...prev, status: e.data.status } : { status: e.data.status });
+            refreshBookings();
+          }
+        }
+      };
+    }
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      if (bc) bc.close();
+    };
+  }, [isOpen, submittedBookingId, refreshBookings]);
 
   // Cleanup completed/cancelled bookings from pending state
   useEffect(() => {
@@ -77,6 +189,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setSubmittedBookingId(null);
+      setDirectBooking(null);
       setHasCelebrated(false);
       setIsProcessing(false);
       setFormError(null);
@@ -99,9 +212,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   }, [isConfirmed, hasCelebrated]);
 
   useEffect(() => {
+    if (profile?.full_name && !customerName) {
+      setCustomerName(profile.full_name);
+    }
     if (profile?.phone) {
       const clean = profile.phone.replace('+91', '').trim();
-      if (clean) setPhone(clean);
+      if (clean && !phone) setPhone(clean);
     }
   }, [profile]);
 
@@ -110,24 +226,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const getBaseRate = () => {
     const isOutside = bookingState.tripType === 'outside';
     if (isOutside) {
-      if (bookingState.outstationPrice) {
-        return bookingState.outstationPrice;
+      // Calculate dynamically based on destination distance and days
+      if (bookingState.outstationDestinationId) {
+        const dest = ALL_OUTSTATION_PRICING.find((d) => d.id === bookingState.outstationDestinationId);
+        if (dest) {
+          const days = Math.max(1, bookingState.outstationDays || 1);
+          return getPriceForKm(dest.distanceKm) * days;
+        }
       }
-      switch (bookingState.duration) {
-        case 2: return 400;
-        case 4: return 800;
-        case 6: return 1200;
-        case 8: return 1600;
-        default: return 400;
-      }
+      if (bookingState.outstationPrice) return bookingState.outstationPrice;
+      return getOutsideFare(bookingState.duration);
     }
-    switch (bookingState.duration) {
-      case 2: return 300;
-      case 4: return 600;
-      case 6: return 900;
-      case 8: return 1200;
-      default: return 300;
-    }
+    return getCityFare(bookingState.duration);
   };
 
   const total = getBaseRate();
@@ -143,7 +253,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
 
     if (!isWarangalLocation(cleanAddress)) {
-      setFormError('Currently, driver bookings only happen from Warangal. Driver pickups outside Warangal are coming soon. Please ensure your pickup address is within Warangal, Hanamkonda, or Kazipet.');
+      setFormError('DriverBee currently serves Warangal and areas within 60 km — including Hanamkonda, Kazipet, Narsampet, Parkal, Bhupalpally, Jangaon, and nearby towns. Please enter a pickup address within the service area.');
+      return;
+    }
+
+    const cleanCustomerName = customerName.trim();
+    if (!cleanCustomerName) {
+      setFormError('Your Full Name is compulsory. Please enter your name.');
+      return;
+    }
+    if (cleanCustomerName.length < 2) {
+      setFormError('Please enter a valid full name (at least 2 characters).');
       return;
     }
 
@@ -156,6 +276,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     const cleanDelivery = deliveryAddress.trim();
     if (!cleanDelivery) {
       setFormError('Delivery / drop-off destination address is compulsory.');
+      return;
+    }
+
+    if (customerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim())) {
+      setFormError('Please enter a valid email address (e.g. name@example.com) to receive your booking receipt.');
       return;
     }
 
@@ -204,7 +329,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     try {
       const newId = await addBooking({
         customerId: profile?.id || null,
-        customerName: profile?.full_name || 'Customer',
+        customerName: cleanCustomerName,
         customerPhone: phone.startsWith('+91') ? phone : `+91 ${phone}`,
         tripType: bookingState.tripType,
         duration: bookingState.tripType === 'outside' ? (bookingState.outstationDays || 1) : bookingState.duration,
@@ -222,6 +347,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       setSubmittedBookingId(newId);
       onConfirmSuccess(newId);
+
+      // Dispatch automated booking email notification
+      const resolvedEmail = customerEmail.trim() || user?.email || 'customer@driverbee.in';
+      sendBookingConfirmationEmail({
+        bookingId: newId,
+        customerName: cleanCustomerName,
+        customerEmail: resolvedEmail,
+        customerPhone: phone.startsWith('+91') ? phone : `+91 ${phone}`,
+        tripType: bookingState.tripType,
+        duration: bookingState.tripType === 'outside' ? (bookingState.outstationDays || 1) : bookingState.duration,
+        scheduleType: bookingState.scheduleType,
+        date: bookingState.scheduleType === 'now' ? new Date().toISOString().split('T')[0] : bookingState.date,
+        time: bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : bookingState.time,
+        transmission: transmission,
+        carModel: `${carType.toUpperCase()} • ${carModel || 'Personal Car'}`,
+        carPlate: carPlate || 'TS-03-MJ-4412',
+        pickupAddress: cleanAddress,
+        deliveryAddress: cleanDelivery,
+        estimatedFare: total,
+        forWhom: forWhomStr,
+        assignedDriverName: driverName || undefined,
+        assignedDriverPhone: driverPhone || undefined,
+      }).catch((err) => console.warn('[DriverBee] Email dispatch error:', err));
     } catch (err) {
       console.error('Booking failed', err);
     } finally {
@@ -274,19 +422,92 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
 
             <div>
-              <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full uppercase tracking-wider border border-emerald-200">
-                Booking ID: {submittedBookingId}
+              <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-200">
+                Booking ID: {submittedBookingId} • {driverName ? 'Driver Assigned' : 'Ride Accepted'}
               </span>
               <h4 className="text-2xl font-extrabold text-navy-950 mt-2">
-                Your Driver Is Dispatched!
+                {driverName ? 'Your Driver Is Dispatched!' : 'Ride Accepted by Admin!'}
               </h4>
               <p className="text-xs sm:text-sm text-navy-600 mt-1 max-w-sm mx-auto leading-relaxed">
-                Admin accepted your ride! Driver <strong className="text-navy-950 font-bold">{liveBooking?.assignedDriverName || 'Rajesh Kumar'}</strong> has accepted and is navigating to your address in {bookingState.scheduleType === 'now' ? '14 minutes' : `time for ${bookingState.time}`}.
+                {driverName ? (
+                  <>
+                    Admin accepted your ride! Driver <strong className="text-navy-950 font-bold">{driverName}</strong> has accepted and is navigating to your address in {bookingState.scheduleType === 'now' ? '14 minutes' : `time for ${bookingState.time}`}.
+                  </>
+                ) : (
+                  <>
+                    Admin has accepted your booking! Assigning your verified driver right now...
+                  </>
+                )}
               </p>
             </div>
 
+            {/* Prominent Driver Profile Card (when driver assigned) */}
+            {driverName ? (
+              <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 text-left flex items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative flex-shrink-0">
+                    <img
+                      src={driverPhoto}
+                      alt={driverName}
+                      className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-300"
+                    />
+                    <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-extrabold text-navy-950 text-sm">{driverName}</span>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                        {driverBadge}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-navy-600 mt-0.5 flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-amber-600">★ {driverRating}</span>
+                      <span>•</span>
+                      <span>{driverArea}</span>
+                    </div>
+                    {driverPhone && (
+                      <div className="text-xs font-mono font-bold text-navy-900 mt-1 flex items-center gap-1.5">
+                        <span className="text-gray-500 font-sans font-normal text-[10px]">Driver Contact:</span>
+                        <span>+91 {driverPhone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {driverPhone && (
+                  <a
+                    href={`tel:${driverPhone}`}
+                    className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs flex-shrink-0 hover:scale-105 active:scale-95"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5" />
+                    <span>Call Driver</span>
+                  </a>
+                )}
+              </div>
+            ) : (
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex items-center gap-3 text-left">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 animate-spin-slow">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-emerald-950">Assigning Verified Driver</div>
+                  <div className="text-[11px] text-emerald-700">Driver name and phone number will display here momentarily</div>
+                </div>
+              </div>
+            )}
+
             {/* Trip badge summary */}
             <div className="p-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-xs text-left space-y-2">
+              <div className="flex justify-between">
+                <span className="text-navy-500">Customer</span>
+                <span className="font-bold text-navy-950">{customerName.trim() || liveBooking?.customerName || 'Customer'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-navy-500">Date & Timing</span>
+                <span className="font-semibold text-navy-950 text-right">
+                  {bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : `${formatDisplayDate(bookingState.date)} at ${bookingState.time}`}
+                </span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Pickup Address</span>
                 <span className="font-normal text-navy-600 text-right max-w-[220px] truncate">{address}</span>
@@ -301,10 +522,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-navy-500">Driver Assigned</span>
-                <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  {liveBooking?.assignedDriverName || 'Rajesh Kumar'} (+91 98450 78210)
-                </span>
+                {driverName ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>{driverName}</span>
+                      {driverPhone && <span className="font-mono text-emerald-700 font-semibold">(+91 {driverPhone})</span>}
+                    </span>
+                    {driverPhone && (
+                      <a
+                        href={`tel:${driverPhone}`}
+                        className="p-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                        title="Call Driver"
+                      >
+                        <PhoneCall className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <span className="font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 flex items-center gap-1 animate-pulse">
+                    <Clock className="w-3 h-3 text-amber-600" />
+                    <span>Assigning Driver...</span>
+                  </span>
+                )}
               </div>
               <div className="flex justify-between">
                 <span className="text-navy-500">Vehicle</span>
@@ -314,6 +554,30 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <span className="text-navy-500 font-medium">Total Payable</span>
                 <span className="font-bold text-bee-700">₹{total.toLocaleString('en-IN')} (Pay on Completion)</span>
               </div>
+            </div>
+
+            {/* Email Confirmation Notification Banner */}
+            <div className="p-3 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center justify-between gap-2.5 text-left shadow-2xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-bee-500 text-navy-950 flex items-center justify-center flex-shrink-0 font-bold">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-navy-950 truncate">Email Confirmation Sent</div>
+                  <div className="text-[11px] text-navy-600 truncate">
+                    Sent to <span className="font-semibold text-navy-900">{customerEmail || user?.email || 'your email'}</span>
+                  </div>
+                </div>
+              </div>
+              {onOpenEmailReceipt && submittedBookingId && (
+                <button
+                  type="button"
+                  onClick={() => onOpenEmailReceipt(submittedBookingId)}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-navy-50 text-navy-950 border border-navy-200 text-xs font-bold transition-all shadow-2xs hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer"
+                >
+                  View Email
+                </button>
+              )}
             </div>
 
             <div className="pt-2">
@@ -380,6 +644,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             {/* Trip details summary */}
             <div className="p-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-xs text-left space-y-2">
               <div className="flex justify-between">
+                <span className="text-navy-500">Customer</span>
+                <span className="font-bold text-navy-950">{customerName.trim() || liveBooking?.customerName || 'Customer'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-navy-500">Date & Timing</span>
+                <span className="font-semibold text-navy-950 text-right">
+                  {bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : `${formatDisplayDate(bookingState.date)} at ${bookingState.time}`}
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-navy-500">Pickup Address</span>
                 <span className="font-normal text-navy-600 text-right max-w-[220px] truncate">{address}</span>
               </div>
@@ -409,6 +683,30 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <span className="text-navy-500 font-medium">Estimated Total</span>
                 <span className="font-bold text-bee-700">₹{total.toLocaleString('en-IN')} (Pay on Completion)</span>
               </div>
+            </div>
+
+            {/* Email Confirmation Notification Banner */}
+            <div className="p-3 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center justify-between gap-2.5 text-left shadow-2xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-bee-500 text-navy-950 flex items-center justify-center flex-shrink-0 font-bold">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-navy-950 truncate">Email Confirmation Sent</div>
+                  <div className="text-[11px] text-navy-600 truncate">
+                    Sent to <span className="font-semibold text-navy-900">{customerEmail || user?.email || 'your email'}</span>
+                  </div>
+                </div>
+              </div>
+              {onOpenEmailReceipt && submittedBookingId && (
+                <button
+                  type="button"
+                  onClick={() => onOpenEmailReceipt(submittedBookingId)}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-navy-50 text-navy-950 border border-navy-200 text-xs font-bold transition-all shadow-2xs hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer"
+                >
+                  View Email
+                </button>
+              )}
             </div>
 
             {/* Waiting CTA button - Cannot click again until admin accepts */}
@@ -545,6 +843,41 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 />
               </div>
 
+              {/* Customer Full Name */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-bee-600 flex-shrink-0" />
+                    <span>Your Full Name</span>
+                    <span className="text-red-500 font-bold text-sm leading-none">*</span>
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200/80">
+                    Compulsory
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => {
+                    setCustomerName(e.target.value);
+                    if (formError) setFormError(null);
+                  }}
+                  placeholder="Enter customer full name (e.g. Ramesh Reddy)"
+                  className={`w-full px-4 py-3 text-sm font-semibold bg-white border ${!customerName.trim() ? 'border-amber-300 ring-1 ring-amber-300/30' : 'border-navy-200/90'} rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all`}
+                />
+                {!customerName.trim() ? (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-red-600 font-semibold animate-fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Customer full name is compulsory so operations and driver know who to report to.</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-700 font-semibold">
+                    <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>Customer name verified</span>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 flex items-center gap-1.5">
@@ -584,6 +917,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <span>Valid 10-digit number for driver arrival coordinates</span>
                   </div>
                 )}
+              </div>
+
+              {/* Email Address for Confirmation Receipt */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 flex items-center gap-1.5">
+                    <Mail className="w-4 h-4 text-bee-600 flex-shrink-0" />
+                    <span>Email Address (for Booking Receipt)</span>
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-bee-50 text-bee-800 border border-bee-200">
+                    Auto-Confirmation
+                  </span>
+                </div>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="e.g. yourname@gmail.com"
+                  className="w-full px-4 py-3 text-sm font-semibold bg-white border border-navy-200/90 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all"
+                />
+                <div className="flex items-center gap-1.5 mt-1 text-[11px] text-navy-500">
+                  <span>✉️ Immediate booking confirmation & driver receipt will be sent here</span>
+                </div>
               </div>
             </div>
 
@@ -788,7 +1144,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={isProcessing || !agreedTerms || !address.trim() || phone.replace(/\D/g, '').length !== 10}
+              disabled={isProcessing || !agreedTerms || !address.trim() || !customerName.trim() || phone.replace(/\D/g, '').length !== 10}
               className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200"
             >
               {isProcessing ? (

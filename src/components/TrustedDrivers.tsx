@@ -108,7 +108,9 @@ export const TrustedDrivers: React.FC<TrustedDriversProps> = ({ onSelectDriverTo
                     <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-navy-200">
                       <img 
                         src={driver.photo} 
-                        alt={driver.name} 
+                        alt={`DriverBee verified professional driver ${driver.name}`} 
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                       />
                     </div>

@@ -123,6 +123,10 @@ export const Hero: React.FC<HeroProps> = ({
               <img
                 src="/hero-driver-car.jpg"
                 alt="DriverBee driver beside luxury car with Warangal skyline"
+                width={300}
+                height={170}
+                fetchPriority="high"
+                decoding="async"
                 className="w-full h-[170px] object-cover object-[65%_center] rounded-tl-3xl"
                 style={{ borderRadius: '24px 0 0 0' }}
               />
@@ -195,6 +199,10 @@ export const Hero: React.FC<HeroProps> = ({
                 <img
                   src="/hero-driver-car.jpg"
                   alt="Professional DriverBee driver opening car door for passenger"
+                  width={600}
+                  height={380}
+                  fetchPriority="high"
+                  decoding="async"
                   className="w-full h-[380px] object-cover object-[55%_center] transform transition-transform duration-700 group-hover:scale-[1.02]"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-navy-950/40 via-transparent to-transparent pointer-events-none" />
