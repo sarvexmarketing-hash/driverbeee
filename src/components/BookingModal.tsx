@@ -165,6 +165,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [hasCelebrated, setHasCelebrated] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDropSuggestions, setShowDropSuggestions] = useState(false);
 
@@ -193,6 +194,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   // Synchronize delivery address when outstation destination is selected
   useEffect(() => {
     if (isOpen) {
+      setHasAttemptedSubmit(false);
+      setFormError(null);
       setTransmission(bookingState.transmission || 'automatic');
       if (bookingState.tripType === 'outside') {
         if (bookingState.outstationDestinationName) {
@@ -388,6 +391,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const handleConfirm = async () => {
     if (isProcessing || isWaitingAdminAcceptance) return;
     setFormError(null);
+    setHasAttemptedSubmit(true);
+
+    if (!agreedTerms) {
+      setFormError('Please accept the driver terms and conditions before confirming.');
+      return;
+    }
 
     const cleanAddress = address.trim();
     if (!cleanAddress) {
@@ -972,7 +981,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <label className="text-sm sm:text-base font-bold text-navy-950">
                   Choose Location
                 </label>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200/80">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ${
+                  hasAttemptedSubmit && !address.trim()
+                    ? 'bg-red-50 text-red-600 border border-red-200/80'
+                    : 'bg-navy-50 text-navy-600 border border-navy-200/60'
+                }`}>
                   Pickup * Compulsory
                 </span>
               </div>
@@ -992,7 +1005,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       onFocus={() => setShowPickupSuggestions(true)}
                       placeholder="Enter 4 letters to Search PickUp Location"
                       className={`w-full px-4 py-3 text-sm font-medium bg-white border ${
-                        !address.trim() ? 'border-red-400 ring-2 ring-red-400/20' : 'border-navy-200/90 hover:border-navy-300'
+                        hasAttemptedSubmit && !address.trim()
+                          ? 'border-red-400 ring-2 ring-red-400/20'
+                          : 'border-navy-200/90 hover:border-navy-300'
                       } rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-2xs transition-all`}
                     />
                     {address && (
@@ -1030,12 +1045,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     </>
                   )}
 
-                  {!address.trim() ? (
+                  {hasAttemptedSubmit && !address.trim() ? (
                     <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-red-600 font-semibold animate-fade-in">
                       <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                       <span>Pickup address is compulsory. Please enter your address.</span>
                     </div>
-                  ) : !isWarangalLocation(address) && address.trim().length > 3 ? (
+                  ) : hasAttemptedSubmit && !isWarangalLocation(address) && address.trim().length > 3 ? (
                     <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11.5px] text-amber-900 flex items-start gap-1.5 animate-fade-in">
                       <AlertCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
                       <span>
@@ -1057,7 +1072,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       }}
                       onFocus={() => setShowDropSuggestions(true)}
                       placeholder="Enter 4 letters to Search Drop Location"
-                      className="w-full px-4 py-3 text-sm font-medium bg-white border border-navy-200/90 hover:border-navy-300 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-2xs transition-all"
+                      className={`w-full px-4 py-3 text-sm font-medium bg-white border ${
+                        hasAttemptedSubmit && !deliveryAddress.trim()
+                          ? 'border-red-400 ring-2 ring-red-400/20'
+                          : 'border-navy-200/90 hover:border-navy-300'
+                      } rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-2xs transition-all`}
                     />
                     {deliveryAddress && (
                       <button
@@ -1093,6 +1112,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       </div>
                     </>
                   )}
+
+                  {hasAttemptedSubmit && !deliveryAddress.trim() && (
+                    <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-red-600 font-semibold animate-fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>Drop location is compulsory. Please enter drop destination.</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1104,7 +1130,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <span>Your Full Name</span>
                     <span className="text-red-500 font-bold text-sm leading-none">*</span>
                   </label>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200/80">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ${
+                    hasAttemptedSubmit && !customerName.trim()
+                      ? 'bg-red-50 text-red-600 border border-red-200/80'
+                      : 'bg-navy-50 text-navy-600 border border-navy-200/60'
+                  }`}>
                     Compulsory
                   </span>
                 </div>
@@ -1116,19 +1146,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     if (formError) setFormError(null);
                   }}
                   placeholder="Enter customer full name (e.g. Ramesh Reddy)"
-                  className={`w-full px-4 py-3 text-sm font-semibold bg-white border ${!customerName.trim() ? 'border-amber-300 ring-1 ring-amber-300/30' : 'border-navy-200/90'} rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all`}
+                  className={`w-full px-4 py-3 text-sm font-semibold bg-white border ${
+                    hasAttemptedSubmit && !customerName.trim()
+                      ? 'border-red-400 ring-2 ring-red-400/20'
+                      : 'border-navy-200/90 hover:border-navy-300'
+                  } rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all`}
                 />
-                {!customerName.trim() ? (
+                {hasAttemptedSubmit && !customerName.trim() ? (
                   <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-red-600 font-semibold animate-fade-in">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>Customer full name is compulsory so operations and driver know who to report to.</span>
                   </div>
-                ) : (
+                ) : customerName.trim() ? (
                   <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-700 font-semibold">
                     <Check className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>Customer name verified</span>
                   </div>
-                )}
+                ) : null}
               </div>
 
               <div>
@@ -1138,7 +1172,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <span>Your Phone Number</span>
                     <span className="text-red-500 font-bold text-sm leading-none">*</span>
                   </label>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200/80">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ${
+                    hasAttemptedSubmit && phone.replace(/\D/g, '').length !== 10
+                      ? 'bg-red-50 text-red-600 border border-red-200/80'
+                      : 'bg-navy-50 text-navy-600 border border-navy-200/60'
+                  }`}>
                     Compulsory
                   </span>
                 </div>
@@ -1154,22 +1192,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       if (formError) setFormError(null);
                     }}
                     placeholder="Enter 10-digit mobile number"
-                    className={`flex-1 px-4 py-3 text-sm font-semibold bg-white border ${phone.replace(/\D/g, '').length !== 10 ? 'border-amber-300 ring-1 ring-amber-300/30' : 'border-navy-200/90'} rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all`}
+                    className={`flex-1 px-4 py-3 text-sm font-semibold bg-white border ${
+                      hasAttemptedSubmit && phone.replace(/\D/g, '').length !== 10
+                        ? 'border-red-400 ring-2 ring-red-400/20'
+                        : 'border-navy-200/90 hover:border-navy-300'
+                    } rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all`}
                   />
                 </div>
-                {phone.replace(/\D/g, '').length !== 10 ? (
+                {hasAttemptedSubmit && phone.replace(/\D/g, '').length !== 10 ? (
                   <div className="flex items-center gap-1.5 mt-1 text-[11.5px] text-red-600 font-semibold animate-fade-in">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>
                       10-digit phone number is compulsory ({phone.replace(/\D/g, '').length}/10 digits entered).
                     </span>
                   </div>
-                ) : (
+                ) : phone.replace(/\D/g, '').length === 10 ? (
                   <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-700 font-semibold">
                     <Check className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>Valid 10-digit number for driver arrival coordinates</span>
                   </div>
-                )}
+                ) : null}
               </div>
 
               {/* Email Address for Confirmation Receipt */}
@@ -1397,8 +1439,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={isProcessing || !agreedTerms || !address.trim() || !customerName.trim() || phone.replace(/\D/g, '').length !== 10}
-              className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200"
+              disabled={isProcessing}
+              className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer"
             >
               {isProcessing ? (
                 <>
