@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookingState, FamilyMember, formatDisplayDate } from '../types';
-import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle, Car, ShieldCheck, User, Mail } from 'lucide-react';
+import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle, Car, ShieldCheck, User, Mail, ChevronDown, ChevronUp } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
 import { useBookings } from '../context/BookingContext';
@@ -18,6 +18,88 @@ interface BookingModalProps {
   familyMembers: FamilyMember[];
   onOpenEmailReceipt?: (bookingId: string) => void;
 }
+
+const RadarSearchVisual: React.FC = () => {
+  return (
+    <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-full mx-auto overflow-hidden shadow-2xl border-4 border-neutral-800/90 bg-[#e8e6e1]">
+      {/* Stylized Google Maps Street Network SVG */}
+      <svg className="absolute inset-0 w-full h-full object-cover" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#f0ede6" />
+
+        {/* Green park zones */}
+        <path d="M15 25 Q45 15 65 45 T25 110 Z" fill="#c8e6c9" opacity="0.9" />
+        <path d="M125 130 Q165 115 185 155 T135 190 Z" fill="#c8e6c9" opacity="0.9" />
+        <path d="M135 25 Q175 35 165 75 T115 55 Z" fill="#d1fae5" opacity="0.9" />
+
+        {/* Major Highways */}
+        <path d="M-10 95 L210 105" stroke="#ffffff" strokeWidth="16" strokeLinecap="round" />
+        <path d="M-10 95 L210 105" stroke="#fef08a" strokeWidth="6" strokeLinecap="round" opacity="0.9" />
+
+        <path d="M95 -10 L105 210" stroke="#ffffff" strokeWidth="12" />
+        <path d="M95 -10 L105 210" stroke="#fef08a" strokeWidth="4" opacity="0.8" />
+
+        {/* Secondary Streets */}
+        <path d="M15 45 L185 35" stroke="#ffffff" strokeWidth="6" />
+        <path d="M15 155 L185 165" stroke="#ffffff" strokeWidth="6" />
+        <path d="M45 -10 L50 210" stroke="#ffffff" strokeWidth="6" />
+        <path d="M155 -10 L150 210" stroke="#ffffff" strokeWidth="6" />
+        <path d="M25 115 L175 75" stroke="#ffffff" strokeWidth="5" />
+
+        {/* City Blocks */}
+        <rect x="62" y="52" width="24" height="32" rx="3" fill="#e2ded7" />
+        <rect x="115" y="58" width="26" height="26" rx="3" fill="#e2ded7" />
+        <rect x="62" y="118" width="24" height="28" rx="3" fill="#e2ded7" />
+        <rect x="115" y="120" width="28" height="30" rx="3" fill="#e2ded7" />
+
+        {/* Radar Concentric Rings */}
+        <circle cx="100" cy="100" r="32" fill="none" stroke="#059669" strokeWidth="1" strokeDasharray="3 3" opacity="0.45" />
+        <circle cx="100" cy="100" r="62" fill="none" stroke="#059669" strokeWidth="1" strokeDasharray="4 4" opacity="0.35" />
+        <circle cx="100" cy="100" r="88" fill="none" stroke="#059669" strokeWidth="1" strokeDasharray="4 4" opacity="0.25" />
+      </svg>
+
+      {/* Sonar Ripple Pulse Waves */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute w-32 h-32 rounded-full border-2 border-emerald-500/70 animate-sonar-pulse-1" />
+        <div className="absolute w-32 h-32 rounded-full border-2 border-emerald-500/50 animate-sonar-pulse-2" />
+        <div className="absolute w-32 h-32 rounded-full border-2 border-emerald-500/30 animate-sonar-pulse-3" />
+      </div>
+
+      {/* 360-Degree Rotating Radar Sweep Beam */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div
+          className="w-full h-full rounded-full animate-radar-sweep"
+          style={{
+            background: 'conic-gradient(from 0deg, transparent 0deg, transparent 260deg, rgba(16, 185, 129, 0.12) 290deg, rgba(16, 185, 129, 0.55) 360deg)',
+          }}
+        />
+      </div>
+
+      {/* Pulsing Nearby Driver Blips */}
+      <div className="absolute top-[26%] left-[68%] pointer-events-none flex items-center justify-center">
+        <span className="w-3 h-3 rounded-full bg-amber-400 shadow-sm animate-ping absolute" />
+        <span className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-white shadow-xs relative" />
+      </div>
+      <div className="absolute top-[70%] left-[26%] pointer-events-none flex items-center justify-center">
+        <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm animate-ping absolute" />
+        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white shadow-xs relative" />
+      </div>
+      <div className="absolute top-[76%] left-[72%] pointer-events-none flex items-center justify-center">
+        <span className="w-3 h-3 rounded-full bg-amber-500 shadow-sm animate-ping absolute" />
+        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-white shadow-xs relative" />
+      </div>
+
+      {/* Center User Location Pin */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="relative flex items-center justify-center">
+          <div className="w-9 h-9 rounded-full bg-emerald-500/30 animate-ping absolute" />
+          <div className="w-5 h-5 rounded-full bg-white shadow-lg flex items-center justify-center border-2 border-emerald-600 relative z-10">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const BookingModal: React.FC<BookingModalProps> = ({
   isOpen,
@@ -104,6 +186,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const isConfirmed = !!liveBooking && (liveBooking.status === 'assigned' || liveBooking.status === 'accepted' || liveBooking.status === 'active');
   const isWaitingAdminAcceptance = !!submittedBookingId && !isConfirmed && liveBooking?.status !== 'cancelled';
+
+  const [showTripDetails, setShowTripDetails] = useState(false);
+  const [searchStatusIndex, setSearchStatusIndex] = useState(0);
+
+  const SEARCH_MESSAGES = [
+    'Searching for verified drivers nearby in Warangal...',
+    'Connecting with available on-duty drivers...',
+    'Operations team assigning your personal driver...',
+    'Matching vehicle profile with top-rated drivers...',
+  ];
+
+  useEffect(() => {
+    if (!isWaitingAdminAcceptance) return;
+    const interval = setInterval(() => {
+      setSearchStatusIndex(prev => (prev + 1) % SEARCH_MESSAGES.length);
+    }, 3200);
+    return () => clearInterval(interval);
+  }, [isWaitingAdminAcceptance]);
 
   // Resolve assigned driver from liveBooking and fleet drivers
   const assignedDriver = drivers.find(d => d.id === liveBooking?.assignedDriverId || d.name === liveBooking?.assignedDriverName);
@@ -378,38 +478,38 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto bg-navy-950/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto bg-navy-950/70 backdrop-blur-sm animate-fade-in">
       
       <div 
-        className="relative w-full max-w-[560px] bg-white rounded-3xl border border-navy-200 shadow-modal overflow-hidden my-6 transition-all"
+        className={`relative w-full max-w-[540px] ${
+          isWaitingAdminAcceptance ? 'bg-[#0B0F19] text-white border-neutral-800' : 'bg-white text-navy-950 border-navy-200'
+        } rounded-3xl border shadow-2xl overflow-hidden my-6 transition-all`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-navy-100 flex items-center justify-between bg-[#FAFBFD]">
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-bee-700">
-              {isConfirmed 
-                ? 'Booking Confirmed' 
-                : isWaitingAdminAcceptance 
-                ? 'Awaiting Admin Acceptance' 
-                : 'Review & Confirm Drive'}
-            </span>
-            <h3 className="text-lg sm:text-xl font-extrabold text-navy-950">
-              {isConfirmed 
-                ? 'Your Driver Is Dispatched' 
-                : isWaitingAdminAcceptance 
-                ? 'Booking Request Placed' 
-                : 'DriverBee Driver Booking'}
-            </h3>
-          </div>
+        {/* Modal Header (Only for Form and Confirmed states) */}
+        {!isWaitingAdminAcceptance && (
+          <div className="px-6 py-4 border-b border-navy-100 flex items-center justify-between bg-[#FAFBFD]">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-bee-700">
+                {isConfirmed 
+                  ? 'Booking Confirmed' 
+                  : 'Review & Confirm Drive'}
+              </span>
+              <h3 className="text-lg sm:text-xl font-extrabold text-navy-950">
+                {isConfirmed 
+                  ? 'Your Driver Is Dispatched' 
+                  : 'DriverBee Driver Booking'}
+              </h3>
+            </div>
 
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-navy-100 hover:bg-navy-200 text-navy-700 flex items-center justify-center transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-navy-100 hover:bg-navy-200 text-navy-700 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Modal Body */}
         {isConfirmed ? (
@@ -595,143 +695,183 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           </div>
         ) : isWaitingAdminAcceptance ? (
           /* ─────────────────────────────────────────────────────────────────
-             State 2: Awaiting Admin Acceptance (Completely replaces form)
+             State 2: Searching in Progress (Ride-Hailing Radar Search Visual)
              ───────────────────────────────────────────────────────────────── */
-          <div className="p-6 sm:p-8 text-center space-y-5 max-h-[85vh] overflow-y-auto">
-            {/* Animated Pulsing Status Ring */}
-            <div className="relative w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-300 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
-              <div className="absolute inset-0 rounded-full bg-amber-400/25 animate-ping" />
-              <Clock className="w-8 h-8 stroke-[2.5] text-amber-600 relative z-10" />
-            </div>
-
-            <div>
-              <span className="text-xs font-extrabold text-amber-800 bg-amber-100/90 px-3 py-1 rounded-full uppercase tracking-wider border border-amber-300">
-                Booking ID: {submittedBookingId}
-              </span>
-              <h4 className="text-xl sm:text-2xl font-extrabold text-navy-950 mt-2.5">
-                Waiting for Admin Acceptance...
-              </h4>
-              <p className="text-xs sm:text-sm text-navy-600 mt-1.5 max-w-md mx-auto leading-relaxed">
-                Your ride request has been submitted to DriverBee Dispatch. As soon as the admin accepts and assigns your driver, your booking will show <strong>Confirmed</strong> with driver contact details.
-              </p>
-            </div>
-
-            {/* Live Step Tracker */}
-            <div className="p-3.5 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-left space-y-2.5">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs flex-shrink-0">✓</div>
-                <div className="text-xs">
-                  <div className="font-bold text-navy-950">1. Booking Request Placed</div>
-                  <div className="text-[10px] text-gray-500">Pickup, route, and vehicle details received by dispatch</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs flex-shrink-0 animate-pulse">⏳</div>
-                <div className="text-xs">
-                  <div className="font-bold text-amber-900">2. Awaiting Admin Acceptance</div>
-                  <div className="text-[10px] text-amber-700 font-medium">Operations team is reviewing and assigning an on-duty driver</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 opacity-40">
-                <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-xs flex-shrink-0">3</div>
-                <div className="text-xs">
-                  <div className="font-bold text-gray-700">3. Driver Dispatched</div>
-                  <div className="text-[10px] text-gray-400">Driver navigates to your doorstep</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Trip details summary */}
-            <div className="p-4 bg-[#FAFBFD] rounded-2xl border border-navy-200/80 text-xs text-left space-y-2">
-              <div className="flex justify-between">
-                <span className="text-navy-500">Customer</span>
-                <span className="font-bold text-navy-950">{customerName.trim() || liveBooking?.customerName || 'Customer'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Date & Timing</span>
-                <span className="font-semibold text-navy-950 text-right">
-                  {bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : `${formatDisplayDate(bookingState.date)} at ${bookingState.time}`}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Pickup Address</span>
-                <span className="font-normal text-navy-600 text-right max-w-[220px] truncate">{address}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Delivery Address</span>
-                <span className="font-normal text-navy-600 text-right max-w-[220px] truncate">{deliveryAddress}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Your Phone</span>
-                <span className="font-bold text-navy-950">+91 {phone}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-navy-500">Driver Assignment</span>
-                <span className="font-bold text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-lg border border-amber-200 text-[11px] animate-pulse">
-                  Pending Admin Assignment...
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Vehicle</span>
-                <span className="font-normal text-navy-600 capitalize">{carType} • {carModel} ({carPlate})</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-navy-500">Transmission</span>
-                <span className="font-normal text-navy-600 capitalize">{transmission} Drive</span>
-              </div>
-              <div className="flex justify-between pt-1 border-t border-navy-100">
-                <span className="text-navy-500 font-medium">Estimated Total</span>
-                <span className="font-bold text-bee-700">₹{total.toLocaleString('en-IN')} (Pay on Completion)</span>
-              </div>
-            </div>
-
-            {/* Email Confirmation Notification Banner */}
-            <div className="p-3 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center justify-between gap-2.5 text-left shadow-2xs">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-bee-500 text-navy-950 flex items-center justify-center flex-shrink-0 font-bold">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-navy-950 truncate">Email Confirmation Sent</div>
-                  <div className="text-[11px] text-navy-600 truncate">
-                    Sent to <span className="font-semibold text-navy-900">{customerEmail || user?.email || 'your email'}</span>
-                  </div>
-                </div>
-              </div>
-              {onOpenEmailReceipt && submittedBookingId && (
-                <button
-                  type="button"
-                  onClick={() => onOpenEmailReceipt(submittedBookingId)}
-                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-navy-50 text-navy-950 border border-navy-200 text-xs font-bold transition-all shadow-2xs hover:scale-105 active:scale-95 flex-shrink-0 cursor-pointer"
-                >
-                  View Email
-                </button>
-              )}
-            </div>
-
-            {/* Waiting CTA button - Cannot click again until admin accepts */}
-            <div className="space-y-2 pt-1">
-              <button
-                type="button"
-                disabled={true}
-                className="w-full h-12 sm:h-14 rounded-full font-bold text-sm sm:text-base flex items-center justify-center gap-2 bg-amber-500 text-navy-950 border border-amber-600/30 cursor-not-allowed opacity-95 shadow-none select-none"
-              >
-                <Clock className="w-5 h-5 animate-pulse text-navy-950 stroke-[2.5]" />
-                <span>Waiting Admin Acceptance</span>
-              </button>
-
+          <div className="p-5 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto text-white no-scrollbar">
+            {/* Top Sheet Drag Indicator & Close Button */}
+            <div className="relative flex items-center justify-center pt-1 pb-1">
+              <div className="w-10 h-1.5 bg-neutral-700/80 rounded-full mx-auto" />
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-2 px-4 text-xs font-semibold text-navy-500 hover:text-navy-900 transition-colors"
+                className="absolute right-0 top-0 w-7 h-7 rounded-full bg-neutral-800/80 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Close and track in background"
               >
-                Close & track in background
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Title & Animated Progress Bar (Matching reference screenshot) */}
+            <div className="space-y-2 text-left">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  Searching in progress
+                </h3>
+                <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Live Dispatch
+                </span>
+              </div>
+
+              {/* Animated Sliding Progress Bar */}
+              <div className="w-full h-3 bg-neutral-800/90 rounded-full overflow-hidden relative border border-neutral-700/40 shadow-inner">
+                <div className="absolute top-0 bottom-0 bg-gradient-to-r from-blue-500 via-emerald-400 to-amber-400 rounded-full animate-search-progress shadow-sm" />
+              </div>
+            </div>
+
+            {/* Total Fare & Trip Summary Pill (Matching reference screenshot) */}
+            <div className="bg-neutral-900/95 border border-neutral-800 rounded-2xl p-3.5 space-y-3 shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-neutral-800/90 border border-neutral-700/80 flex items-center justify-center text-xl flex-shrink-0 shadow-inner">
+                    🚗
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-semibold text-neutral-400">Total Fare</div>
+                    <div className="text-lg sm:text-xl font-black text-white">
+                      ₹{total.toFixed(1)}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowTripDetails(prev => !prev)}
+                  className="px-3.5 py-1.5 rounded-full bg-neutral-800 hover:bg-neutral-700/90 text-white text-xs font-bold border border-neutral-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                >
+                  <span>Trip Details</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showTripDetails ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {/* Collapsible Trip Details Drawer */}
+              {showTripDetails && (
+                <div className="pt-3 border-t border-neutral-800/90 space-y-2 text-xs text-neutral-300 animate-fade-in text-left">
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Booking ID</span>
+                    <span className="font-mono font-bold text-amber-400">{submittedBookingId}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Customer</span>
+                    <span className="font-semibold text-white">{customerName.trim() || liveBooking?.customerName || 'Customer'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Ride Timing</span>
+                    <span className="font-medium text-white text-right">
+                      {bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : `${formatDisplayDate(bookingState.date)} at ${bookingState.time}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Pickup Location</span>
+                    <span className="font-medium text-neutral-200 text-right max-w-[220px] truncate">{address}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Destination</span>
+                    <span className="font-medium text-neutral-200 text-right max-w-[220px] truncate">{deliveryAddress}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Phone</span>
+                    <span className="font-medium text-white">+91 {phone}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Vehicle</span>
+                    <span className="font-medium text-neutral-200 capitalize">{carType} • {carModel} ({carPlate})</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500">Transmission</span>
+                    <span className="font-medium text-neutral-200 capitalize">{transmission} Drive</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Dotted Divider */}
+            <div className="border-b border-dashed border-neutral-800/80 my-1" />
+
+            {/* Centerpiece: Radar Map Search Animation */}
+            <div className="py-2">
+              <RadarSearchVisual />
+            </div>
+
+            {/* Dynamic Status Ticker */}
+            <div className="space-y-1.5 text-center">
+              <div className="text-sm font-extrabold text-white flex items-center justify-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{SEARCH_MESSAGES[searchStatusIndex]}</span>
+              </div>
+              <p className="text-[11px] text-neutral-400 max-w-sm mx-auto leading-relaxed">
+                Your ride request is active with DriverBee Warangal Dispatch. As soon as an admin assigns your driver, this screen will immediately display your driver's profile and contact details.
+              </p>
+            </div>
+
+            {/* Live Step Progress Mini-Card */}
+            <div className="p-3 bg-neutral-900/80 rounded-2xl border border-neutral-800/80 text-left space-y-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-[10px] flex-shrink-0">✓</div>
+                <div className="text-xs">
+                  <span className="font-bold text-white">1. Booking Request Placed</span>
+                  <span className="text-[10px] text-neutral-500 ml-1.5">• ID: {submittedBookingId}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-bold text-[10px] flex-shrink-0 animate-pulse">⏳</div>
+                <div className="text-xs font-bold text-amber-400">
+                  2. Awaiting Driver &amp; Admin Acceptance...
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 opacity-40">
+                <div className="w-5 h-5 rounded-full bg-neutral-800 text-neutral-500 border border-neutral-700 flex items-center justify-center font-bold text-[10px] flex-shrink-0">3</div>
+                <div className="text-xs font-medium text-neutral-500">
+                  3. Driver Dispatched to your location
+                </div>
+              </div>
+            </div>
+
+            {/* Email confirmation notice */}
+            {submittedBookingId && (
+              <div className="p-2.5 bg-neutral-900/90 border border-neutral-800 rounded-xl flex items-center justify-between gap-2 text-left">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Mail className="w-3.5 h-3.5 text-bee-400 flex-shrink-0" />
+                  <span className="text-[11px] text-neutral-400 truncate">
+                    Confirmation email sent to <strong className="text-neutral-200">{customerEmail || user?.email || 'your email'}</strong>
+                  </span>
+                </div>
+                {onOpenEmailReceipt && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenEmailReceipt(submittedBookingId)}
+                    className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-700 text-[10.5px] font-bold transition-all flex-shrink-0 cursor-pointer"
+                  >
+                    View Email
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Bottom Actions */}
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full h-11 sm:h-12 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs sm:text-sm border border-neutral-700/80 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99]"
+              >
+                <span>Close & track in background</span>
               </button>
 
-              <div className="pt-2 border-t border-navy-100 flex items-center justify-between text-[11px] text-navy-500">
+              <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between text-[11px] text-neutral-400">
                 <span>Need urgent assistance?</span>
-                <a href="tel:+917569402288" className="font-bold text-navy-950 hover:text-bee-600 flex items-center gap-1">
-                  <PhoneCall className="w-3 h-3 text-emerald-600" />
+                <a href="tel:+917569402288" className="font-bold text-bee-400 hover:text-bee-300 flex items-center gap-1">
+                  <PhoneCall className="w-3 h-3 text-emerald-400" />
                   <span>+91 75694 02288</span>
                 </a>
               </div>
