@@ -1897,7 +1897,7 @@ export const AdminDashboard: React.FC = () => {
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-amber-100 bg-amber-50/60">
-                          {['Booking ID', 'Booked At', 'Customer', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver', 'Status', 'Actions'].map(h => (
+                          {['Booking ID', 'Booked At', 'Customer Name', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver', 'Status', 'Actions'].map(h => (
                             <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-amber-700 whitespace-nowrap">
                               {h}
                             </th>
@@ -2179,7 +2179,7 @@ export const AdminDashboard: React.FC = () => {
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-gray-100 bg-gray-50">
-                          {['Booking ID', 'Booked At', 'Customer', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver', 'Status', 'Actions'].map(h => (
+                          {['Booking ID', 'Booked At', 'Customer Name', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver', 'Status', 'Actions'].map(h => (
                             <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">
                               {h}
                             </th>
