@@ -28,5 +28,6 @@ dist-ssr
 .env.*
 !.env.example
 
-# Temporary folders
+# Temporary folders & local fallback data
 scratch/
+.driver_applications_fallback.json

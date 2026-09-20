@@ -7,17 +7,19 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node tests/whatsapp.test.mjs"
+    "test": "node tests/whatsapp.test.mjs && node tests/driver-onboarding.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
     "@types/react-router-dom": "^5.3.3",
+    "@types/sharp": "^0.31.1",
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",
     "lucide-react": "^0.395.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.4",
+    "sharp": "^0.35.4",
     "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {

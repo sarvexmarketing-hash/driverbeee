@@ -52,6 +52,72 @@ function whatsappDevApiPlugin(): Plugin {
           }
         }
 
+        if (url.startsWith('/api/driver-applications/upload-document')) {
+          try {
+            const { default: handler } = await server.ssrLoadModule('/api/driver-applications/upload-document.ts');
+            let rawBody = '';
+            req.on('data', (chunk: any) => { rawBody += chunk; });
+            req.on('end', async () => {
+              try {
+                (req as any).body = rawBody ? JSON.parse(rawBody) : {};
+              } catch {
+                (req as any).body = rawBody;
+              }
+              await handler(req, res);
+            });
+            return;
+          } catch (err) {
+            console.error('[Vite Dev API] Upload document handler error:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: String(err) }));
+            return;
+          }
+        }
+
+        if (url.startsWith('/api/driver-applications')) {
+          try {
+            const { default: handler } = await server.ssrLoadModule('/api/driver-applications/index.ts');
+            let rawBody = '';
+            req.on('data', (chunk: any) => { rawBody += chunk; });
+            req.on('end', async () => {
+              try {
+                (req as any).body = rawBody ? JSON.parse(rawBody) : {};
+              } catch {
+                (req as any).body = rawBody;
+              }
+              await handler(req, res);
+            });
+            return;
+          } catch (err) {
+            console.error('[Vite Dev API] Driver applications handler error:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: String(err) }));
+            return;
+          }
+        }
+
+        if (url.startsWith('/api/admin/driver-applications')) {
+          try {
+            const { default: handler } = await server.ssrLoadModule('/api/admin/driver-applications.ts');
+            let rawBody = '';
+            req.on('data', (chunk: any) => { rawBody += chunk; });
+            req.on('end', async () => {
+              try {
+                (req as any).body = rawBody ? JSON.parse(rawBody) : {};
+              } catch {
+                (req as any).body = rawBody;
+              }
+              await handler(req, res);
+            });
+            return;
+          } catch (err) {
+            console.error('[Vite Dev API] Admin driver applications handler error:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: String(err) }));
+            return;
+          }
+        }
+
         next();
       });
     },

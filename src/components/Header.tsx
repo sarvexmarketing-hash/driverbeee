@@ -304,18 +304,38 @@ export const Header: React.FC<HeaderProps> = ({
                           setIsProfileMenuOpen(false);
                           onOpenBookings();
                         }}
-                        className="w-full text-left px-3 py-2 text-xs font-semibold text-navy-800 hover:bg-navy-50 rounded-xl flex items-center gap-2 transition-colors"
+                        className="w-full text-left px-3 py-2 text-xs font-semibold text-navy-800 hover:bg-navy-50 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
                       >
                         <CalendarDays className="w-4 h-4 text-bee-600" />
                         <span>My Bookings</span>
                       </button>
+
+                      <a
+                        href="/join-as-driver"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                        className="w-full text-left px-3 py-2 text-xs font-semibold text-navy-800 hover:bg-bee-50 hover:text-bee-700 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Car className="w-4 h-4 text-bee-600" />
+                        <span>Join as Driver</span>
+                      </a>
+
+                      {profile?.role === 'driver' && (
+                        <a
+                          href="/driver"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="w-full text-left px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                          <span>Driver Portal</span>
+                        </a>
+                      )}
 
                       <button
                         onClick={async () => {
                           setIsProfileMenuOpen(false);
                           await logout();
                         }}
-                        className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center gap-2 transition-colors"
+                        className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
                       >
                         <LogOut className="w-4 h-4 text-rose-500" />
                         <span>Sign Out</span>
@@ -327,6 +347,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           ) : (
             <div className="flex items-center gap-2">
+
               {/* Official Helpline */}
               <a
                 href="tel:+917569402288"

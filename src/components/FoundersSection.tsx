@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Quote, 
   ShieldCheck, 
@@ -10,7 +11,8 @@ import {
   Award, 
   CheckCircle2,
   TrendingUp,
-  MapPin
+  MapPin,
+  ArrowRight
 } from 'lucide-react';
 
 interface FoundersSectionProps {
@@ -18,6 +20,8 @@ interface FoundersSectionProps {
 }
 
 export const FoundersSection: React.FC<FoundersSectionProps> = ({ onBookClick }) => {
+  const navigate = useNavigate();
+
   return (
     <section id="founder-section" className="py-16 sm:py-24 bg-gradient-to-b from-white via-[#F7FAFD] to-white border-t border-navy-100/80 relative overflow-hidden">
       {/* Subtle Background Glows */}
@@ -108,6 +112,35 @@ export const FoundersSection: React.FC<FoundersSectionProps> = ({ onBookClick })
                   <span>officialdriverbee@gmail.com</span>
                 </a>
               </div>
+              {/* Driver Partner Callout in Left Column */}
+              <div className="w-full max-w-[360px] mt-6 p-4 rounded-2xl bg-gradient-to-br from-bee-50 via-amber-50/50 to-white border border-bee-200/90 shadow-2xs">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-bee-600 text-white flex items-center justify-center font-bold text-base flex-shrink-0 shadow-xs">
+                    🚕
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h5 className="text-xs font-extrabold text-navy-950">Drive with DriverBee</h5>
+                      <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        Hiring Now
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-navy-600 mt-0.5 leading-snug">
+                      Earn steady daily payouts driving customer cars in Warangal. No car ownership required.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-bee-200/60 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-emerald-700">₹25,000+ / mo</span>
+                  <button
+                    onClick={() => navigate('/join-as-driver')}
+                    className="px-3 py-1.5 rounded-xl bg-bee-600 hover:bg-bee-700 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Join as Driver</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Right Column: Founder's Story, Vision & Pillars */}
@@ -170,20 +203,68 @@ export const FoundersSection: React.FC<FoundersSectionProps> = ({ onBookClick })
                   </p>
                 </div>
 
-                <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-xs hover:border-blue-200 transition-colors">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2.5">
-                    <TrendingUp className="w-4 h-4" />
+                <div className="bg-white p-4 rounded-2xl border border-navy-100 shadow-xs hover:border-blue-200 transition-colors flex flex-col justify-between">
+                  <div>
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2.5">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <h5 className="text-xs font-bold text-navy-950">Driver Dignity & Growth</h5>
+                    <p className="text-[11px] text-navy-600 mt-1 leading-snug">
+                      Fair, instant payouts, professional onboarding, and respect for every driver.
+                    </p>
                   </div>
-                  <h5 className="text-xs font-bold text-navy-950">Driver Dignity & Growth</h5>
-                  <p className="text-[11px] text-navy-600 mt-1 leading-snug">
-                    Fair, instant payouts, professional onboarding, and respect for every driver.
-                  </p>
+                  <div className="pt-2.5 mt-2 border-t border-navy-100/70">
+                    <button
+                      onClick={() => navigate('/join-as-driver')}
+                      className="text-[11px] font-black text-bee-700 hover:text-bee-800 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <span>Join as Driver</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
             </div>
 
           </div>
+
+          {/* Dedicated Driver Recruitment Banner */}
+          <div className="mt-8 p-5 sm:p-6 bg-gradient-to-r from-navy-950 via-[#0E172F] to-navy-950 rounded-2xl sm:rounded-3xl border border-navy-800 text-white flex flex-col md:flex-row items-center justify-between gap-5 shadow-lg">
+            <div className="flex items-center gap-4 text-center md:text-left">
+              <div className="w-12 h-12 rounded-2xl bg-bee-500/20 border border-bee-400/30 flex items-center justify-center text-2xl flex-shrink-0 hidden sm:flex">
+                🚗
+              </div>
+              <div>
+                <div className="flex items-center justify-center md:justify-start gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-bee-400 bg-bee-950/80 px-2.5 py-0.5 rounded-full border border-bee-800">
+                    Driver Onboarding
+                  </span>
+                  <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Now Onboarding in Warangal
+                  </span>
+                </div>
+                <h4 className="text-base sm:text-lg font-black text-white mt-1">
+                  Want to Earn as a Professional Driver? Join DriverBee
+                </h4>
+                <p className="text-xs text-navy-300 mt-0.5 max-w-xl leading-relaxed">
+                  Earn competitive daily income driving verified customer-owned vehicles across Warangal &amp; Telangana. Zero car investment required, doorstep drives, flexible shifts, insurance safety, and mutual dignity.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 flex-shrink-0 w-full md:w-auto justify-center">
+              <button
+                onClick={() => navigate('/join-as-driver')}
+                className="w-full md:w-auto px-6 py-3 rounded-2xl bg-bee-500 hover:bg-bee-400 text-navy-950 font-black text-xs transition-all shadow-md hover:shadow-bee-500/25 inline-flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <span>Join as Driver</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
 
           {/* Bottom Founder Stats Bar */}
           <div className="mt-10 sm:mt-12 pt-8 border-t border-navy-100 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">

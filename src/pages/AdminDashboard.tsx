@@ -9,7 +9,8 @@ import {
   AlertCircle, UserCheck, ArrowRight, Shield,
   Activity, X, PhoneCall, Star, Edit2, Check, Trash2, Calendar, Navigation,
   Tag, IndianRupee, RefreshCw, Save, PlayCircle, FlagTriangleRight,
-  UserPlus, UserX, Search, Filter, Plus, ChevronRight, Sparkles, Copy, History
+  UserPlus, UserX, Search, Filter, Plus, ChevronRight, Sparkles, Copy, History,
+  FileText, ExternalLink, Download, AlertTriangle, CheckCircle, Smartphone
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
@@ -1562,7 +1563,7 @@ export const AdminDashboard: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('driverbee_admin_session') === 'true';
   });
-  const [activeSection, setActiveSection] = useState<'bookings' | 'previous' | 'drivers' | 'revenue' | 'pricing'>('bookings');
+  const [activeSection, setActiveSection] = useState<'bookings' | 'previous' | 'applications' | 'drivers' | 'revenue' | 'pricing'>('bookings');
 
   const handleSignOut = () => {
     localStorage.removeItem('driverbee_admin_session');
@@ -1574,6 +1575,267 @@ export const AdminDashboard: React.FC = () => {
   const [prevSearchQuery, setPrevSearchQuery] = useState('');
   const [showNewAlert, setShowNewAlert] = useState(false);
   const [latestNewBooking, setLatestNewBooking] = useState<LiveBooking | null>(null);
+
+  // Driver Applications & Verification State
+  const [driverApps, setDriverApps] = useState<any[]>([]);
+  const [isLoadingApps, setIsLoadingApps] = useState(false);
+  const [appStatusFilter, setAppStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMISSION_REQUIRED'>('ALL');
+  const [appSearchQuery, setAppSearchQuery] = useState('');
+  const [selectedAppForReview, setSelectedAppForReview] = useState<any | null>(null);
+  const [isViewingDocModalOpen, setIsViewingDocModalOpen] = useState(false);
+  const [viewingDocUrl, setViewingDocUrl] = useState<string | null>(null);
+  const [viewingDocTitle, setViewingDocTitle] = useState('');
+  const [appActionLoading, setAppActionLoading] = useState(false);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+  const [resubmissionNoteInput, setResubmissionNoteInput] = useState('');
+  const [docNotes, setDocNotes] = useState<Record<string, string>>({});
+
+  // Fetch Driver Applications
+  const fetchDriverApps = async () => {
+    setIsLoadingApps(true);
+    try {
+      let apps: any[] = [];
+      const res = await fetch('/api/admin/driver-applications?status=ALL');
+      if (res.ok) {
+        const data = await res.json();
+        apps = data.applications || [];
+      } else {
+        const { data, error } = await supabase
+          .from('driver_applications')
+          .select(`*, documents:driver_documents(*)`)
+          .order('submitted_at', { ascending: false });
+        if (!error && data) {
+          apps = data;
+        }
+      }
+
+      // Merge applications from local storage
+      try {
+        const localApps = JSON.parse(localStorage.getItem('driverbee_driver_applications') || '[]');
+        for (const la of localApps) {
+          if (!apps.some((a: any) => a.id === la.id)) {
+            apps.unshift(la);
+          }
+        }
+      } catch {}
+
+      setDriverApps(apps);
+      if (selectedAppForReview) {
+        const fresh = apps.find((a: any) => a.id === selectedAppForReview.id);
+        if (fresh) setSelectedAppForReview(fresh);
+      }
+    } catch (e) {
+      console.error('Error fetching driver applications:', e);
+    } finally {
+      setIsLoadingApps(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDriverApps();
+    const interval = setInterval(fetchDriverApps, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleViewDocumentSecurely = async (doc: any) => {
+    try {
+      // 1. If signed_url or thumbnail_url is already present
+      if (doc.signed_url || doc.thumbnail_url) {
+        setViewingDocUrl(doc.signed_url || doc.thumbnail_url);
+        setViewingDocTitle(`${doc.document_type.replace(/_/g, ' ')} Document`);
+        setIsViewingDocModalOpen(true);
+        return;
+      }
+
+      // 2. Fetch signed temporary URL from API
+      const res = await fetch(`/api/admin/driver-applications?action=viewDocument&documentId=${doc.id}&adminId=admin`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.signedUrl) {
+          setViewingDocUrl(data.signedUrl);
+          setViewingDocTitle(`${doc.document_type.replace(/_/g, ' ')} Document`);
+          setIsViewingDocModalOpen(true);
+          return;
+        }
+      }
+
+      // 3. Supabase storage fallback
+      if (supabase && doc.storage_path) {
+        const { data } = await supabase.storage.from('driver-documents').createSignedUrl(doc.storage_path, 300);
+        if (data?.signedUrl) {
+          setViewingDocUrl(data.signedUrl);
+          setViewingDocTitle(`${doc.document_type.replace(/_/g, ' ')} Document`);
+          setIsViewingDocModalOpen(true);
+          return;
+        }
+      }
+      alert('Could not generate secure view link. Check permissions or network.');
+    } catch (err: any) {
+      alert(`Error loading document: ${err.message}`);
+    }
+  };
+
+  const handleUpdateDocStatus = async (docId: string, status: string, note?: string) => {
+    setAppActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/driver-applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE_DOCUMENT_STATUS',
+          documentId: docId,
+          status,
+          note: note || docNotes[docId] || '',
+          adminId: 'admin'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to update document status');
+      }
+      showToast(`Document marked as ${status}`);
+      await fetchDriverApps();
+    } catch (err: any) {
+      alert(`Failed to update document: ${err.message}`);
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const handleApproveApp = async (appId: string) => {
+    if (!confirm('Are you sure you want to approve this driver application and activate their driver profile?')) return;
+    setAppActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/driver-applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'APPROVE_APPLICATION',
+          applicationId: appId,
+          adminId: 'admin'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to approve application');
+      }
+
+      // Immediately update current dossier state
+      setSelectedAppForReview((prev: any) => {
+        if (!prev) return null;
+        const updatedDocs = (prev.documents || []).map((d: any) => ({
+          ...d,
+          verification_status: 'APPROVED'
+        }));
+        return {
+          ...prev,
+          status: 'APPROVED',
+          reviewed_at: new Date().toISOString(),
+          documents: updatedDocs
+        };
+      });
+
+      // Update in applications list
+      setDriverApps(prev => prev.map(a => a.id === appId ? {
+        ...a,
+        status: 'APPROVED',
+        reviewed_at: new Date().toISOString(),
+        documents: (a.documents || []).map((d: any) => ({ ...d, verification_status: 'APPROVED' }))
+      } : a));
+
+      // Update in localStorage
+      try {
+        const localApps = JSON.parse(localStorage.getItem('driverbee_driver_applications') || '[]');
+        const updatedLocal = localApps.map((a: any) => a.id === appId ? {
+          ...a,
+          status: 'APPROVED',
+          reviewed_at: new Date().toISOString()
+        } : a);
+        localStorage.setItem('driverbee_driver_applications', JSON.stringify(updatedLocal));
+
+        const myApp = JSON.parse(localStorage.getItem('driverbee_my_application') || 'null');
+        if (myApp && (myApp.id === appId || myApp.phone === selectedAppForReview?.phone)) {
+          myApp.status = 'APPROVED';
+          myApp.reviewed_at = new Date().toISOString();
+          localStorage.setItem('driverbee_my_application', JSON.stringify(myApp));
+        }
+      } catch {}
+
+      // Switch tab filter so approved driver is visible in the Approved list
+      setAppStatusFilter('APPROVED');
+      showToast('Driver Application Approved & Activated!');
+
+      await fetchDriverApps();
+    } catch (err: any) {
+      alert(`Approval error: ${err.message}`);
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const handleRejectApp = async (appId: string) => {
+    if (!rejectionReasonInput.trim()) {
+      alert('Please provide a reason for rejection.');
+      return;
+    }
+    setAppActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/driver-applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'REJECT_APPLICATION',
+          applicationId: appId,
+          reason: rejectionReasonInput.trim(),
+          adminId: 'admin'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to reject application');
+      }
+      showToast('Driver application rejected.');
+      setRejectionReasonInput('');
+      await fetchDriverApps();
+    } catch (err: any) {
+      alert(`Rejection error: ${err.message}`);
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const handleRequestResubmission = async (appId: string) => {
+    if (!resubmissionNoteInput.trim()) {
+      alert('Please specify what documents need to be resubmitted and why.');
+      return;
+    }
+    setAppActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/driver-applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'REQUEST_RESUBMISSION',
+          applicationId: appId,
+          note: resubmissionNoteInput.trim(),
+          adminId: 'admin'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to request resubmission');
+      }
+      showToast('Resubmission requested from applicant.');
+      setResubmissionNoteInput('');
+      await fetchDriverApps();
+    } catch (err: any) {
+      alert(`Resubmission request error: ${err.message}`);
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const pendingAppsCount = driverApps.filter(a => a.status === 'PENDING' || a.status === 'UNDER_REVIEW').length;
 
   // Driver management state
   const [isAddDriverModalOpen, setIsAddDriverModalOpen] = useState(false);
@@ -1663,9 +1925,23 @@ export const AdminDashboard: React.FC = () => {
     );
   });
 
+  const filteredDriverApps = driverApps.filter(app => {
+    if (appStatusFilter !== 'ALL' && app.status !== appStatusFilter) return false;
+    if (appSearchQuery.trim()) {
+      const q = appSearchQuery.toLowerCase();
+      const matchName = app.full_name?.toLowerCase().includes(q);
+      const matchPhone = app.phone?.toLowerCase().includes(q);
+      const matchCity = app.city?.toLowerCase().includes(q);
+      const matchAreas = app.service_areas?.toLowerCase().includes(q);
+      return matchName || matchPhone || matchCity || matchAreas;
+    }
+    return true;
+  });
+
   const navItems = [
     { id: 'bookings', icon: LayoutDashboard, label: "Today's Bookings" },
     { id: 'previous', icon: History, label: 'Previous Bookings' },
+    { id: 'applications', icon: UserCheck, label: 'Driver Applications' },
     { id: 'drivers', icon: Users, label: 'Drivers' },
     { id: 'revenue', icon: TrendingUp, label: 'Revenue' },
     { id: 'pricing', icon: Tag, label: 'Pricing' },
@@ -1716,6 +1992,11 @@ export const AdminDashboard: React.FC = () => {
                     {previousBookingsList.length}
                   </span>
                 )}
+                {item.id === 'applications' && pendingAppsCount > 0 && (
+                  <span className="ml-auto text-[10px] font-extrabold bg-bee-600 text-white px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {pendingAppsCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -1746,6 +2027,7 @@ export const AdminDashboard: React.FC = () => {
             <h1 className="text-lg lg:text-2xl font-extrabold text-navy-950 tracking-tight">
               {activeSection === 'bookings' ? "Today's Bookings"
               : activeSection === 'previous' ? 'Previous Bookings'
+              : activeSection === 'applications' ? 'Driver Applications & Verification'
               : activeSection === 'drivers' ? 'Driver Management'
               : activeSection === 'revenue' ? 'Revenue Analytics'
               : 'Pricing Management'}
@@ -2428,6 +2710,260 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {/* ── DRIVER APPLICATIONS SECTION ── */}
+          {activeSection === 'applications' && (
+            <div className="space-y-6">
+              {/* Top Banner & Stats */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black text-navy-950">Driver Onboarding & Verification</h2>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-bee-50 text-bee-700 border border-bee-200">
+                      {driverApps.length} Total
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Review incoming driver registration applications, inspect and verify Aadhaar, PAN, and Driving Licence documents securely.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={fetchDriverApps}
+                    disabled={isLoadingApps}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 transition-colors shadow-xs disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${isLoadingApps ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Metric Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div
+                  onClick={() => setAppStatusFilter('PENDING')}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                    appStatusFilter === 'PENDING'
+                      ? 'bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/20'
+                      : 'bg-white border-gray-200 hover:border-amber-300'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-amber-700 flex items-center gap-1.5 mb-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    Pending Review
+                  </div>
+                  <div className="text-2xl font-black text-navy-950">
+                    {driverApps.filter(a => a.status === 'PENDING' || a.status === 'UNDER_REVIEW').length}
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setAppStatusFilter('APPROVED')}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                    appStatusFilter === 'APPROVED'
+                      ? 'bg-emerald-500/10 border-emerald-400 ring-2 ring-emerald-400/20'
+                      : 'bg-white border-gray-200 hover:border-emerald-300'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-emerald-700 flex items-center gap-1.5 mb-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Approved Drivers
+                  </div>
+                  <div className="text-2xl font-black text-navy-950">
+                    {driverApps.filter(a => a.status === 'APPROVED').length}
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setAppStatusFilter('RESUBMISSION_REQUIRED')}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                    appStatusFilter === 'RESUBMISSION_REQUIRED'
+                      ? 'bg-purple-500/10 border-purple-400 ring-2 ring-purple-400/20'
+                      : 'bg-white border-gray-200 hover:border-purple-300'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-purple-700 flex items-center gap-1.5 mb-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Resubmission Needed
+                  </div>
+                  <div className="text-2xl font-black text-navy-950">
+                    {driverApps.filter(a => a.status === 'RESUBMISSION_REQUIRED').length}
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setAppStatusFilter('REJECTED')}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                    appStatusFilter === 'REJECTED'
+                      ? 'bg-red-500/10 border-red-400 ring-2 ring-red-400/20'
+                      : 'bg-white border-gray-200 hover:border-red-300'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-red-700 flex items-center gap-1.5 mb-1">
+                    <XCircle className="w-3.5 h-3.5" />
+                    Rejected
+                  </div>
+                  <div className="text-2xl font-black text-navy-950">
+                    {driverApps.filter(a => a.status === 'REJECTED').length}
+                  </div>
+                </div>
+              </div>
+
+              {/* Search & Filter Toolbar */}
+              <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={appSearchQuery}
+                    onChange={(e) => setAppSearchQuery(e.target.value)}
+                    placeholder="Search applicant name, phone, city..."
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-navy-950 focus:outline-none focus:ring-2 focus:ring-bee-500 focus:bg-white transition-all"
+                  />
+                  {appSearchQuery && (
+                    <button
+                      onClick={() => setAppSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-navy-950"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                  {(['ALL', 'PENDING', 'APPROVED', 'RESUBMISSION_REQUIRED', 'REJECTED'] as const).map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setAppStatusFilter(st)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                        appStatusFilter === st
+                          ? 'bg-navy-950 text-white shadow-xs'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {st === 'ALL' ? 'All' : st.replace(/_/g, ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Applications List */}
+              {isLoadingApps && driverApps.length === 0 ? (
+                <div className="bg-white p-12 rounded-3xl border border-gray-200 text-center">
+                  <RefreshCw className="w-8 h-8 text-bee-500 animate-spin mx-auto mb-3" />
+                  <p className="text-sm font-bold text-navy-950">Loading driver applications...</p>
+                </div>
+              ) : filteredDriverApps.length === 0 ? (
+                <div className="bg-white p-12 rounded-3xl border border-gray-200 text-center">
+                  <UserCheck className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-navy-950">No driver applications match criteria</p>
+                  <p className="text-xs text-gray-400 mt-1">Try switching filters or clearing search terms.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {filteredDriverApps.map((app) => {
+                    const docs = app.documents || [];
+                    const aadhaarDoc = docs.find((d: any) => d.document_type === 'AADHAAR');
+                    const panDoc = docs.find((d: any) => d.document_type === 'PAN');
+                    const dlDoc = docs.find((d: any) => d.document_type === 'DRIVING_LICENSE');
+
+                    return (
+                      <div
+                        key={app.id}
+                        className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs hover:border-bee-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-black text-navy-950">{app.full_name}</h3>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                                app.status === 'APPROVED'
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : app.status === 'REJECTED'
+                                  ? 'bg-red-100 text-red-800 border border-red-200'
+                                  : app.status === 'RESUBMISSION_REQUIRED'
+                                  ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                  : 'bg-amber-100 text-amber-800 border border-amber-200'
+                              }`}
+                            >
+                              {app.status.replace(/_/g, ' ')}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                app.availability_status === 'AVAILABLE'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}
+                            >
+                              {app.availability_status}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <PhoneCall className="w-3.5 h-3.5 text-gray-400" />
+                              {app.phone}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                              {app.city}, {app.state}
+                            </span>
+                            <span>•</span>
+                            <span className="font-semibold text-navy-900">
+                              {app.experience_years} yrs exp
+                            </span>
+                            <span>•</span>
+                            <span>
+                              {Array.isArray(app.vehicle_types) ? app.vehicle_types.join(', ') : 'All types'}
+                            </span>
+                          </div>
+
+                          {/* Documents status row */}
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Docs:</span>
+                            {[
+                              { label: 'Aadhaar', doc: aadhaarDoc },
+                              { label: 'PAN', doc: panDoc },
+                              { label: 'DL', doc: dlDoc },
+                            ].map(({ label, doc }) => (
+                              <span
+                                key={label}
+                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                                  !doc
+                                    ? 'bg-gray-100 text-gray-400'
+                                    : doc.verification_status === 'APPROVED'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : doc.verification_status === 'REJECTED'
+                                    ? 'bg-red-100 text-red-800'
+                                    : doc.verification_status === 'RESUBMISSION_REQUIRED'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {label}
+                                {doc?.verification_status === 'APPROVED' ? ' ✓' : ''}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setSelectedAppForReview(app)}
+                            className="w-full md:w-auto px-4 py-2.5 rounded-xl bg-navy-950 hover:bg-bee-600 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2"
+                          >
+                            <UserCheck className="w-4 h-4 text-bee-400" />
+                            <span>Review Application</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── DRIVERS SECTION ── */}
           {activeSection === 'drivers' && (
@@ -2887,6 +3423,394 @@ export const AdminDashboard: React.FC = () => {
           }
         }}
       />
+
+      {/* ── DRIVER APPLICATION REVIEW DRAWER / MODAL ── */}
+      {selectedAppForReview && (
+        <div className="fixed inset-0 z-50 bg-navy-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-fade-in my-auto">
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-navy-950">Driver Application Dossier</h3>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                      selectedAppForReview.status === 'APPROVED'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : selectedAppForReview.status === 'REJECTED'
+                        ? 'bg-red-100 text-red-800 border border-red-200'
+                        : selectedAppForReview.status === 'RESUBMISSION_REQUIRED'
+                        ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    }`}
+                  >
+                    {selectedAppForReview.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Applicant: <strong className="text-navy-950">{selectedAppForReview.full_name}</strong> • Phone: {selectedAppForReview.phone} • ID: {selectedAppForReview.id.substring(0, 8)}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedAppForReview(null)}
+                className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-navy-950 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body - Scrollable */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+              {/* Approval Success Banner if status is APPROVED */}
+              {selectedAppForReview.status === 'APPROVED' && (
+                <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center justify-between gap-3 shadow-2xs animate-fade-in">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-xl flex-shrink-0">
+                      ✅
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-emerald-950">
+                        Application Approved &amp; Driver Profile Active
+                      </div>
+                      <div className="text-xs text-emerald-800 mt-0.5">
+                        This driver has been officially verified and activated in the DriverBee fleet.
+                      </div>
+                    </div>
+                  </div>
+                  <span className="hidden sm:inline-block px-3 py-1 rounded-full text-[10px] font-black bg-emerald-200 text-emerald-900 border border-emerald-300 flex-shrink-0">
+                    VERIFIED DRIVER
+                  </span>
+                </div>
+              )}
+
+              {/* Section 1: Personal & Professional Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2.5">
+                  <h4 className="font-extrabold text-navy-950 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-bee-600" />
+                    Personal & Contact
+                  </h4>
+                  <div className="space-y-1.5 text-gray-600">
+                    <div className="flex justify-between"><span className="text-gray-400">Full Name:</span><span className="font-bold text-navy-950">{selectedAppForReview.full_name}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Phone:</span><span className="font-bold text-navy-950">{selectedAppForReview.phone}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Email:</span><span className="font-bold text-navy-950">{selectedAppForReview.email || 'N/A'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Date of Birth:</span><span className="font-medium text-navy-950">{selectedAppForReview.dob || 'Not provided'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">City / State:</span><span className="font-medium text-navy-950">{selectedAppForReview.city}, {selectedAppForReview.state} {selectedAppForReview.pincode ? `(${selectedAppForReview.pincode})` : ''}</span></div>
+                    {selectedAppForReview.address && (
+                      <div className="flex justify-between gap-4"><span className="text-gray-400 shrink-0">Address:</span><span className="font-medium text-navy-950 text-right">{selectedAppForReview.address}</span></div>
+                    )}
+                    {selectedAppForReview.emergency_contact && (
+                      <div className="flex justify-between"><span className="text-gray-400">Emergency Contact:</span><span className="font-medium text-navy-950">{selectedAppForReview.emergency_contact}</span></div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2.5">
+                  <h4 className="font-extrabold text-navy-950 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <Car className="w-3.5 h-3.5 text-bee-600" />
+                    Driving Profile & Availability
+                  </h4>
+                  <div className="space-y-1.5 text-gray-600">
+                    <div className="flex justify-between"><span className="text-gray-400">Experience:</span><span className="font-bold text-bee-600">{selectedAppForReview.experience_years} Years</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Vehicle Types:</span><span className="font-semibold text-navy-950">{Array.isArray(selectedAppForReview.vehicle_types) ? selectedAppForReview.vehicle_types.join(', ') : 'All types'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Service Areas:</span><span className="font-semibold text-navy-950">{selectedAppForReview.service_areas || 'Warangal & Surroundings'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Languages:</span><span className="font-medium text-navy-950">{Array.isArray(selectedAppForReview.languages) ? selectedAppForReview.languages.join(', ') : 'Telugu, Hindi, English'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Drives Customer Cars:</span><span className="font-bold text-emerald-700">{selectedAppForReview.drive_customer_cars !== false ? 'Yes (Chauffeur)' : 'No'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">Own Vehicle:</span><span className="font-medium text-navy-950">{selectedAppForReview.has_own_vehicle ? 'Yes' : 'No'}</span></div>
+                    <div className="flex justify-between items-center pt-1 border-t border-gray-200">
+                      <span className="text-gray-400">Availability:</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${selectedAppForReview.availability_status === 'AVAILABLE' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                        {selectedAppForReview.availability_status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Verification of Documents */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-black text-navy-950 uppercase tracking-wider text-xs flex items-center gap-1.5">
+                    <Shield className="w-4 h-4 text-bee-600" />
+                    Identity & Licence Verification Documents
+                  </h4>
+                  <span className="text-[11px] text-gray-400 font-medium">Click to view high-res and verify details</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { type: 'AADHAAR', title: 'Aadhaar Card' },
+                    { type: 'PAN', title: 'PAN Card' },
+                    { type: 'DRIVING_LICENSE', title: 'Driving Licence' }
+                  ].map(({ type, title }) => {
+                    const doc = (selectedAppForReview.documents || []).find((d: any) => d.document_type === type);
+
+                    return (
+                      <div key={type} className="p-4 rounded-2xl border border-gray-200 bg-white shadow-2xs space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-navy-950 text-xs">{title}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase ${
+                              !doc
+                                ? 'bg-gray-100 text-gray-400'
+                                : doc.verification_status === 'APPROVED'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : doc.verification_status === 'REJECTED'
+                                ? 'bg-red-100 text-red-800'
+                                : doc.verification_status === 'RESUBMISSION_REQUIRED'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {doc ? doc.verification_status.replace(/_/g, ' ') : 'NOT UPLOADED'}
+                          </span>
+                        </div>
+
+                        {doc ? (
+                          <>
+                            <div className="text-[11px] text-gray-500 space-y-1">
+                              <div>Size: <strong>{Math.round((doc.file_size || 0) / 1024)} KB</strong></div>
+                              <div>Format: <strong>{doc.mime_type || 'image/jpeg'}</strong></div>
+                              {doc.rejection_note && (
+                                <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-medium">
+                                  <strong>Note:</strong> {doc.rejection_note}
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => handleViewDocumentSecurely(doc)}
+                              className="w-full py-2 px-3 rounded-xl bg-gray-50 hover:bg-bee-50 hover:text-bee-700 border border-gray-200 font-bold text-navy-950 text-xs flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-bee-600" />
+                              <span>View Document (Secure)</span>
+                            </button>
+
+                            {/* Document Actions */}
+                            <div className="pt-2 border-t border-gray-100 space-y-2">
+                              {doc.verification_status === 'APPROVED' ? (
+                                <div className="py-2 px-3 rounded-xl bg-emerald-100/90 border border-emerald-300 text-emerald-900 font-extrabold text-[11px] flex items-center justify-center gap-1.5 shadow-2xs">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Document Verified &amp; Approved</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  <input
+                                    type="text"
+                                    placeholder="Note (if requesting re-upload)..."
+                                    value={docNotes[doc.id] || ''}
+                                    onChange={(e) => setDocNotes({ ...docNotes, [doc.id]: e.target.value })}
+                                    className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[10px] text-navy-950 focus:outline-none focus:bg-white"
+                                  />
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    <button
+                                      onClick={() => handleUpdateDocStatus(doc.id, 'APPROVED')}
+                                      disabled={appActionLoading}
+                                      className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => handleUpdateDocStatus(doc.id, 'RESUBMISSION_REQUIRED')}
+                                      disabled={appActionLoading}
+                                      className="py-1.5 px-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                                    >
+                                      <AlertTriangle className="w-3 h-3" />
+                                      Re-upload
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="py-6 text-center text-gray-400 font-medium text-xs">
+                            Document not submitted yet
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 3: Overall Application Decision */}
+              {selectedAppForReview.status === 'APPROVED' ? (
+                <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 border border-emerald-300 space-y-3 text-center animate-fade-in shadow-2xs">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 border-2 border-emerald-400 mx-auto flex items-center justify-center text-2xl shadow-xs">
+                    🎉
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-200/80 px-2.5 py-0.5 rounded-full">
+                      APPLICATION APPROVED
+                    </span>
+                    <h4 className="font-black text-emerald-950 text-base sm:text-lg mt-1">
+                      Driver Verified &amp; Activated in Fleet
+                    </h4>
+                    <p className="text-xs text-emerald-800 max-w-md mx-auto mt-0.5 leading-relaxed">
+                      All identity and licence documents have been approved. This applicant is now a verified DriverBee driver and can accept customer bookings.
+                    </p>
+                  </div>
+                  <div className="pt-2 flex items-center justify-center gap-3">
+                    <button
+                      onClick={() => {
+                        setSelectedAppForReview(null);
+                        setActiveSection('drivers');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>View in Fleet Drivers</span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedAppForReview(null)}
+                      className="px-4 py-2 rounded-xl bg-white border border-gray-300 hover:bg-gray-100 text-navy-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
+                    >
+                      Close Dossier
+                    </button>
+                  </div>
+                </div>
+              ) : selectedAppForReview.status === 'REJECTED' ? (
+                <div className="p-5 rounded-2xl bg-rose-50 border border-rose-300 text-center space-y-2 animate-fade-in">
+                  <div className="w-10 h-10 rounded-full bg-rose-100 border border-rose-300 mx-auto flex items-center justify-center text-xl">
+                    ❌
+                  </div>
+                  <h4 className="font-black text-rose-950 text-sm sm:text-base">
+                    Driver Application Rejected
+                  </h4>
+                  <p className="text-xs text-rose-800 max-w-md mx-auto">
+                    Reason: {selectedAppForReview.rejection_reason || 'Not approved'}
+                  </p>
+                  <button
+                    onClick={() => setSelectedAppForReview(null)}
+                    className="mt-2 px-4 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-900 font-bold text-xs cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 space-y-4">
+                  <h4 className="font-extrabold text-navy-950 uppercase tracking-wider text-xs">
+                    Application Decision & Driver Activation
+                  </h4>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => handleApproveApp(selectedAppForReview.id)}
+                      disabled={appActionLoading}
+                      className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Approve Application & Activate Driver Profile
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-gray-200">
+                    <div className="space-y-1.5">
+                      <input
+                        type="text"
+                        placeholder="Resubmission note for applicant..."
+                        value={resubmissionNoteInput}
+                        onChange={(e) => setResubmissionNoteInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-navy-950 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      />
+                      <button
+                        onClick={() => handleRequestResubmission(selectedAppForReview.id)}
+                        disabled={appActionLoading}
+                        className="w-full py-2 px-3 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Request Resubmission
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <input
+                        type="text"
+                        placeholder="Reason for rejection..."
+                        value={rejectionReasonInput}
+                        onChange={(e) => setRejectionReasonInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-navy-950 focus:outline-none focus:ring-1 focus:ring-red-500"
+                      />
+                      <button
+                        onClick={() => handleRejectApp(selectedAppForReview.id)}
+                        disabled={appActionLoading}
+                        className="w-full py-2 px-3 rounded-xl bg-red-100 hover:bg-red-200 text-red-800 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                        Reject Application
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+              <span className="text-[11px] text-gray-400">DriverBee Secure Verification System</span>
+              <button
+                onClick={() => setSelectedAppForReview(null)}
+                className="px-4 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-navy-950 transition-colors"
+              >
+                Close Dossier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SECURE DOCUMENT LIGHTBOX MODAL ── */}
+      {isViewingDocModalOpen && viewingDocUrl && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative max-w-4xl w-full bg-navy-950 rounded-3xl border border-white/10 overflow-hidden shadow-2xl flex flex-col animate-fade-in">
+            {/* Header */}
+            <div className="p-4 bg-navy-900 border-b border-white/10 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-bee-400" />
+                <span className="text-sm font-black">{viewingDocTitle}</span>
+                <span className="text-[10px] text-gray-400 border-l border-white/20 pl-2 ml-1">
+                  Confidential • Access Audited
+                </span>
+              </div>
+              <button
+                onClick={() => setIsViewingDocModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Image Viewer with Watermark */}
+            <div className="relative p-6 flex items-center justify-center bg-black/40 min-h-[400px] max-h-[78vh] overflow-auto">
+              <img
+                src={viewingDocUrl}
+                alt={viewingDocTitle}
+                className="max-w-full max-h-[72vh] object-contain rounded-xl shadow-2xl mx-auto select-none pointer-events-auto"
+              />
+              {/* Security Watermark */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-15">
+                <span className="text-4xl font-black text-white transform -rotate-25 uppercase tracking-widest text-center">
+                  DRIVERBEE CONFIDENTIAL<br />ADMIN VERIFICATION AUDITED
+                </span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 bg-navy-900 border-t border-white/10 flex items-center justify-between text-xs text-gray-400">
+              <span>Signed URL active for 5 minutes. Audit entry written to database.</span>
+              <button
+                onClick={() => setIsViewingDocModalOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-colors"
+              >
+                Close Viewer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Driver Toast Notification */}
       {driverToast && (

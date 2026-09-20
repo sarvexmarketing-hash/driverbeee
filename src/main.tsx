@@ -12,6 +12,7 @@ const AuthPage = React.lazy(() => import('./pages/AuthPage').then(m => ({ defaul
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
 const TermsAndConditions = React.lazy(() => import('./pages/TermsAndConditions').then(m => ({ default: m.TermsAndConditions })));
 const DriverDashboard = React.lazy(() => import('./pages/DriverDashboard').then(m => ({ default: m.DriverDashboard })));
+const JoinAsDriverPage = React.lazy(() => import('./pages/JoinAsDriverPage').then(m => ({ default: m.JoinAsDriverPage })));
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
 // ─── Loading Screen ──────────────────────────────────────────────────────────
@@ -86,6 +87,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <Route path="/signup" element={<AuthPage portal="customer" initialMode="signup" onSuccess={() => (window.location.href = '/')} />} />
                   <Route path="/admin" element={<AdminRoute />} />
                   <Route path="/driver" element={<DriverDashboard />} />
+                  <Route path="/join-as-driver" element={<JoinAsDriverPage />} />
+                  <Route path="/driver-onboarding" element={<JoinAsDriverPage />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/terms" element={<TermsAndConditions />} />

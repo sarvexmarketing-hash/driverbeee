@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Clock, User } from 'lucide-react';
+import { Home, Clock, User, Car } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface BottomNavProps {
@@ -50,6 +50,16 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           <Clock className={`w-5 h-5 ${activeTab === 'bookings' ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
           <span className="text-[11px] mt-1 font-medium">Bookings</span>
         </button>
+
+        {/* Drive with Us */}
+        <a
+          href="/join-as-driver"
+          className="flex flex-col items-center justify-center py-0.5 px-3 min-w-[60px] text-bee-700 hover:text-bee-800 transition-all"
+          aria-label="Join as Driver"
+        >
+          <Car className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[11px] mt-1 font-bold">Drive</span>
+        </a>
 
         {/* Account / Sign In */}
         <button

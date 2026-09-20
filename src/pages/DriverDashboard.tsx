@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBookings, LiveBooking, DriverProfile } from '../context/BookingContext';
+import { useAuth } from '../context/AuthContext';
 import { DriverBeeLogo } from '../components/DriverBeeLogo';
 import {
   Car, CheckCircle2, XCircle, Bell,
@@ -194,6 +195,30 @@ const NewBookingAlert: React.FC<{
 export const DriverDashboard: React.FC = () => {
   const [activeDriver, setActiveDriver] = useState<DriverProfile | null>(null);
   const { bookings, drivers, updateBookingStatus, toggleDriverDuty, getBookingsForDriver } = useBookings();
+  const { user, profile } = useAuth();
+
+  useEffect(() => {
+    if (user && profile?.role === 'driver' && !activeDriver) {
+      const match = drivers.find(d => d.id === user.id);
+      if (match) {
+        setActiveDriver(match);
+      } else {
+        setActiveDriver({
+          id: user.id,
+          name: profile.full_name || 'Driver',
+          phone: profile.phone || '',
+          photo: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150&auto=format&fit=crop&q=80',
+          badge: 'DriverBee Verified',
+          rating: 5.0,
+          tripsCount: 0,
+          isOnDuty: true,
+          area: 'Warangal',
+          todayEarnings: 0,
+          assignedBookingId: null
+        });
+      }
+    }
+  }, [user, profile, drivers, activeDriver]);
 
   const liveDriver = activeDriver ? drivers.find(d => d.id === activeDriver.id) ?? activeDriver : null;
 
