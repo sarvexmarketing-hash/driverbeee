@@ -95,6 +95,19 @@ function extractDestination(b: LiveBooking): string {
   return b.area || 'Outstation';
 }
 
+function isBookingToday(dateOrIso?: string): boolean {
+  if (!dateOrIso) return false;
+  const now = new Date();
+  const localTodayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const utcTodayStr = now.toISOString().split('T')[0];
+  if (dateOrIso.startsWith(localTodayStr) || dateOrIso.startsWith(utcTodayStr)) return true;
+  const d = new Date(dateOrIso);
+  if (isNaN(d.getTime())) return false;
+  return d.getFullYear() === now.getFullYear() &&
+         d.getMonth() === now.getMonth() &&
+         d.getDate() === now.getDate();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Login Gate (Email & Password)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1592,19 +1605,19 @@ export const AdminDashboard: React.FC = () => {
 
   // Stats - Daily & Overall Metrics
   const today = new Date().toISOString().split('T')[0];
-  const todayBookings = bookings.filter(b => b.createdAt.startsWith(today));
+  const todayBookings = bookings.filter(b => isBookingToday(b.createdAt));
 
   // Daily Trips (trips booked, scheduled, or completed today)
   const dailyTrips = bookings.filter(b =>
-    b.createdAt.startsWith(today) ||
-    b.date === today ||
-    (b.status === 'completed' && b.completedAt?.startsWith(today))
+    isBookingToday(b.createdAt) ||
+    isBookingToday(b.date) ||
+    (b.status === 'completed' && isBookingToday(b.completedAt))
   );
 
   // Daily Completed Trips & Daily Earnings
   const dailyCompletedTrips = bookings.filter(b =>
     b.status === 'completed' &&
-    (b.completedAt?.startsWith(today) || b.createdAt.startsWith(today) || b.date === today)
+    (isBookingToday(b.completedAt) || isBookingToday(b.createdAt) || isBookingToday(b.date))
   );
 
   const dailyEarnings = dailyCompletedTrips.reduce((sum, b) => sum + b.estimatedFare, 0);
@@ -1616,6 +1629,10 @@ export const AdminDashboard: React.FC = () => {
   const driversOnDuty = drivers.filter(d => d.isOnDuty).length;
 
   const filteredBookings = filterStatus === 'all' ? bookings : bookings.filter(b => b.status === filterStatus);
+
+  // Split filtered bookings into today vs previous (yesterday & older)
+  const todayFilteredBookings = filteredBookings.filter(b => isBookingToday(b.createdAt));
+  const previousFilteredBookings = filteredBookings.filter(b => !isBookingToday(b.createdAt));
 
   const navItems = [
     { id: 'bookings', icon: LayoutDashboard, label: 'Bookings' },
@@ -1862,21 +1879,34 @@ export const AdminDashboard: React.FC = () => {
                 ))}
               </div>
 
-              {/* Bookings Table */}
-              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-gray-100 bg-gray-50">
-                        {['Booking ID', 'Booked At', 'Customer', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver', 'Status', 'Actions'].map(h => (
-                          <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {filteredBookings.map(booking => (
+              {/* ── TODAY'S BOOKINGS ─────────────────────────────────────── */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 px-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+                  <span className="text-sm font-extrabold text-navy-950">Today's Bookings</span>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                    {todayFilteredBookings.length} booking{todayFilteredBookings.length !== 1 ? 's' : ''}
+                  </span>
+                  <span className="text-[11px] text-gray-400 font-medium">
+                    {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </span>
+                </div>
+
+                <div className="bg-white border-2 border-amber-200 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-amber-100 bg-amber-50/60">
+                          {['Booking ID', 'Booked At', 'Customer', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver', 'Status', 'Actions'].map(h => (
+                            <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-amber-700 whitespace-nowrap">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-amber-50/50">
+                        {todayFilteredBookings.map(booking => (
+
                         <tr
                           key={booking.id}
                           className="hover:bg-gray-50 transition-colors cursor-pointer"
@@ -2119,19 +2149,160 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        ))}
+                      </tbody>
+                    </table>
 
-                  {filteredBookings.length === 0 && (
-                    <div className="text-center py-12 text-gray-400 text-sm">
-                      No bookings found for this filter.
-                    </div>
-                  )}
+                    {todayFilteredBookings.length === 0 && (
+                      <div className="text-center py-10 text-gray-400 text-sm">
+                        <Calendar className="w-8 h-8 mx-auto mb-2 text-amber-200" />
+                        <p>No bookings today{filterStatus !== 'all' ? ` with status "${filterStatus}"` : ''}.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── PREVIOUS BOOKINGS ─────────────────────────────────────── */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 px-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-gray-400 flex-shrink-0" />
+                  <span className="text-sm font-extrabold text-navy-950">Previous Bookings</span>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                    {previousFilteredBookings.length} booking{previousFilteredBookings.length !== 1 ? 's' : ''}
+                  </span>
+                  <span className="text-[11px] text-gray-400 font-medium">Yesterday &amp; older</span>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-100 bg-gray-50">
+                          {['Booking ID', 'Booked At', 'Customer', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver', 'Status', 'Actions'].map(h => (
+                            <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {previousFilteredBookings.map(booking => (
+                          <tr
+                            key={booking.id}
+                            className="hover:bg-gray-50 transition-colors cursor-pointer opacity-80"
+                            onClick={() => setSelectedBooking(booking)}
+                          >
+                            <td className="px-4 py-3 font-bold text-bee-600 whitespace-nowrap">
+                              <div>{booking.id}</div>
+                              <div className="text-[10px] font-normal text-gray-400">{timeAgo(booking.createdAt)}</div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="font-semibold text-navy-950 flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-bee-600 flex-shrink-0" />
+                                <span>{formatBookingDate(booking.createdAt)}</span>
+                              </div>
+                              <div className="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
+                                <Clock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                <span>{formatBookingTime(booking.createdAt)}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-navy-950 whitespace-nowrap flex items-center gap-1.5">
+                                <span>{booking.customerName}</span>
+                                {booking.customerName.toLowerCase() === 'customer' && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Default</span>
+                                )}
+                              </div>
+                              <a href={`tel:${booking.customerPhone}`} onClick={e => e.stopPropagation()}
+                                className="text-gray-500 hover:text-bee-600 flex items-center gap-1 hover:underline text-[11px] font-medium">
+                                <PhoneCall className="w-2.5 h-2.5 text-bee-600 flex-shrink-0" />
+                                <span>{booking.customerPhone}</span>
+                              </a>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] border uppercase tracking-wide ${
+                                booking.tripType === 'outside'
+                                  ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}>
+                                {tripLabel(booking.tripType)}
+                              </span>
+                              {booking.tripType === 'outside' && (
+                                <div className="text-[11px] font-bold text-purple-950 flex items-center gap-1 mt-1 max-w-[170px] truncate">
+                                  <Navigation className="w-3 h-3 text-purple-600 flex-shrink-0" />
+                                  <span className="truncate">{extractDestination(booking)}</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-gray-700 font-medium whitespace-nowrap">
+                              {booking.tripType === 'outside'
+                                ? `${booking.duration} Day${booking.duration > 1 ? 's' : ''}`
+                                : `${booking.duration}h`}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="font-semibold text-navy-950 flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                                <span>{booking.scheduleType === 'now' ? 'Today' : formatScheduledDate(booking.date)}</span>
+                              </div>
+                              <div className="text-[11px] font-medium text-emerald-700 flex items-center gap-1.5 mt-0.5">
+                                <Clock className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                                <span>{booking.scheduleType === 'now' ? 'Immediate (~30m)' : booking.time}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 min-w-[200px] max-w-[320px]">
+                              {booking.tripType === 'outside' ? (
+                                <div className="space-y-1">
+                                  <div className="text-[10.5px] font-bold text-purple-900 bg-purple-50/90 border border-purple-200/80 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                                    <Navigation className="w-2.5 h-2.5 text-purple-600 flex-shrink-0" />
+                                    <span className="truncate">Destination: {extractDestination(booking)}</span>
+                                  </div>
+                                  <div className="text-gray-500 text-[11px] truncate">{booking.area}</div>
+                                </div>
+                              ) : (
+                                <div className="text-gray-600 text-xs truncate">{booking.area}</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-bee-600 font-bold whitespace-nowrap">₹{booking.estimatedFare}</td>
+                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                              {booking.assignedDriverName ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
+                                  <UserCheck className="w-3 h-3 text-emerald-600" />
+                                  <span>{booking.assignedDriverName}</span>
+                                </span>
+                              ) : (
+                                <span className="text-gray-400 text-xs">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wide ${statusColor[booking.status]}`}>
+                                {booking.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                              <button onClick={() => setSelectedBooking(booking)}
+                                className="p-1.5 rounded-lg bg-gray-50 hover:bg-bee-50 text-gray-400 hover:text-bee-600 transition-colors border border-gray-200"
+                                title="View Details">
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {previousFilteredBookings.length === 0 && (
+                      <div className="text-center py-10 text-gray-400 text-sm">
+                        <Clock className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+                        <p>No previous bookings{filterStatus !== 'all' ? ` with status "${filterStatus}"` : ''}.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           )}
+
 
           {/* ── DRIVERS SECTION ── */}
           {activeSection === 'drivers' && (
@@ -2307,7 +2478,7 @@ export const AdminDashboard: React.FC = () => {
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredDrivers.map(driver => {
-                      const dTrips = bookings.filter(b => b.assignedDriverId === driver.id && (b.createdAt.startsWith(today) || b.date === today || (b.status === 'completed' && b.completedAt?.startsWith(today))));
+                      const dTrips = bookings.filter(b => b.assignedDriverId === driver.id && (isBookingToday(b.createdAt) || isBookingToday(b.date) || (b.status === 'completed' && isBookingToday(b.completedAt))));
                       const dCompleted = dTrips.filter(b => b.status === 'completed');
                       const dEarnings = dCompleted.reduce((sum, b) => sum + b.estimatedFare, 0) || driver.todayEarnings;
                       const activeRide = getDriverActiveBooking(driver, bookings);
