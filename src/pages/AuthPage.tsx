@@ -40,7 +40,13 @@ const portalConfig = {
 };
 
 const GoogleIcon = () => (
-  <svg className="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24">
+  <svg
+    width="18"
+    height="18"
+    className="w-[18px] h-[18px] min-w-[18px] min-h-[18px] flex-shrink-0"
+    style={{ width: 18, height: 18 }}
+    viewBox="0 0 24 24"
+  >
     <path
       fill="#4285F4"
       d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
