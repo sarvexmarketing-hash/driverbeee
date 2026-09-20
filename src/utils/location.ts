@@ -34,7 +34,7 @@ export function isWarangalLocation(locationStr: string): boolean {
   if (!locationStr) return false;
   const q = locationStr.toLowerCase().trim();
 
-  // Core Warangal tri-city & city suburbs
+  // ── CORE TRI-CITY (fast-path) ────────────────────────────────────────────
   if (
     q.includes('warangal')       ||
     q.includes('hanamkonda')     ||
@@ -50,45 +50,80 @@ export function isWarangalLocation(locationStr: string): boolean {
     q.includes('mandi bazar')    ||
     q.includes('kakatiya')       ||
     q.includes('ramnagar')       ||
-    q.includes('hasanparthy')    ||   // NW suburb of Warangal
-    q.includes('dharmasagar')         // NW suburb of Warangal
+    q.includes('hasanparthy')    ||
+    q.includes('dharmasagar')
   ) return true;
 
-  // All towns within 60 km of Warangal, grouped by compass direction
+  // ── WARANGAL URBAN LOCALITIES & SUBURBS ─────────────────────────────────
+  const warangalLocalities = [
+    // Core urban localities
+    'lb nagar', 'ramannapet', 'matwada', 'kothawada', 'kareemabad',
+    'kashibugga', 'shivnagar', 'deshaipet', 'desaipet', 'rangashaipet',
+    'enumamula', 'gorrekunta', 'mamnoor', 'sherpura',
+    'fort warangal', 'khila warangal',
+    'vidyaranyapuri', 'madikonda', 'bheemaram', 'arepalli',
+    'bollikunta', 'ashalapalli', 'inavole', 'elkathurthi',
+    'mogilicherla', 'medaram',
+
+    // ── MAJOR ROADS & STREETS ────────────────────────────────────────────
+    'nh-163', 'nh 163', 'hyderabad warangal highway',
+    'narsampet road', 'station road', 'svn road',
+    'mahatma gandhi road', 'mg road', 'kazipet road',
+    'khammam road', 'rangashaipet road',
+    'warangal outer ring road', 'outer ring road',
+    'hanamkonda karimnagar road', 'hanamkonda hasanparthy road',
+    'hanamkonda mulugu road', 'hanamkonda zaheerabad road',
+    'kazipet bhattupalli', 'warangal railway',
+
+    // ── MARKETS & COMMERCIAL AREAS ───────────────────────────────────────
+    'old beet bazaar', 'beat bazar', 'beet bazaar',
+    'grain market', 'kothawada market', 'deshaipet market',
+    'enumamula market', 'kazipet market',
+
+    // ── FAMOUS LANDMARKS ─────────────────────────────────────────────────
+    'warangal fort', 'thousand pillar', 'bhadrakali',
+    'kakatiya toranam', 'kush mahal', 'kakatiya musical garden',
+    'ekashila', 'anthastula', 'mjp view',
+  ];
+
+  if (warangalLocalities.some(loc => q.includes(loc))) return true;
+
+  // ── TOWNS WITHIN 60 km OF WARANGAL (all compass directions) ─────────────
   const within60km = [
-    // ── NORTH ──────────────────────────────────────────────
-    'dharmaram', 'parkal', 'huzurabad', 'husnabad', 'elkathurthi',
+    // NORTH
+    'dharmaram', 'parkal', 'huzurabad', 'husnabad',
     'kamalapur', 'velair', 'bheemadevarpalle', 'mulkanur',
     'kataram', 'mogullapalle', 'chityal',
 
-    // ── NORTHEAST ──────────────────────────────────────────
+    // NORTHEAST
     'atmakur', 'shayampet', 'damera', 'regonda', 'bhupalpally',
     'venkatapur', 'mulugu', 'eturnagaram', 'mangapet',
 
-    // ── EAST ───────────────────────────────────────────────
+    // EAST
     'geesugonda', 'narsampet', 'duggondi', 'nallabelly',
     'chennaraopet', 'khanapur', 'wardhannapet', 'nekkonda',
     'gudur',
 
-    // ── SOUTHEAST ──────────────────────────────────────────
+    // SOUTHEAST
     'kesamudram', 'dornakal', 'kuravi', 'maripeda', 'mahabubabad',
 
-    // ── SOUTH ──────────────────────────────────────────────
+    // SOUTH
     'raiparthy', 'devaruppula', 'kodakandla', 'palakurthi',
     'zaffergadh', 'thorrur', 'nellikudur',
 
-    // ── SOUTHWEST ──────────────────────────────────────────
+    // SOUTHWEST
     'bachannapet', 'raghunathpalle', 'ghanpur', 'station ghanpur',
     'lingala ghanpur',
 
-    // ── WEST ───────────────────────────────────────────────
+    // WEST
     'jangaon', 'janagaon', 'chilpur',
 
-    // ── NORTHWEST ──────────────────────────────────────────
-    'elkathurthi', 'bheemadevarpalle', 'husnabad',
-    // Specific local landmarks / villages (all directions)
+    // NORTHWEST
+    'bheemadevarpalle', 'husnabad',
+
+    // Villages / mandal landmarks
     'mattewada', 'kothur', 'bayyaram', 'bonakal',
-    'jayashankar', 'venkatapur',
+    'jayashankar',
   ];
 
   return within60km.some(town => q.includes(town));
