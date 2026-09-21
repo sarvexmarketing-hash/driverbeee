@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BookingState, FamilyMember, formatDisplayDate } from '../types';
-import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle, Car, ShieldCheck, User, Mail, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Check, Clock, MapPin, Navigation, PhoneCall, CheckCircle2, AlertCircle, Car, ShieldCheck, User, Mail, ChevronDown, ChevronUp, Crosshair } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
 import { useBookings } from '../context/BookingContext';
 import { usePricing } from '../context/PricingContext';
-import { isWarangalLocation } from '../utils/location';
+import { isWarangalLocation, detectAccurateLocation } from '../utils/location';
 import { ALL_OUTSTATION_PRICING } from '../data/telanganaPricing';
 import { supabase } from '../lib/supabase';
 import { sendBookingConfirmationEmail } from '../services/emailService';
@@ -17,6 +17,8 @@ interface BookingModalProps {
   onConfirmSuccess: (bookingId: string) => void;
   familyMembers: FamilyMember[];
   onOpenEmailReceipt?: (bookingId: string) => void;
+  selectedCity?: string;
+  userCoords?: { lat: number; lon: number } | null;
 }
 
 const RadarSearchVisual: React.FC = () => {
@@ -142,16 +144,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onConfirmSuccess,
   familyMembers,
   onOpenEmailReceipt,
+  selectedCity,
+  userCoords,
 }) => {
   const { user, profile } = useAuth();
   const { bookings, drivers, addBooking, acceptBooking, refreshBookings } = useBookings();
   const { getCityFare, getOutsideFare, getPriceForKm } = usePricing();
-  const [address, setAddress] = useState('Flat 402, Royal Palms, Hanamkonda, Warangal');
+  const [address, setAddress] = useState('');
+  const [isLocatingPickup, setIsLocatingPickup] = useState(false);
   const stateName = bookingState.outstationState === 'andhra' ? 'Andhra Pradesh' : 'Telangana';
   const [deliveryAddress, setDeliveryAddress] = useState(
-    bookingState.tripType === 'outside'
-      ? `${bookingState.outstationDestinationName || 'Destination'}, ${bookingState.outstationDistrict || ''}, ${stateName}`
-      : 'Hunter Road / Destination, Warangal'
+    bookingState.tripType === 'outside' && bookingState.outstationDestinationName
+      ? `${bookingState.outstationDestinationName}, ${bookingState.outstationDistrict || ''}, ${stateName}`
+      : ''
   );
   const [customerName, setCustomerName] = useState(profile?.full_name || '');
   const [phone, setPhone] = useState('');
@@ -175,6 +180,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const matchingDropAreas = deliveryAddress.trim().length >= 2
     ? WARANGAL_SEARCH_AREAS.filter(a => a.toLowerCase().includes(deliveryAddress.toLowerCase().trim()))
     : [];
+
+  const handleGrabGpsPickupLocation = async () => {
+    setIsLocatingPickup(true);
+    try {
+      const result = await detectAccurateLocation();
+      if (result.formattedAddress) {
+        setAddress(result.formattedAddress);
+        if (formError) setFormError(null);
+      }
+    } catch (err: any) {
+      console.warn('Pickup location grab notice:', err);
+    } finally {
+      setIsLocatingPickup(false);
+    }
+  };
 
   // Auto-sync customer email when user signs in
   useEffect(() => {
@@ -206,6 +226,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   }, [
     isOpen,
+    selectedCity,
     bookingState.tripType,
     bookingState.outstationState,
     bookingState.outstationDestinationName,
@@ -582,7 +603,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </span>
               <h3 className="text-lg sm:text-xl font-extrabold text-navy-950">
                 {isConfirmed 
-                  ? 'Your Driver Is Dispatched' 
+                  ? 'Your Driver Is Assigned' 
                   : 'DriverBee Driver Booking'}
               </h3>
             </div>
@@ -611,12 +632,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 Booking ID: {submittedBookingId} • {driverName ? 'Driver Assigned' : 'Ride Accepted'}
               </span>
               <h4 className="text-2xl font-extrabold text-navy-950 mt-2">
-                {driverName ? 'Your Driver Is Dispatched!' : 'Ride Accepted by Admin!'}
+                {driverName ? 'Your Driver Is Assigned!' : 'Ride Accepted by Admin!'}
               </h4>
               <p className="text-xs sm:text-sm text-navy-600 mt-1 max-w-sm mx-auto leading-relaxed">
                 {driverName ? (
                   <>
-                    Admin accepted your ride! Driver <strong className="text-navy-950 font-bold">{driverName}</strong> has accepted and is navigating to your address in {bookingState.scheduleType === 'now' ? '14 minutes' : `time for ${bookingState.time}`}.
+                    Admin accepted your ride! Driver <strong className="text-navy-950 font-bold">{driverName}</strong> has been assigned to your ride.
                   </>
                 ) : (
                   <>
@@ -917,7 +938,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <div className="flex items-center gap-2.5 opacity-40">
                 <div className="w-5 h-5 rounded-full bg-neutral-800 text-neutral-500 border border-neutral-700 flex items-center justify-center font-bold text-[10px] flex-shrink-0">3</div>
                 <div className="text-xs font-medium text-neutral-500">
-                  3. Driver Dispatched to your location
+                  3. Driver Assigned to your location
                 </div>
               </div>
             </div>
@@ -1036,23 +1057,38 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         if (formError) setFormError(null);
                       }}
                       onFocus={() => setShowPickupSuggestions(true)}
-                      placeholder="Enter 4 letters to Search PickUp Location"
-                      className={`w-full px-4 py-3 text-sm font-medium bg-white border ${
+                      placeholder="Enter pickup address"
+                      className={`w-full pl-4 pr-24 py-3 text-sm font-medium bg-white border ${
                         hasAttemptedSubmit && !address.trim()
                           ? 'border-red-400 ring-2 ring-red-400/20'
                           : 'border-navy-200/90 hover:border-navy-300'
                       } rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-2xs transition-all`}
                     />
-                    {address && (
+
+                    {/* Action buttons inside input */}
+                    <div className="absolute right-2.5 flex items-center gap-1.5 z-10">
                       <button
                         type="button"
-                        onClick={() => setAddress('')}
-                        className="absolute right-3 p-1 text-navy-400 hover:text-navy-600 cursor-pointer"
-                        title="Clear pickup address"
+                        onClick={handleGrabGpsPickupLocation}
+                        disabled={isLocatingPickup}
+                        title="Detect current doorstep GPS location"
+                        className="flex items-center gap-1 px-2.5 py-1 bg-bee-50 hover:bg-bee-100 border border-bee-300/80 text-bee-900 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50 shadow-2xs"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <Crosshair className={`w-3.5 h-3.5 text-bee-700 ${isLocatingPickup ? 'animate-spin' : ''}`} />
+                        <span>{isLocatingPickup ? 'Locating...' : 'GPS'}</span>
                       </button>
-                    )}
+
+                      {address && (
+                        <button
+                          type="button"
+                          onClick={() => setAddress('')}
+                          className="p-1 text-navy-400 hover:text-navy-600 cursor-pointer"
+                          title="Clear pickup address"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Suggestions dropdown when typing */}
@@ -1104,7 +1140,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         if (formError) setFormError(null);
                       }}
                       onFocus={() => setShowDropSuggestions(true)}
-                      placeholder="Enter 4 letters to Search Drop Location"
+                      placeholder="Enter dropping(destination)address"
                       className={`w-full px-4 py-3 text-sm font-medium bg-white border ${
                         hasAttemptedSubmit && !deliveryAddress.trim()
                           ? 'border-red-400 ring-2 ring-red-400/20'
@@ -1245,29 +1281,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <span>Valid 10-digit number for driver arrival coordinates</span>
                   </div>
                 ) : null}
-              </div>
-
-              {/* Email Address for Confirmation Receipt */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-900 flex items-center gap-1.5">
-                    <Mail className="w-4 h-4 text-bee-600 flex-shrink-0" />
-                    <span>Email Address (for Booking Receipt)</span>
-                  </label>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-bee-50 text-bee-800 border border-bee-200">
-                    Auto-Confirmation
-                  </span>
-                </div>
-                <input
-                  type="email"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  placeholder="e.g. yourname@gmail.com"
-                  className="w-full px-4 py-3 text-sm font-semibold bg-white border border-navy-200/90 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-bee-500/40 text-navy-950 placeholder:text-navy-400 placeholder:font-normal shadow-xs transition-all"
-                />
-                <div className="flex items-center gap-1.5 mt-1 text-[11px] text-navy-500">
-                  <span>✉️ Immediate booking confirmation & driver receipt will be sent here</span>
-                </div>
               </div>
             </div>
 

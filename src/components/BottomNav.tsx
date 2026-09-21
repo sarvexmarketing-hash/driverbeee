@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Clock, User, Car } from 'lucide-react';
+import { Home, Clock, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface BottomNavProps {
@@ -7,6 +7,7 @@ interface BottomNavProps {
   setActiveTab: (tab: string) => void;
   onOpenBookings: () => void;
   onOpenAuth?: (mode?: 'login' | 'signup') => void;
+  onOpenProfile?: () => void;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -14,6 +15,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   setActiveTab,
   onOpenBookings,
   onOpenAuth,
+  onOpenProfile,
 }) => {
   const { user } = useAuth();
 
@@ -27,7 +29,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             setActiveTab('home');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className={`flex flex-col items-center justify-center py-0.5 px-3 min-w-[60px] transition-all ${
+          className={`flex flex-col items-center justify-center py-0.5 px-3 min-w-[60px] transition-all cursor-pointer ${
             activeTab === 'home' ? 'text-navy-950 font-bold' : 'text-navy-500 hover:text-navy-800'
           }`}
           aria-label="Home"
@@ -42,7 +44,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             setActiveTab('bookings');
             onOpenBookings();
           }}
-          className={`flex flex-col items-center justify-center py-0.5 px-3 min-w-[60px] transition-all ${
+          className={`flex flex-col items-center justify-center py-0.5 px-3 min-w-[60px] transition-all cursor-pointer ${
             activeTab === 'bookings' ? 'text-navy-950 font-bold' : 'text-navy-500 hover:text-navy-800'
           }`}
           aria-label="Bookings"
@@ -51,28 +53,29 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           <span className="text-[11px] mt-1 font-medium">Bookings</span>
         </button>
 
-        {/* Drive with Us */}
-        <a
-          href="/join-as-driver"
-          className="flex flex-col items-center justify-center py-0.5 px-3 min-w-[60px] text-bee-700 hover:text-bee-800 transition-all"
-          aria-label="Join as Driver"
-        >
-          <Car className="w-5 h-5 stroke-[2.2]" />
-          <span className="text-[11px] mt-1 font-bold">Drive</span>
-        </a>
+
 
         {/* Account / Sign In */}
         <button
           onClick={() => {
             setActiveTab('account');
-            onOpenAuth?.('login');
+            if (user) {
+              onOpenProfile?.();
+            } else {
+              onOpenAuth?.('login');
+            }
           }}
-          className={`flex flex-col items-center justify-center py-0.5 px-3 min-w-[60px] transition-all ${
+          className={`flex flex-col items-center justify-center py-0.5 px-3 min-w-[60px] transition-all cursor-pointer ${
             activeTab === 'account' ? 'text-navy-950 font-bold' : 'text-navy-500 hover:text-navy-800'
           }`}
           aria-label="Account"
         >
-          <User className={`w-5 h-5 ${activeTab === 'account' ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
+          <div className="relative">
+            <User className={`w-5 h-5 ${activeTab === 'account' ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
+            {user && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+            )}
+          </div>
           <span className="text-[11px] mt-1 font-medium">{user ? 'Account' : 'Sign In'}</span>
         </button>
 

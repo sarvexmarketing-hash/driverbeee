@@ -11,6 +11,7 @@ interface HeroProps {
   onOpenCitySelector?: () => void;
   onOpenNotifications?: () => void;
   onOpenAuth?: (mode?: 'login' | 'signup') => void;
+  onOpenProfile?: () => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({
@@ -18,7 +19,8 @@ export const Hero: React.FC<HeroProps> = ({
   selectedCity = 'Warangal',
   onOpenCitySelector,
   onOpenNotifications,
-  onOpenAuth
+  onOpenAuth,
+  onOpenProfile,
 }) => {
   const { user, profile } = useAuth();
   const isWarangal = isWarangalLocation(selectedCity);
@@ -79,12 +81,13 @@ export const Hero: React.FC<HeroProps> = ({
 
               {user ? (
                 <button
-                  onClick={() => onOpenAuth?.('login')}
-                  className="flex items-center gap-1 px-2 py-1 bg-white/90 rounded-full shadow-xs border border-white/80 text-[11px] font-bold text-navy-950"
+                  type="button"
+                  onClick={() => onOpenProfile?.()}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-white/95 active:scale-95 rounded-full shadow-xs border border-white/80 text-[11px] font-bold text-navy-950 cursor-pointer transition-transform"
                   title={profile?.full_name || user.email || ''}
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="truncate max-w-[65px]">{profile?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-100" />
+                  <span className="truncate max-w-[70px]">{profile?.full_name?.split(' ')[0] || user.email?.split('@')[0]}</span>
                 </button>
               ) : (
                 <button

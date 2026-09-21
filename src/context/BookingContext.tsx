@@ -223,7 +223,9 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const cached = localStorage.getItem('driverbee_live_bookings');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.filter(b => !isRemovedBooking(b as any) && !b.id.startsWith('DB-'));
+          }
         }
       } catch {}
     }
@@ -371,14 +373,53 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addBooking = useCallback(async (
     data: Omit<LiveBooking, 'id' | 'createdAt' | 'status' | 'assignedDriverId' | 'assignedDriverName'>
   ): Promise<string> => {
-    const id = `DB-${Math.floor(100000 + Math.random() * 900000)}`;
+    // Determine the next sequential booking ID: 1, 2, 3, 4, 5...
+    let maxId = 0;
+
+    // 1. Scan in-memory bookings state
+    setBookings(prev => {
+      for (const b of prev) {
+        if (isRemovedBooking(b as any)) continue;
+        const n = parseInt(b.id.replace(/\D/g, ''), 10);
+        if (!isNaN(n) && n < 100000 && n > maxId) maxId = n;
+      }
+      return prev;
+    });
+
+    // 2. Query Supabase directly for accurate count/max ID across all clients
+    try {
+      const { data: dbRows } = await supabase
+        .from('bookings')
+        .select('id, notes');
+      if (dbRows) {
+        for (const row of dbRows) {
+          if (row.notes?.includes('[DELETED]') || row.notes?.includes('[REMOVED_TEST_DATA]')) continue;
+          const n = parseInt(row.id.replace(/\D/g, ''), 10);
+          if (!isNaN(n) && n < 100000 && n > maxId) maxId = n;
+        }
+      }
+    } catch (e) {
+      console.warn('[DriverBee] Error querying max booking id:', e);
+    }
+
+    // 3. Fallback counter from localStorage
+    try {
+      const storedSeq = parseInt(localStorage.getItem('driverbee_booking_seq') || '0', 10);
+      if (!isNaN(storedSeq) && storedSeq > maxId) maxId = storedSeq;
+    } catch {}
+
+    let nextNum = maxId + 1;
+    let id = String(nextNum);
+    try {
+      localStorage.setItem('driverbee_booking_seq', id);
+    } catch {}
 
     const validDate = data.date && data.date !== 'Today'
       ? data.date
       : new Date().toISOString().split('T')[0];
 
     try {
-      const { data: created, error } = await sbCreateBooking({
+      let insertResult = await sbCreateBooking({
         id,
         customer_id: data.customerId || null,
         customer_name: data.customerName,
@@ -396,10 +437,38 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         estimated_fare: data.estimatedFare,
         notes: data.notes || null,
       });
-      if (error) {
-        console.warn('[DriverBee] Supabase insert warning:', error);
+
+      // If duplicate key error, increment by 1 and retry
+      if (insertResult.error && (insertResult.error.code === '23505' || insertResult.error.message?.includes('duplicate key'))) {
+        nextNum += 1;
+        id = String(nextNum);
+        try {
+          localStorage.setItem('driverbee_booking_seq', id);
+        } catch {}
+        insertResult = await sbCreateBooking({
+          id,
+          customer_id: data.customerId || null,
+          customer_name: data.customerName,
+          customer_phone: data.customerPhone,
+          trip_type: data.tripType,
+          duration: data.duration,
+          schedule_type: data.scheduleType,
+          scheduled_date: validDate,
+          scheduled_time: data.time || null,
+          transmission: data.transmission,
+          car_model: data.carModel,
+          car_plate: data.carPlate,
+          for_whom: data.forWhom,
+          area: data.area,
+          estimated_fare: data.estimatedFare,
+          notes: data.notes || null,
+        });
+      }
+
+      if (insertResult.error) {
+        console.warn('[DriverBee] Supabase insert warning:', insertResult.error);
       } else {
-        console.log('[DriverBee] Booking persisted to Supabase successfully:', id, created);
+        console.log('[DriverBee] Booking persisted to Supabase successfully:', id, insertResult.data);
       }
     } catch (err) {
       console.warn('[DriverBee] Supabase network error during booking:', err);

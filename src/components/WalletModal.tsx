@@ -164,7 +164,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="font-bold text-navy-950">Ride #DB-74812 (Within City)</div>
+                    <div className="font-bold text-navy-950">Ride #3 (Within City)</div>
                     <div className="text-[10px] text-navy-400">Yesterday, 07:30 PM</div>
                   </div>
                 </div>

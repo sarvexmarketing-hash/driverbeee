@@ -10,7 +10,8 @@ import {
   Activity, X, PhoneCall, Star, Edit2, Check, Trash2, Calendar, Navigation,
   Tag, IndianRupee, RefreshCw, Save, PlayCircle, FlagTriangleRight,
   UserPlus, UserX, Search, Filter, Plus, ChevronRight, Sparkles, Copy, History,
-  FileText, ExternalLink, Download, AlertTriangle, CheckCircle, Smartphone
+  FileText, ExternalLink, Download, AlertTriangle, CheckCircle, Smartphone,
+  ChevronDown, ArrowUpRight, CloudSun, MoreVertical, User, ListFilter
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
@@ -102,11 +103,46 @@ function isBookingToday(dateOrIso?: string): boolean {
   const localTodayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const utcTodayStr = now.toISOString().split('T')[0];
   if (dateOrIso.startsWith(localTodayStr) || dateOrIso.startsWith(utcTodayStr)) return true;
+
+  const d = new Date(dateOrIso);
+  if (!isNaN(d.getTime())) {
+    if (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    ) {
+      return true;
+    }
+  }
+
+  // Handle formats like "21 Sept 2026" or "21 Sep 2026"
+  const cleanStr = dateOrIso.replace(/Sept/i, 'Sep');
+  const dClean = new Date(cleanStr);
+  if (!isNaN(dClean.getTime())) {
+    if (
+      dClean.getFullYear() === now.getFullYear() &&
+      dClean.getMonth() === now.getMonth() &&
+      dClean.getDate() === now.getDate()
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isBookingYesterday(dateOrIso?: string): boolean {
+  if (!dateOrIso) return false;
+  const now = new Date();
+  const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const localYestStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+  const utcYestStr = yest.toISOString().split('T')[0];
+  if (dateOrIso.startsWith(localYestStr) || dateOrIso.startsWith(utcYestStr)) return true;
   const d = new Date(dateOrIso);
   if (isNaN(d.getTime())) return false;
-  return d.getFullYear() === now.getFullYear() &&
-         d.getMonth() === now.getMonth() &&
-         d.getDate() === now.getDate();
+  return d.getFullYear() === yest.getFullYear() &&
+         d.getMonth() === yest.getMonth() &&
+         d.getDate() === yest.getDate();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1572,6 +1608,7 @@ export const AdminDashboard: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<LiveBooking | null>(null);
   const [filterStatus, setFilterStatus] = useState<BookingStatus | 'all'>('all');
   const [prevFilterStatus, setPrevFilterStatus] = useState<BookingStatus | 'all'>('all');
+  const [prevTimeframeFilter, setPrevTimeframeFilter] = useState<'all' | 'yesterday' | 'older'>('all');
   const [prevSearchQuery, setPrevSearchQuery] = useState('');
   const [showNewAlert, setShowNewAlert] = useState(false);
   const [latestNewBooking, setLatestNewBooking] = useState<LiveBooking | null>(null);
@@ -1879,24 +1916,51 @@ export const AdminDashboard: React.FC = () => {
 
   if (!isLoggedIn) return <AdminLogin onLogin={() => setIsLoggedIn(true)} />;
 
-  // Stats - Daily & Overall Metrics
+  // Stats - Today, Yesterday & Historical Metrics
   const today = new Date().toISOString().split('T')[0];
-  const todayBookings = bookings.filter(b => isBookingToday(b.createdAt));
 
-  // Daily Trips (trips booked, scheduled, or completed today)
-  const dailyTrips = bookings.filter(b =>
-    isBookingToday(b.createdAt) ||
-    isBookingToday(b.date) ||
-    (b.status === 'completed' && isBookingToday(b.completedAt))
-  );
+  // Strictly Today's Bookings:
+  // 1. Any booking created today
+  // 2. Any booking scheduled for today
+  // 3. Any booking completed today
+  // 4. Any live operational booking (active, assigned, accepted, pending)
+  const isTodayRide = (b: LiveBooking): boolean => {
+    if (isBookingToday(b.createdAt) || isBookingToday(b.date) || isBookingToday(b.completedAt) || b.scheduleType === 'now') {
+      return true;
+    }
+    if (b.status === 'active' || b.status === 'assigned' || b.status === 'accepted' || b.status === 'pending') {
+      return true;
+    }
+    return false;
+  };
 
-  // Daily Completed Trips & Daily Earnings
-  const dailyCompletedTrips = bookings.filter(b =>
+  const todayBookingsList = bookings.filter(isTodayRide);
+  const todayFilteredBookings = filterStatus === 'all'
+    ? todayBookingsList
+    : todayBookingsList.filter(b => b.status === filterStatus);
+
+  // Today's Trips: all bookings belonging to today
+  const todayTrips = todayBookingsList;
+
+  // Today's Completed Trips & Today's Earnings (only trips completed today)
+  const todayCompletedTrips = bookings.filter(b =>
     b.status === 'completed' &&
-    (isBookingToday(b.completedAt) || isBookingToday(b.createdAt) || isBookingToday(b.date))
+    (isBookingToday(b.completedAt) || (!b.completedAt && (isBookingToday(b.createdAt) || isBookingToday(b.date))))
   );
+  const todayEarnings = todayCompletedTrips.reduce((sum, b) => sum + b.estimatedFare, 0);
 
-  const dailyEarnings = dailyCompletedTrips.reduce((sum, b) => sum + b.estimatedFare, 0);
+  // Strictly Yesterday's Bookings & Metrics (stored & tracked separately)
+  const yesterdayBookingsList = bookings.filter(b =>
+    !isTodayRide(b) &&
+    (isBookingYesterday(b.createdAt) || isBookingYesterday(b.date))
+  );
+  const yesterdayCompletedTrips = yesterdayBookingsList.filter(b => b.status === 'completed');
+  const yesterdayEarnings = yesterdayCompletedTrips.reduce((sum, b) => sum + b.estimatedFare, 0);
+
+  // Previous Bookings Archive (yesterday & older, completely separated from Today)
+  const previousBookingsList = bookings.filter(b => !isTodayRide(b));
+  const previousCompletedTrips = previousBookingsList.filter(b => b.status === 'completed');
+  const previousEarnings = previousCompletedTrips.reduce((sum, b) => sum + b.estimatedFare, 0);
 
   const pendingCount = bookings.filter(b => b.status === 'pending').length;
   const activeCount = bookings.filter(b => b.status === 'active' || b.status === 'accepted').length;
@@ -1904,14 +1968,9 @@ export const AdminDashboard: React.FC = () => {
   const totalRevenue = bookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + b.estimatedFare, 0);
   const driversOnDuty = drivers.filter(d => d.isOnDuty).length;
 
-  // Split bookings into Today's Bookings vs Previous Bookings (yesterday & older)
-  const todayBookingsList = bookings.filter(b => isBookingToday(b.createdAt));
-  const todayFilteredBookings = filterStatus === 'all'
-    ? todayBookingsList
-    : todayBookingsList.filter(b => b.status === filterStatus);
-
-  const previousBookingsList = bookings.filter(b => !isBookingToday(b.createdAt));
   const previousFilteredBookings = previousBookingsList.filter(b => {
+    if (prevTimeframeFilter === 'yesterday' && (!isBookingYesterday(b.createdAt) && !isBookingYesterday(b.date))) return false;
+    if (prevTimeframeFilter === 'older' && (isBookingYesterday(b.createdAt) || isBookingYesterday(b.date))) return false;
     const matchesStatus = prevFilterStatus === 'all' || b.status === prevFilterStatus;
     if (!matchesStatus) return false;
     if (!prevSearchQuery.trim()) return true;
@@ -1948,108 +2007,216 @@ export const AdminDashboard: React.FC = () => {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-navy-950 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[#F4F7F5] text-slate-900 flex flex-col lg:flex-row">
 
       {/* ── SIDEBAR ── */}
-      <aside className="hidden lg:flex flex-col w-[240px] xl:w-[260px] bg-white border-r border-gray-200 p-6 h-screen sticky top-0 overflow-y-auto shadow-sm">
+      <aside className="hidden lg:flex flex-col w-[240px] xl:w-[250px] bg-[#061A16] border-r border-[#0d2a23] p-5 h-screen sticky top-0 overflow-y-auto shadow-xl text-white">
         {/* Brand */}
-        <div className="flex items-center gap-3 mb-8">
-          <DriverBeeLogo height={28} />
-          <div className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold border-l border-gray-200 pl-3 ml-1">
-            Admin
-          </div>
-        </div>
-
-        {/* Live indicator */}
-        <div className="mb-6 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-semibold text-emerald-700">Live — Warangal</span>
+        <div className="flex items-center gap-3 mb-6 px-1">
+          <DriverBeeLogo height={28} variant="white" />
         </div>
 
         {/* Nav */}
-        <nav className="space-y-1 flex-1">
-          {navItems.map(item => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  activeSection === item.id
-                    ? 'bg-bee-50 text-bee-700 border border-bee-200'
-                    : 'text-gray-500 hover:text-navy-950 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {item.label}
-                {item.id === 'bookings' && pendingCount > 0 && (
-                  <span className="ml-auto text-[10px] font-extrabold bg-bee-600 text-white px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                    {pendingCount}
-                  </span>
-                )}
-                {item.id === 'previous' && previousBookingsList.length > 0 && (
-                  <span className="ml-auto text-[10px] font-semibold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                    {previousBookingsList.length}
-                  </span>
-                )}
-                {item.id === 'applications' && pendingAppsCount > 0 && (
-                  <span className="ml-auto text-[10px] font-extrabold bg-bee-600 text-white px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                    {pendingAppsCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <nav className="space-y-1.5 flex-1">
+          {/* Today's Bookings - Primary Admin Dashboard Item */}
+          <button
+            onClick={() => {
+              setActiveSection('bookings');
+              setFilterStatus('all');
+            }}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+              activeSection === 'bookings'
+                ? 'bg-[#00875A] text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-[#0c2b23]'
+            }`}
+          >
+            <Calendar className="w-4 h-4 flex-shrink-0" />
+            <span>Today's Bookings</span>
+            {todayBookingsList.length > 0 && (
+              <span className="ml-auto text-[11px] font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full min-w-[20px] text-center shadow-xs">
+                {todayBookingsList.length}
+              </span>
+            )}
+          </button>
+
+          {/* Previous Bookings */}
+          <button
+            onClick={() => setActiveSection('previous')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+              activeSection === 'previous'
+                ? 'bg-[#00875A] text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-[#0c2b23]'
+            }`}
+          >
+            <History className="w-4 h-4 flex-shrink-0" />
+            <span>Previous Bookings</span>
+            {previousBookingsList.length > 0 && (
+              <span className="ml-auto text-[10px] font-bold bg-[#0c2b23] text-slate-400 px-2 py-0.5 rounded-full min-w-[20px] text-center border border-[#144238]">
+                {previousBookingsList.length}
+              </span>
+            )}
+          </button>
+
+          {/* Driver Applications */}
+          <button
+            onClick={() => setActiveSection('applications')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+              activeSection === 'applications'
+                ? 'bg-[#00875A] text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-[#0c2b23]'
+            }`}
+          >
+            <UserCheck className="w-4 h-4 flex-shrink-0" />
+            <span>Driver Applications</span>
+            {pendingAppsCount > 0 && (
+              <span className="ml-auto text-[11px] font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full min-w-[20px] text-center shadow-xs">
+                {pendingAppsCount}
+              </span>
+            )}
+          </button>
+
+          {/* Drivers */}
+          <button
+            onClick={() => setActiveSection('drivers')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+              activeSection === 'drivers'
+                ? 'bg-[#00875A] text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-[#0c2b23]'
+            }`}
+          >
+            <Users className="w-4 h-4 flex-shrink-0" />
+            <span>Drivers</span>
+          </button>
+
+          {/* Revenue */}
+          <button
+            onClick={() => setActiveSection('revenue')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+              activeSection === 'revenue'
+                ? 'bg-[#00875A] text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-[#0c2b23]'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4 flex-shrink-0" />
+            <span>Revenue</span>
+          </button>
+
+          {/* Pricing */}
+          <button
+            onClick={() => setActiveSection('pricing')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+              activeSection === 'pricing'
+                ? 'bg-[#00875A] text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-[#0c2b23]'
+            }`}
+          >
+            <Tag className="w-4 h-4 flex-shrink-0" />
+            <span>Pricing</span>
+          </button>
         </nav>
 
-        {/* Footer links */}
-        <div className="mt-auto pt-6 border-t border-gray-100 space-y-1">
-          <a href="/" className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-gray-400 hover:text-navy-950 hover:bg-gray-50 transition-colors">
-            <Car className="w-3.5 h-3.5" />
-            <span>Customer Site</span>
+        {/* Footer info & links matching photo */}
+        <div className="mt-auto pt-4 space-y-2">
+          {/* Live in Warangal Pill Box */}
+          <div className="px-3 py-2 bg-[#0c2822] border border-[#144238] rounded-xl flex items-center justify-between text-xs text-emerald-300 font-medium">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Live in <strong className="text-white font-bold">Warangal</strong></span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+          </div>
+
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-[#0c2b23] transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Car className="w-3.5 h-3.5 text-slate-400" />
+              <span>Customer Site</span>
+            </div>
+            <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
           </a>
+
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-red-500 hover:bg-red-50 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-red-400 hover:bg-[#0c2b23] transition-colors cursor-pointer"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            Sign Out
+            <LogOut className="w-3.5 h-3.5 text-slate-400" />
+            <span>Sign Out</span>
           </button>
+
+          {/* Weather Widget */}
+          <div className="pt-3 border-t border-[#0d2a23] flex items-center gap-2 text-xs text-slate-400 px-1">
+            <CloudSun className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span>27°C • Mostly cloudy</span>
+          </div>
         </div>
       </aside>
 
       {/* ── MAIN CONTENT ── */}
       <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Top Bar */}
-        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-200 px-5 lg:px-8 py-4 flex items-center justify-between shadow-sm">
+        {/* Top Bar Header matching photo */}
+        <header className="sticky top-0 z-30 bg-[#F4F7F5]/90 backdrop-blur-md px-5 lg:px-8 py-5 flex items-center justify-between">
           <div>
-            <h1 className="text-lg lg:text-2xl font-extrabold text-navy-950 tracking-tight">
-              {activeSection === 'bookings' ? "Today's Bookings"
-              : activeSection === 'previous' ? 'Previous Bookings'
-              : activeSection === 'applications' ? 'Driver Applications & Verification'
-              : activeSection === 'drivers' ? 'Driver Management'
-              : activeSection === 'revenue' ? 'Revenue Analytics'
-              : 'Pricing Management'}
+            <h1 className="text-xl lg:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              <span>Good Morning, DriverBee!</span>
+              <span className="text-2xl">👋</span>
             </h1>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} • Warangal Operations
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Here's your today's booking summary and quick updates.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs text-gray-600">
-              <Activity className="w-3.5 h-3.5 text-emerald-500" />
-              <span>{driversOnDuty} drivers on duty</span>
+            {/* Notification Bell */}
+            <button
+              onClick={() => {
+                if (pendingCount > 0) {
+                  setFilterStatus('pending');
+                }
+              }}
+              title="Notifications"
+              className="relative p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all shadow-2xs cursor-pointer"
+            >
+              <Bell className="w-4 h-4" />
+              {pendingCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
+              )}
+            </button>
+
+            {/* Drivers on duty pill */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[#E8F8F0] border border-[#BDEBD0] rounded-full text-xs font-semibold text-[#00875A]">
+              <span className="w-2 h-2 rounded-full bg-[#00875A] animate-pulse" />
+              <span>{driversOnDuty} driver{driversOnDuty === 1 ? '' : 's'} on duty</span>
             </div>
+
+            {/* Admin Profile Dropdown Pill */}
+            <div className="flex items-center gap-2.5 pl-1 py-1 pr-2 bg-white border border-slate-200/80 rounded-full shadow-2xs">
+              <div className="w-7 h-7 rounded-full bg-[#00875A] text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                DB
+              </div>
+              <div className="hidden md:block text-left leading-tight pr-1">
+                <div className="text-xs font-bold text-slate-900">DriverBee</div>
+                <div className="text-[10px] text-slate-400 font-medium">Admin</div>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+
+            {/* Mobile Nav Icons */}
             <div className="lg:hidden flex items-center gap-1">
               {navItems.map(item => {
                 const Icon = item.icon;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveSection(item.id)}
-                    className={`p-2 rounded-xl transition-colors ${activeSection === item.id ? 'bg-bee-50 text-bee-600' : 'text-gray-400 hover:text-navy-950'}`}
+                    onClick={() => {
+                      setActiveSection(item.id);
+                      if (item.id === 'bookings') setFilterStatus('all');
+                    }}
+                    className={`p-2 rounded-xl transition-colors ${activeSection === item.id ? 'bg-[#00875A] text-white' : 'text-slate-500 hover:text-slate-900'}`}
                   >
                     <Icon className="w-4 h-4" />
                   </button>
@@ -2058,7 +2225,7 @@ export const AdminDashboard: React.FC = () => {
               <button
                 onClick={handleSignOut}
                 title="Sign Out"
-                className="p-2 rounded-xl text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -2066,29 +2233,37 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </header>
 
-        {/* New booking alert banner */}
-        {showNewAlert && latestNewBooking && (
-          <div className="mx-5 lg:mx-8 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 text-bee-600 animate-pulse flex-shrink-0" />
+        {/* New booking alert banner matching photo */}
+        {(showNewAlert && latestNewBooking) ? (
+          <div className="mx-5 lg:mx-8 mb-2 p-4 bg-[#FEF9EE] border border-[#FDE68A] rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center flex-shrink-0 text-amber-700">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div className="flex items-center justify-center flex-shrink-0">
+                <Car className="w-6 h-6 text-emerald-600" />
+              </div>
               <div>
-                <div className="text-sm font-bold text-navy-950">
-                  🔔 New Booking: {latestNewBooking.id}
-                </div>
-                <div className="text-xs text-amber-800">
-                  {latestNewBooking.customerName} • {tripLabel(latestNewBooking.tripType)}
-                  {latestNewBooking.tripType === 'outside' && ` (Destination: ${extractDestination(latestNewBooking)})`} • {latestNewBooking.tripType === 'outside' ? `${latestNewBooking.duration}d` : `${latestNewBooking.duration}h`} • ₹{latestNewBooking.estimatedFare} • {latestNewBooking.area}
-                </div>
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <span>New Booking Received!</span>
+                </h3>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  <strong className="text-slate-900 font-bold">{latestNewBooking.id}</strong>
+                  {' • '}
+                  <span>{formatBookingDate(latestNewBooking.createdAt)}</span>
+                  {' • '}
+                  <span>{latestNewBooking.area} {extractDestination(latestNewBooking) ? `→ ${extractDestination(latestNewBooking)}` : ''}</span>
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 w-full md:w-auto justify-end">
               <button
                 onClick={() => {
                   acceptBooking(latestNewBooking.id);
                   setShowNewAlert(false);
                   setAssigningBooking(latestNewBooking);
                 }}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-[#00875A] hover:bg-[#00734c] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Accept Ride</span>
@@ -2098,80 +2273,125 @@ export const AdminDashboard: React.FC = () => {
                   setAssigningBooking(latestNewBooking);
                   setShowNewAlert(false);
                 }}
-                className="px-3 py-1.5 rounded-xl bg-bee-600 hover:bg-bee-700 text-white text-xs font-bold transition-colors"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                Assign
+                <UserPlus className="w-3.5 h-3.5 text-slate-600" />
+                <span>Assign</span>
               </button>
-              <button onClick={() => setShowNewAlert(false)} className="p-1.5 text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
+              <button
+                onClick={() => setShowNewAlert(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+                title="Dismiss"
+              >
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
-        )}
+        ) : null}
 
-        <main className="flex-1 p-5 lg:p-8 space-y-6">
+        <main className="flex-1 px-5 lg:px-8 pb-8 space-y-6">
 
-          {/* ── STATS BAR ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-3.5">
+          {/* ── 6 STATS CARDS MATCHING PHOTO ── */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
             {[
               {
-                label: 'Daily Earnings',
-                value: `₹${dailyEarnings.toLocaleString('en-IN')}`,
-                sub: dailyCompletedTrips.length > 0 ? `${dailyCompletedTrips.length} ride${dailyCompletedTrips.length > 1 ? 's' : ''} completed today` : 'Today completed',
+                label: 'DAILY EARNINGS',
+                value: `₹${todayEarnings.toLocaleString('en-IN')}`,
+                sub: todayCompletedTrips.length > 0
+                  ? `${todayCompletedTrips.length} ride${todayCompletedTrips.length > 1 ? 's' : ''} completed today`
+                  : '0 rides completed today',
                 icon: Wallet,
-                color: 'text-bee-600',
-                bg: 'bg-amber-50/70 border-amber-200/90 ring-1 ring-amber-300/30'
+                iconBg: 'bg-[#E8F8F0] text-[#00875A]',
+                valueColor: 'text-slate-900',
+                trend: '↑ 12%',
+                trendColor: 'text-emerald-600',
+                filter: 'all',
               },
               {
-                label: 'Daily Trips',
-                value: dailyTrips.length,
-                sub: `${dailyCompletedTrips.length} done • ${dailyTrips.length - dailyCompletedTrips.length} in prog`,
+                label: 'DAILY TRIPS',
+                value: todayTrips.length,
+                sub: `${todayCompletedTrips.length} done • ${Math.max(0, todayTrips.length - todayCompletedTrips.length)} in progress`,
                 icon: Car,
-                color: 'text-blue-600',
-                bg: 'bg-blue-50/70 border-blue-200/90'
+                iconBg: 'bg-[#EBF5FF] text-[#2563EB]',
+                valueColor: 'text-blue-600',
+                trend: '↑ 50%',
+                trendColor: 'text-emerald-600',
+                filter: 'all',
               },
               {
-                label: 'Pending',
+                label: 'PENDING',
                 value: pendingCount,
                 sub: 'Awaiting driver',
                 icon: Clock,
-                color: 'text-amber-600',
-                bg: 'bg-amber-50 border-amber-200/60'
+                iconBg: 'bg-[#FFF7ED] text-[#EA580C]',
+                valueColor: 'text-amber-600',
+                trend: '↓ 0%',
+                trendColor: 'text-amber-600',
+                filter: 'pending',
               },
               {
-                label: 'Active Rides',
+                label: 'ACTIVE RIDES',
                 value: activeCount,
                 sub: 'On road currently',
-                icon: Activity,
-                color: 'text-emerald-600',
-                bg: 'bg-emerald-50 border-emerald-200/60'
+                icon: Users,
+                iconBg: 'bg-[#ECFDF5] text-[#059669]',
+                valueColor: 'text-emerald-600',
+                trend: '= 0%',
+                trendColor: 'text-slate-400',
+                filter: 'active',
               },
               {
-                label: 'Total Completed',
+                label: 'TOTAL COMPLETED',
                 value: completedCount,
                 sub: 'All-time rides',
                 icon: CheckCircle2,
-                color: 'text-gray-700',
-                bg: 'bg-gray-50 border-gray-200'
+                iconBg: 'bg-[#F5F3FF] text-[#7C3AED]',
+                valueColor: 'text-purple-600',
+                trend: '↑ 100%',
+                trendColor: 'text-purple-600',
+                filter: 'completed',
               },
               {
-                label: 'Total Revenue',
+                label: 'TOTAL REVENUE',
                 value: `₹${totalRevenue.toLocaleString('en-IN')}`,
                 sub: 'All-time completed',
                 icon: TrendingUp,
-                color: 'text-purple-600',
-                bg: 'bg-purple-50/70 border-purple-200/80'
+                iconBg: 'bg-[#F0F5FF] text-[#4F46E5]',
+                valueColor: 'text-indigo-600',
+                trend: '↑ 100%',
+                trendColor: 'text-indigo-600',
+                filter: 'all',
               },
             ].map((stat, i) => {
               const Icon = stat.icon;
               return (
-                <div key={i} className={`rounded-2xl border p-4 bg-white shadow-xs transition-all hover:shadow-sm ${stat.bg}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <Icon className={`w-4 h-4 ${stat.color}`} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{stat.label}</span>
+                <div
+                  key={i}
+                  onClick={() => {
+                    setActiveSection('bookings');
+                    setFilterStatus(stat.filter as any);
+                  }}
+                  className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between cursor-pointer hover:border-slate-300"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`p-2 rounded-xl ${stat.iconBg}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className={`text-xs font-bold ${stat.trendColor}`}>
+                      {stat.trend}
+                    </span>
                   </div>
-                  <div className={`text-2xl font-black ${stat.color} leading-none tracking-tight`}>{stat.value}</div>
-                  <div className="text-[11px] text-gray-500 font-medium mt-1.5 truncate">{stat.sub}</div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      {stat.label}
+                    </span>
+                    <div className={`text-2xl font-black ${stat.valueColor} leading-tight tracking-tight mt-0.5`}>
+                      {stat.value}
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1 truncate">
+                      {stat.sub}
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -2180,327 +2400,377 @@ export const AdminDashboard: React.FC = () => {
           {/* ── BOOKINGS SECTION ── */}
           {activeSection === 'bookings' && (
             <div className="space-y-4">
-              {/* Filter bar */}
+              {/* Filter bar matching photo */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                {(['all', 'pending', 'assigned', 'accepted', 'active', 'completed', 'cancelled'] as const).map(s => {
-                  const count = s === 'all'
+                {[
+                  { id: 'all', label: 'All', icon: ListFilter },
+                  { id: 'pending', label: 'Pending', icon: Clock },
+                  { id: 'assigned', label: 'Assigned', icon: UserCheck },
+                  { id: 'accepted', label: 'Accepted', icon: Check },
+                  { id: 'active', label: 'Active', icon: Car },
+                  { id: 'completed', label: 'Completed', icon: CheckCircle2 },
+                  { id: 'cancelled', label: 'Cancelled', icon: XCircle },
+                ].map(item => {
+                  const Icon = item.icon;
+                  const count = item.id === 'all'
                     ? todayBookingsList.length
-                    : todayBookingsList.filter(b => b.status === s).length;
+                    : todayBookingsList.filter(b => b.status === item.id).length;
+                  const isActive = filterStatus === item.id;
                   return (
                     <button
-                      key={s}
-                      onClick={() => setFilterStatus(s)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
-                        filterStatus === s
-                          ? 'bg-bee-600 text-white border-bee-600'
-                          : 'bg-white text-gray-500 border-gray-200 hover:border-bee-300 hover:text-bee-600'
+                      key={item.id}
+                      onClick={() => setFilterStatus(item.id as any)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isActive
+                          ? 'bg-[#00875A] text-white border border-[#00875A] shadow-xs'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300 shadow-2xs'
                       }`}
                     >
-                      {s === 'all' ? `All (${count})` : `${statusLabel[s as BookingStatus]} (${count})`}
+                      <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                      <span>{item.label} ({count})</span>
                     </button>
                   );
                 })}
               </div>
 
-              {/* ── TODAY'S BOOKINGS ─────────────────────────────────────── */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 px-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-                  <span className="text-sm font-extrabold text-navy-950">Today's Bookings</span>
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                    {todayFilteredBookings.length} booking{todayFilteredBookings.length !== 1 ? 's' : ''}
-                  </span>
-                  <span className="text-[11px] text-gray-400 font-medium">
-                    {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {/* ── TODAY'S BOOKINGS CARD CONTAINER MATCHING PHOTO ── */}
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-5 lg:p-6 space-y-4">
+                {/* Card Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#E8F8F0] border border-[#BDEBD0] text-[#00875A] flex items-center justify-center">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <h2 className="text-base font-extrabold text-slate-900">Today's Bookings</h2>
+                  </div>
+                  <span className="text-xs font-medium text-slate-400">
+                    {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                   </span>
                 </div>
 
-                <div className="bg-white border-2 border-amber-200 rounded-2xl overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-amber-100 bg-amber-50/60">
-                          {['Booking ID', 'Booked At', 'Customer Name', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver', 'Status', 'Actions'].map(h => (
-                            <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-amber-700 whitespace-nowrap">
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-amber-50/50">
-                        {todayFilteredBookings.map(booking => (
+                {/* Table with ALL 11 options preserved in new palette */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-separate border-spacing-y-2">
+                    <thead>
+                      <tr>
+                        {[
+                          'BOOKING ID',
+                          'BOOKED AT',
+                          'CUSTOMER NAME',
+                          'TRIP',
+                          'DURATION',
+                          'RIDE SCHEDULE',
+                          'AREA',
+                          'FARE',
+                          'DRIVER STATUS',
+                          'RIDE STATUS',
+                          'ACTIONS'
+                        ].map(h => (
+                          <th key={h} className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {todayFilteredBookings.map(booking => {
+                        const isPending = booking.status === 'pending';
+                        const dPhone = booking.assignedDriverPhone || drivers.find(d => d.id === booking.assignedDriverId || d.name.toLowerCase().trim() === booking.assignedDriverName?.toLowerCase().trim())?.phone;
 
-                        <tr
-                          key={booking.id}
-                          className="hover:bg-gray-50 transition-colors cursor-pointer"
-                          onClick={() => setSelectedBooking(booking)}
-                        >
-                          <td className="px-4 py-3 font-bold text-bee-600 whitespace-nowrap">
-                            <div>{booking.id}</div>
-                            <div className="text-[10px] font-normal text-gray-400">{timeAgo(booking.createdAt)}</div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="font-semibold text-navy-950 flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-bee-600 flex-shrink-0" />
-                              <span>{formatBookingDate(booking.createdAt)}</span>
-                            </div>
-                            <div className="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
-                              <Clock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                              <span>{formatBookingTime(booking.createdAt)}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="font-semibold text-navy-950 whitespace-nowrap flex items-center gap-1.5">
-                              <span>{booking.customerName}</span>
-                              {booking.customerName.toLowerCase() === 'customer' && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                  Default
-                                </span>
-                              )}
-                            </div>
-                            <a
-                              href={`tel:${booking.customerPhone}`}
-                              onClick={e => e.stopPropagation()}
-                              className="text-gray-500 hover:text-bee-600 flex items-center gap-1 hover:underline text-[11px] font-medium"
-                              title={`Call Customer: +91 ${booking.customerPhone}`}
-                            >
-                              <PhoneCall className="w-2.5 h-2.5 text-bee-600 flex-shrink-0" />
-                              <span>{booking.customerPhone}</span>
-                            </a>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] border uppercase tracking-wide ${
+                        return (
+                          <tr
+                            key={booking.id}
+                            onClick={() => setSelectedBooking(booking)}
+                            className={`transition-all cursor-pointer ${
+                              isPending
+                                ? 'bg-[#FEFDF8] rounded-2xl border border-amber-300/80 shadow-2xs'
+                                : 'bg-white hover:bg-slate-50/70 rounded-2xl border border-slate-100 shadow-2xs'
+                            }`}
+                          >
+                            {/* 1. BOOKING ID */}
+                            <td className="px-4 py-3.5 whitespace-nowrap rounded-l-2xl">
+                              <div className="font-extrabold text-slate-900 text-sm">{booking.id}</div>
+                              <div className="text-[10px] font-medium text-slate-400">{timeAgo(booking.createdAt)}</div>
+                            </td>
+
+                            {/* 2. BOOKED AT */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-[#00875A] flex-shrink-0" />
+                                <span>{formatBookingDate(booking.createdAt)}</span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                <Clock className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                                <span>{formatBookingTime(booking.createdAt)}</span>
+                              </div>
+                            </td>
+
+                            {/* 3. CUSTOMER NAME */}
+                            <td className="px-4 py-3.5">
+                              <div className="font-bold text-slate-900 whitespace-nowrap flex items-center gap-1.5">
+                                <span>{booking.customerName}</span>
+                                {booking.customerName.toLowerCase() === 'customer' && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                    Default
+                                  </span>
+                                )}
+                              </div>
+                              <a
+                                href={`tel:${booking.customerPhone}`}
+                                onClick={e => e.stopPropagation()}
+                                className="text-slate-500 hover:text-[#00875A] flex items-center gap-1 hover:underline text-[11px] font-medium mt-0.5"
+                                title={`Call Customer: +91 ${booking.customerPhone}`}
+                              >
+                                <PhoneCall className="w-2.5 h-2.5 text-[#00875A] flex-shrink-0" />
+                                <span>{booking.customerPhone}</span>
+                              </a>
+                            </td>
+
+                            {/* 4. TRIP */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border uppercase tracking-wide inline-flex items-center gap-1 ${
                                 booking.tripType === 'outside'
-                                  ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
                                   : 'bg-blue-50 text-blue-700 border-blue-200'
                               }`}>
                                 {tripLabel(booking.tripType)}
                               </span>
-                            </div>
-                            {booking.tripType === 'outside' && (
-                              <div className="text-[11px] font-bold text-purple-950 flex items-center gap-1 mt-1 max-w-[170px] truncate" title={extractDestination(booking)}>
-                                <Navigation className="w-3 h-3 text-purple-600 flex-shrink-0" />
-                                <span className="truncate">{extractDestination(booking)}</span>
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-gray-700 font-medium whitespace-nowrap">
-                            {booking.tripType === 'outside'
-                              ? `${booking.duration} Day${booking.duration > 1 ? 's' : ''}`
-                              : `${booking.duration}h`}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="font-semibold text-navy-950 flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                              <span>{booking.scheduleType === 'now' ? 'Today' : formatScheduledDate(booking.date)}</span>
-                            </div>
-                            <div className="text-[11px] font-medium text-emerald-700 flex items-center gap-1.5 mt-0.5">
-                              <Clock className="w-3 h-3 text-emerald-600 flex-shrink-0" />
-                              <span>{booking.scheduleType === 'now' ? 'Immediate (~30m)' : booking.time}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 min-w-[200px] max-w-[320px]">
-                            {booking.tripType === 'outside' ? (
-                              <div className="space-y-1">
-                                <div className="text-[10.5px] font-bold text-purple-900 bg-purple-50/90 border border-purple-200/80 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
-                                  <Navigation className="w-2.5 h-2.5 text-purple-600 flex-shrink-0" />
-                                  <span className="truncate">Destination: {extractDestination(booking)}</span>
+                              {booking.tripType === 'outside' && extractDestination(booking) && (
+                                <div className="text-[10.5px] font-bold text-purple-900 flex items-center gap-1 mt-1 max-w-[170px] truncate" title={extractDestination(booking)}>
+                                  <Navigation className="w-3 h-3 text-purple-600 flex-shrink-0" />
+                                  <span className="truncate">{extractDestination(booking)}</span>
                                 </div>
-                                <div className="text-gray-500 text-[11px] truncate" title={booking.area}>
-                                  {booking.area}
+                              )}
+                            </td>
+
+                            {/* 5. DURATION */}
+                            <td className="px-4 py-3.5 text-slate-700 font-semibold whitespace-nowrap">
+                              {booking.tripType === 'outside'
+                                ? `${booking.duration} Day${booking.duration > 1 ? 's' : ''}`
+                                : `${booking.duration}h`}
+                            </td>
+
+                            {/* 6. RIDE SCHEDULE */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-[#00875A] flex-shrink-0" />
+                                <span>{booking.scheduleType === 'now' ? 'Today' : formatScheduledDate(booking.date)}</span>
+                              </div>
+                              <div className="text-[11px] font-medium text-[#00875A] flex items-center gap-1.5 mt-0.5">
+                                <Clock className="w-3 h-3 text-[#00875A] flex-shrink-0" />
+                                <span>{booking.scheduleType === 'now' ? 'Immediate (~30m)' : booking.time}</span>
+                              </div>
+                            </td>
+
+                            {/* 7. AREA */}
+                            <td className="px-4 py-3.5 min-w-[200px] max-w-[320px]">
+                              <div className="flex items-start gap-1.5">
+                                <MapPin className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                                <div className="text-xs text-slate-700 leading-snug truncate" title={`${booking.area} ${extractDestination(booking) ? `→ ${extractDestination(booking)}` : ''}`}>
+                                  <span>{booking.area}</span>
+                                  {extractDestination(booking) && (
+                                    <span className="text-slate-500 font-medium"> → {extractDestination(booking)}</span>
+                                  )}
                                 </div>
                               </div>
-                            ) : (
-                              <div className="text-gray-600 text-xs truncate" title={booking.area}>
-                                {booking.area}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-bee-600 font-bold whitespace-nowrap">₹{booking.estimatedFare}</td>
-                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                            {booking.assignedDriverName ? (
-                              (() => {
-                                const dPhone = booking.assignedDriverPhone || drivers.find(d => d.id === booking.assignedDriverId || d.name.toLowerCase().trim() === booking.assignedDriverName?.toLowerCase().trim())?.phone;
-                                return (
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
-                                      <UserCheck className="w-3 h-3 text-emerald-600" />
-                                      <span>Driver Assigned: {booking.assignedDriverName}</span>
+                            </td>
+
+                            {/* 8. FARE */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span className="text-amber-600 font-black text-sm">₹{booking.estimatedFare}</span>
+                            </td>
+
+                            {/* 9. DRIVER STATUS */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              {booking.assignedDriverName || booking.assignedDriverId ? (
+                                <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs bg-emerald-100 text-emerald-800 border-emerald-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                                  <span>Assigned</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs bg-amber-100 text-amber-800 border-amber-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                                  <span>Unassigned</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {/* 10. RIDE STATUS */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs ${
+                                booking.status === 'pending'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                  : booking.status === 'assigned'
+                                  ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                  : booking.status === 'accepted'
+                                  ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                                  : booking.status === 'active'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                  : booking.status === 'completed'
+                                  ? 'bg-slate-100 text-slate-600 border-slate-200'
+                                  : 'bg-red-100 text-red-700 border-red-200'
+                              }`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                <span>{statusLabel[booking.status]}</span>
+                              </span>
+                            </td>
+
+                            {/* 11. ACTIONS */}
+                            <td className="px-4 py-3.5 whitespace-nowrap rounded-r-2xl" onClick={e => e.stopPropagation()}>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {/* Eye View Details */}
+                                <button
+                                  onClick={() => setSelectedBooking(booking)}
+                                  className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors border border-slate-200 cursor-pointer"
+                                  title="View Details"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Pending actions: Accept & Assign */}
+                                {booking.status === 'pending' && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        acceptBooking(booking.id);
+                                        setAssigningBooking(booking);
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg bg-[#00875A] hover:bg-[#00734c] text-white text-[10px] font-bold transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                                      title="Accept ride & assign driver next"
+                                    >
+                                      <CheckCircle2 className="w-3 h-3" />
+                                      <span>Accept</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setAssigningBooking(booking)}
+                                      className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-[#00875A] text-[#00875A] hover:text-white text-[10px] font-bold transition-colors border border-emerald-200 whitespace-nowrap flex items-center gap-1 cursor-pointer"
+                                      title="Assign driver"
+                                    >
+                                      <UserPlus className="w-3 h-3" />
+                                      <span>Assign</span>
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Accepted and not yet assigned */}
+                                {booking.status === 'accepted' && !booking.assignedDriverName && (
+                                  <button
+                                    onClick={() => setAssigningBooking(booking)}
+                                    className="px-2.5 py-1 rounded-lg bg-[#00875A] hover:bg-[#00734c] text-white font-bold text-[10px] transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap animate-pulse cursor-pointer"
+                                    title="Assign driver to this accepted booking"
+                                  >
+                                    <UserPlus className="w-3 h-3" />
+                                    <span>Assign</span>
+                                  </button>
+                                )}
+
+                                {/* Driver Assigned Tag and Call Driver in Actions */}
+                                {booking.assignedDriverName && (booking.status === 'assigned' || booking.status === 'accepted' || booking.status === 'active') && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-bold text-[#00875A] bg-[#E8F8F0] border border-[#BDEBD0] px-2 py-1 rounded-lg whitespace-nowrap flex items-center gap-1">
+                                      <CheckCircle2 className="w-2.5 h-2.5 text-[#00875A]" />
+                                      <span>Driver Assigned</span>
                                     </span>
                                     {dPhone && (
                                       <a
                                         href={`tel:${dPhone}`}
                                         onClick={e => e.stopPropagation()}
-                                        className="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                                        className="px-2 py-1 rounded-lg bg-[#00875A] hover:bg-[#00734c] text-white text-[10px] font-bold transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap cursor-pointer"
                                         title={`Call Driver ${booking.assignedDriverName}: +91 ${dPhone}`}
                                       >
                                         <PhoneCall className="w-2.5 h-2.5" />
-                                        <span>Call</span>
+                                        <span>Call Driver</span>
                                       </a>
                                     )}
-                                    {booking.status !== 'completed' && booking.status !== 'cancelled' && (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setAssigningBooking(booking); }}
-                                        className="text-[10px] text-bee-600 hover:text-bee-800 font-bold hover:underline cursor-pointer"
-                                        title="Change / Reassign Driver"
-                                      >
-                                        Change
-                                      </button>
-                                    )}
                                   </div>
-                                );
-                              })()
-                            ) : (
-                              booking.status !== 'completed' && booking.status !== 'cancelled' ? (
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setAssigningBooking(booking); }}
-                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
-                                  title="Assign driver to this customer"
-                                >
-                                  <UserPlus className="w-3 h-3" />
-                                  <span>Assign</span>
-                                </button>
-                              ) : (
-                                <span className="text-gray-400 text-xs">—</span>
-                              )
-                            )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wide ${statusColor[booking.status]}`}>
-                              {booking.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => setSelectedBooking(booking)}
-                                className="p-1.5 rounded-lg bg-gray-50 hover:bg-bee-50 text-gray-400 hover:text-bee-600 transition-colors border border-gray-200"
-                                title="View Details"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                              {booking.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      acceptBooking(booking.id);
-                                      setAssigningBooking(booking);
-                                    }}
-                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap"
-                                    title="Accept ride & assign driver next"
-                                  >
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    <span>Accept</span>
-                                  </button>
-                                  <button
-                                    onClick={() => setAssigningBooking(booking)}
-                                    className="px-2 py-1 rounded-lg bg-bee-50 hover:bg-bee-600 text-bee-600 hover:text-white text-[10px] font-bold transition-colors border border-bee-200 whitespace-nowrap flex items-center gap-1"
-                                    title="Assign driver"
-                                  >
-                                    <UserPlus className="w-3 h-3" />
-                                    <span>Assign</span>
-                                  </button>
-                                </>
-                              )}
-                              {booking.status === 'accepted' && !booking.assignedDriverName && (
-                                <button
-                                  onClick={() => setAssigningBooking(booking)}
-                                  className="px-2.5 py-1 rounded-lg bg-bee-500 hover:bg-bee-600 text-navy-950 font-bold text-[10px] transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap animate-pulse"
-                                  title="Assign driver to this accepted booking"
-                                >
-                                  <UserPlus className="w-3 h-3" />
-                                  <span>Assign</span>
-                                </button>
-                              )}
-                              {/* Driver Assigned Tag and Call Driver in Actions */}
-                              {booking.assignedDriverName && (booking.status === 'assigned' || booking.status === 'accepted' || booking.status === 'active') && (
-                                (() => {
-                                  const dPhone = booking.assignedDriverPhone || drivers.find(d => d.id === booking.assignedDriverId || d.name.toLowerCase().trim() === booking.assignedDriverName?.toLowerCase().trim())?.phone;
-                                  return (
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg whitespace-nowrap flex items-center gap-1">
-                                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
-                                        <span>Driver Assigned</span>
-                                      </span>
-                                      {dPhone && (
-                                        <a
-                                          href={`tel:${dPhone}`}
-                                          onClick={e => e.stopPropagation()}
-                                          className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap cursor-pointer"
-                                          title={`Call Driver ${booking.assignedDriverName}: +91 ${dPhone}`}
-                                        >
-                                          <PhoneCall className="w-2.5 h-2.5" />
-                                          <span>Call Driver</span>
-                                        </a>
-                                      )}
-                                    </div>
-                                  );
-                                })()
-                              )}
-                              {/* Trip Started */}
-                              {(booking.status === 'assigned' || booking.status === 'accepted') && (
-                                <button
-                                  onClick={() => updateBookingStatus(booking.id, 'active')}
-                                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap"
-                                  title="Mark trip as started"
-                                >
-                                  <PlayCircle className="w-3 h-3" />
-                                  <span>Started</span>
-                                </button>
-                              )}
-                              {/* Trip Completed */}
-                              {booking.status === 'active' && (
-                                <button
-                                  onClick={() => updateBookingStatus(booking.id, 'completed')}
-                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap"
-                                  title="Mark trip as completed"
-                                >
-                                  <FlagTriangleRight className="w-3 h-3" />
-                                  <span>Completed</span>
-                                </button>
-                              )}
-                              {booking.status !== 'completed' && booking.status !== 'cancelled' && (
-                                <button
-                                  onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                                  className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-400 transition-colors border border-red-100"
-                                  title="Cancel"
-                                >
-                                  <XCircle className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                )}
 
-                    {todayFilteredBookings.length === 0 && (
-                      <div className="text-center py-10 text-gray-400 text-sm">
-                        <Calendar className="w-8 h-8 mx-auto mb-2 text-amber-200" />
-                        <p>No bookings today{filterStatus !== 'all' ? ` with status "${filterStatus}"` : ''}.</p>
-                      </div>
-                    )}
+                                {/* Trip Started */}
+                                {(booking.status === 'assigned' || booking.status === 'accepted') && (
+                                  <button
+                                    onClick={() => updateBookingStatus(booking.id, 'active')}
+                                    className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                                    title="Mark trip as started"
+                                  >
+                                    <PlayCircle className="w-3 h-3" />
+                                    <span>Started</span>
+                                  </button>
+                                )}
+
+                                {/* Trip Completed */}
+                                {booking.status === 'active' && (
+                                  <button
+                                    onClick={() => updateBookingStatus(booking.id, 'completed')}
+                                    className="px-2.5 py-1 rounded-lg bg-[#00875A] hover:bg-[#00734c] text-white text-[10px] font-bold transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                                    title="Mark trip as completed"
+                                  >
+                                    <FlagTriangleRight className="w-3 h-3" />
+                                    <span>Completed</span>
+                                  </button>
+                                )}
+
+                                {/* Cancel button */}
+                                {booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                                  <button
+                                    onClick={() => updateBookingStatus(booking.id, 'cancelled')}
+                                    className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors border border-red-100 cursor-pointer"
+                                    title="Cancel"
+                                  >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {todayFilteredBookings.length === 0 && (
+                    <div className="text-center py-10 text-slate-400 text-sm">
+                      <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                      <p>No bookings today{filterStatus !== 'all' ? ` with status "${filterStatus}"` : ''}.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Looking for older bookings banner matching photo */}
+                <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#F4F9F6] border border-[#D8EDE2] rounded-2xl p-3.5">
+                  <div className="flex items-center gap-2.5 text-xs text-slate-700">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-100 text-[#00875A] flex items-center justify-center flex-shrink-0">
+                      <History className="w-3.5 h-3.5" />
+                    </div>
+                    <span>
+                      <strong className="text-emerald-950 font-bold">Looking for older bookings?</strong> There are {previousBookingsList.length} previous bookings stored in archives.
+                    </span>
                   </div>
+                  <button
+                    onClick={() => setActiveSection('previous')}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#00875A] hover:text-[#00734c] bg-white hover:bg-emerald-50 border border-[#00875A] px-3.5 py-1.5 rounded-xl transition-all shadow-2xs whitespace-nowrap cursor-pointer"
+                  >
+                    <span>Go to Previous Bookings</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Previous bookings quick link */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white border border-gray-200 rounded-2xl shadow-xs">
-                <div className="flex items-center gap-2.5 text-xs text-gray-600">
-                  <History className="w-4 h-4 text-bee-600 flex-shrink-0" />
-                  <span>
-                    Looking for older bookings? There are <strong>{previousBookingsList.length}</strong> previous booking{previousBookingsList.length !== 1 ? 's' : ''} stored in archives.
-                  </span>
+              {/* Tagline footer matching photo */}
+              <div className="flex items-center justify-between pt-4 pb-2 text-xs text-slate-400">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <div className="flex items-center gap-1.5 opacity-60">
+                    <span className="w-2 h-2 rounded-full bg-emerald-300" />
+                    <Car className="w-4 h-4 text-emerald-500" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-300" />
+                  </div>
                 </div>
-                <button
-                  onClick={() => setActiveSection('previous')}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-bee-700 hover:text-bee-800 bg-bee-50 hover:bg-bee-100 border border-bee-200 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs whitespace-nowrap"
-                >
-                  <span>Go to Previous Bookings</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2 italic text-slate-500 font-medium">
+                  <span>Drive Safe</span>
+                  <span>•</span>
+                  <span>Keep Going</span>
+                  <span>•</span>
+                  <span>Grow Together 🐝</span>
+                </div>
               </div>
             </div>
           )}
@@ -2543,6 +2813,66 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
+              {/* Previous & Yesterday Dedicated Stats Strip */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-white border border-purple-100 rounded-2xl p-4 bg-purple-50/40">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Yesterday's Trips</span>
+                    <Car className="w-3.5 h-3.5 text-purple-600" />
+                  </div>
+                  <div className="text-xl font-black text-purple-950">{yesterdayBookingsList.length}</div>
+                  <div className="text-[11px] text-purple-600 font-medium mt-0.5">{yesterdayCompletedTrips.length} completed yesterday</div>
+                </div>
+
+                <div className="bg-white border border-emerald-100 rounded-2xl p-4 bg-emerald-50/40">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Yesterday's Earnings</span>
+                    <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                  </div>
+                  <div className="text-xl font-black text-emerald-950">₹{yesterdayEarnings.toLocaleString('en-IN')}</div>
+                  <div className="text-[11px] text-emerald-600 font-medium mt-0.5">from yesterday's rides</div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-2xl p-4 bg-gray-50/60">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Archived Trips</span>
+                    <History className="w-3.5 h-3.5 text-gray-500" />
+                  </div>
+                  <div className="text-xl font-black text-navy-950">{previousBookingsList.length}</div>
+                  <div className="text-[11px] text-gray-500 font-medium mt-0.5">{previousCompletedTrips.length} completed all-time</div>
+                </div>
+
+                <div className="bg-white border border-blue-100 rounded-2xl p-4 bg-blue-50/40">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Archived Past Revenue</span>
+                    <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+                  </div>
+                  <div className="text-xl font-black text-blue-950">₹{previousEarnings.toLocaleString('en-IN')}</div>
+                  <div className="text-[11px] text-blue-600 font-medium mt-0.5">yesterday & older completed</div>
+                </div>
+              </div>
+
+              {/* Timeframe Filter (All, Yesterday, Older Archives) */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {[
+                  { id: 'all', label: `All Previous (${previousBookingsList.length})` },
+                  { id: 'yesterday', label: `Yesterday (${yesterdayBookingsList.length})` },
+                  { id: 'older', label: `Older Archives (${previousBookingsList.filter(b => !isBookingYesterday(b.createdAt) && !isBookingYesterday(b.date)).length})` },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setPrevTimeframeFilter(tab.id as any)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                      prevTimeframeFilter === tab.id
+                        ? 'bg-navy-950 text-white border-navy-950 shadow-xs'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Status Filter Bar */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
                 {(['all', 'pending', 'assigned', 'accepted', 'active', 'completed', 'cancelled'] as const).map(s => {
@@ -2571,7 +2901,7 @@ export const AdminDashboard: React.FC = () => {
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50">
-                        {['Booking ID', 'Booked At', 'Customer Name', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver', 'Status', 'Actions'].map(h => (
+                        {['Booking ID', 'Booked At', 'Customer Name', 'Trip', 'Duration', 'Ride Schedule', 'Area', 'Fare', 'Driver Status', 'Ride Status', 'Actions'].map(h => (
                           <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400 whitespace-nowrap">
                             {h}
                           </th>
@@ -2656,30 +2986,42 @@ export const AdminDashboard: React.FC = () => {
                             )}
                           </td>
                           <td className="px-4 py-3 text-bee-600 font-bold whitespace-nowrap">₹{booking.estimatedFare}</td>
-                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                            {booking.assignedDriverName ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
-                                <UserCheck className="w-3 h-3 text-emerald-600" />
-                                <span>{booking.assignedDriverName}</span>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {booking.assignedDriverName || booking.assignedDriverId ? (
+                              <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs bg-emerald-100 text-emerald-800 border-emerald-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                                <span>Assigned</span>
                               </span>
                             ) : (
-                              <span className="text-gray-400 text-xs">—</span>
+                              <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs bg-amber-100 text-amber-800 border-amber-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                                <span>Unassigned</span>
+                              </span>
                             )}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wide ${statusColor[booking.status]}`}>
-                              {booking.status}
+                            <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs ${statusColor[booking.status]}`}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                              <span>{statusLabel[booking.status]}</span>
                             </span>
                           </td>
                           <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                            <button
-                              onClick={() => setSelectedBooking(booking)}
-                              className="p-1.5 rounded-lg bg-gray-50 hover:bg-bee-50 text-gray-500 hover:text-bee-600 transition-colors border border-gray-200 inline-flex items-center gap-1 font-semibold text-xs px-2.5"
-                              title="View Details"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>View</span>
-                            </button>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                onClick={() => setSelectedBooking(booking)}
+                                className="p-1.5 rounded-lg bg-gray-50 hover:bg-bee-50 text-gray-500 hover:text-bee-600 transition-colors border border-gray-200 inline-flex items-center gap-1 font-semibold text-xs px-2.5"
+                                title="View Details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>View</span>
+                              </button>
+                              {booking.assignedDriverName && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
+                                  <UserCheck className="w-3 h-3 text-emerald-600" />
+                                  <span>{booking.assignedDriverName}</span>
+                                </span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -3139,7 +3481,7 @@ export const AdminDashboard: React.FC = () => {
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredDrivers.map(driver => {
-                      const dTrips = bookings.filter(b => b.assignedDriverId === driver.id && (isBookingToday(b.createdAt) || isBookingToday(b.date) || (b.status === 'completed' && isBookingToday(b.completedAt))));
+                      const dTrips = bookings.filter(b => b.assignedDriverId === driver.id && (isBookingToday(b.createdAt) || isBookingToday(b.date)));
                       const dCompleted = dTrips.filter(b => b.status === 'completed');
                       const dEarnings = dCompleted.reduce((sum, b) => sum + b.estimatedFare, 0) || driver.todayEarnings;
                       const activeRide = getDriverActiveBooking(driver, bookings);
@@ -3205,11 +3547,11 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                             <div className="bg-blue-50/70 rounded-xl p-2 border border-blue-100">
                               <div className="font-bold text-blue-700">{dTrips.length}</div>
-                              <div className="text-blue-600 text-[9px] font-semibold">Daily Trips</div>
+                              <div className="text-blue-600 text-[9px] font-semibold">Today's Trips</div>
                             </div>
                             <div className="bg-amber-50/70 rounded-xl p-2 border border-amber-100">
                               <div className="font-bold text-bee-600">₹{dEarnings}</div>
-                              <div className="text-bee-700 text-[9px] font-semibold">Daily Earn</div>
+                              <div className="text-bee-700 text-[9px] font-semibold">Today's Earn</div>
                             </div>
                           </div>
 
@@ -3302,10 +3644,10 @@ export const AdminDashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
-                  { label: 'Daily Earnings (Today)', value: `₹${dailyEarnings.toLocaleString('en-IN')}`, sub: `${dailyCompletedTrips.length} completed rides today`, color: 'text-bee-600' },
-                  { label: 'Daily Trips (Today)', value: `${dailyTrips.length} Trips`, sub: `${dailyCompletedTrips.length} done • ${dailyTrips.length - dailyCompletedTrips.length} pending/active`, color: 'text-emerald-600' },
-                  { label: 'Total Completed Fare', value: `₹${totalRevenue.toLocaleString('en-IN')}`, sub: `${completedCount} completed rides all-time`, color: 'text-blue-600' },
-                  { label: 'Pending Collection', value: `₹${bookings.filter(b => b.status === 'pending' || b.status === 'assigned').reduce((s, b) => s + b.estimatedFare, 0).toLocaleString('en-IN')}`, sub: 'In dispatch pipeline', color: 'text-amber-600' },
+                  { label: "Today's Earnings", value: `₹${todayEarnings.toLocaleString('en-IN')}`, sub: `${todayCompletedTrips.length} completed rides today`, color: 'text-bee-600' },
+                  { label: "Today's Trips", value: `${todayTrips.length} Trips`, sub: `${todayCompletedTrips.length} done • ${Math.max(0, todayTrips.length - todayCompletedTrips.length)} in prog`, color: 'text-emerald-600' },
+                  { label: "Yesterday's Earnings", value: `₹${yesterdayEarnings.toLocaleString('en-IN')}`, sub: `${yesterdayCompletedTrips.length} completed rides yesterday`, color: 'text-purple-600' },
+                  { label: 'Total Completed Fare (All-Time)', value: `₹${totalRevenue.toLocaleString('en-IN')}`, sub: `${completedCount} completed rides all-time`, color: 'text-blue-600' },
                 ].map((card, i) => (
                   <div key={i} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                     <div className={`text-3xl font-black ${card.color} mb-1`}>{card.value}</div>

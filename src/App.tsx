@@ -18,12 +18,13 @@ import { BookingModal } from './components/BookingModal';
 import { MyBookingsDrawer } from './components/MyBookingsDrawer';
 import { FamilyManagerModal } from './components/FamilyManagerModal';
 import { AuthModal } from './components/AuthModal';
+import { ProfileModal } from './components/ProfileModal';
 import { LocationModal } from './components/LocationModal';
 import { ComingSoonModal } from './components/ComingSoonModal';
 import { EmailReceiptModal } from './components/EmailReceiptModal';
 import { CookieBanner } from './components/CookieBanner';
 import { getEmailByBookingId, getSentEmails, SentEmailRecord } from './services/emailService';
-import { isWarangalLocation, isWithin60kmOfWarangal } from './utils/location';
+import { isWarangalLocation, isWithin60kmOfWarangal, detectAccurateLocation } from './utils/location';
 import { BookingState, BookingRecord, Driver, FamilyMember, TripType } from './types';
 import { useBookings } from './context/BookingContext';
 import { useAuth } from './context/AuthContext';
@@ -42,71 +43,37 @@ export const App: React.FC = () => {
   const [userManuallySelectedCity, setUserManuallySelectedCity] = useState<boolean>(false);
 
   // Automatically grasp the user's real GPS or network location
-  const detectLocation = () => {
+  const detectLocation = async (isExplicitUserAction = false) => {
     setIsDetectingLocation(true);
 
-    const applyLocation = (loc: string, coords?: { lat: number; lon: number }, isManual = false) => {
-      // Never auto-overwrite a city the user has explicitly chosen
-      if (!isManual && userManuallySelectedCity) {
-        if (coords) setUserCoords(coords); // still capture GPS coords for accuracy
+    try {
+      const result = await detectAccurateLocation({ forceGps: isExplicitUserAction });
+
+      // If user manually chose a city, and this is NOT an explicit user request (e.g. background check),
+      // keep the city selection intact while updating real GPS coordinates for radius accuracy.
+      if (!isExplicitUserAction && userManuallySelectedCity) {
+        setUserCoords(result.coords);
+        try {
+          localStorage.setItem('driverbee_user_coords', JSON.stringify(result.coords));
+        } catch {}
         setIsDetectingLocation(false);
         return;
       }
-      setSelectedCity(loc);
-      if (coords) setUserCoords(coords);
+
+      // Explicit user click or first visit: apply the accurately detected location
+      setSelectedCity(result.cityName);
+      setUserCoords(result.coords);
+      setUserManuallySelectedCity(false);
+
       try {
-        localStorage.setItem('driverbee_user_location', loc);
-        if (coords) localStorage.setItem('driverbee_user_coords', JSON.stringify(coords));
+        localStorage.setItem('driverbee_user_location', result.cityName);
+        localStorage.removeItem('driverbee_user_manual_city');
+        localStorage.setItem('driverbee_user_coords', JSON.stringify(result.coords));
       } catch {}
+    } catch (err: any) {
+      console.warn('Location detection notice:', err);
+    } finally {
       setIsDetectingLocation(false);
-    };
-
-    const fallbackIpLocation = () => {
-      fetch('https://ipapi.co/json/')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.city) {
-            const region = data.region_code || 'TS';
-            applyLocation(`${data.city}, ${region}`);
-          } else {
-            setIsDetectingLocation(false);
-          }
-        })
-        .catch(() => {
-          setIsDetectingLocation(false);
-        });
-    };
-
-    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const { latitude, longitude } = position.coords;
-            const res = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-            );
-            if (res.ok) {
-              const data = await res.json();
-              const area = data.locality || data.cityDistrict || data.neighbourhood || data.subLocality || '';
-              const city = data.city || data.principalSubdivision || 'Warangal';
-              const state = data.principalSubdivisionCode ? (data.principalSubdivisionCode.split('-')[1] || data.principalSubdivision) : 'Telangana';
-              const formatted = area ? `${area}, ${city}` : `${city}, ${state}`;
-              applyLocation(formatted, { lat: latitude, lon: longitude });
-              return;
-            }
-          } catch (e) {
-            console.warn('Reverse geocode error, using IP fallback:', e);
-          }
-          fallbackIpLocation();
-        },
-        (err) => {
-          console.warn('Geolocation permission not granted, falling back to IP:', err.message);
-          fallbackIpLocation();
-        },
-        { enableHighAccuracy: true, timeout: 6000, maximumAge: 300000 }
-      );
-    } else {
-      fallbackIpLocation();
     }
   };
 
@@ -127,7 +94,7 @@ export const App: React.FC = () => {
 
     // 2. Only auto-detect on first visit (no saved city yet)
     if (!hasSavedCity) {
-      detectLocation();
+      detectLocation(false);
     } else {
       setIsDetectingLocation(false);
     }
@@ -160,6 +127,7 @@ export const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isComingSoonModalOpen, setIsComingSoonModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [selectedEmailRecord, setSelectedEmailRecord] = useState<SentEmailRecord | null>(null);
   const [isEmailReceiptModalOpen, setIsEmailReceiptModalOpen] = useState<boolean>(false);
@@ -307,7 +275,7 @@ export const App: React.FC = () => {
         onOpenFamily={() => setIsFamilyModalOpen(true)}
         selectedCity={selectedCity}
         setSelectedCity={setSelectedCity}
-        onDetectLocation={detectLocation}
+        onDetectLocation={() => detectLocation(true)}
         isDetectingLocation={isDetectingLocation}
         onOpenAuth={handleOpenAuth}
       />
@@ -322,6 +290,7 @@ export const App: React.FC = () => {
         onOpenCitySelector={() => setIsLocationModalOpen(true)}
         onOpenNotifications={() => {}}
         onOpenAuth={handleOpenAuth}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
       />
 
       {/* 3. Booking Engine: flows naturally on mobile, overlaps hero on desktop */}
@@ -390,6 +359,7 @@ export const App: React.FC = () => {
         setActiveTab={setActiveTab}
         onOpenBookings={() => setIsBookingsDrawerOpen(true)}
         onOpenAuth={handleOpenAuth}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
       />
 
       {/* MODALS */}
@@ -402,6 +372,8 @@ export const App: React.FC = () => {
         onConfirmSuccess={handleConfirmSuccess}
         familyMembers={familyMembers}
         onOpenEmailReceipt={handleOpenEmailReceipt}
+        selectedCity={selectedCity}
+        userCoords={userCoords}
       />
 
       {/* My Bookings Drawer */}
@@ -426,6 +398,15 @@ export const App: React.FC = () => {
         familyMembers={familyMembers}
         onAddMember={handleAddFamilyMember}
         onRemoveMember={handleRemoveFamilyMember}
+      />
+
+      {/* Customer Profile & Account Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onOpenBookings={() => setIsBookingsDrawerOpen(true)}
+        onOpenFamily={() => setIsFamilyModalOpen(true)}
+        selectedCity={selectedCity}
       />
 
       {/* Customer Login & Signup Modal */}
@@ -453,7 +434,7 @@ export const App: React.FC = () => {
         onNonWarangalSelected={() => {
           setIsComingSoonModalOpen(true);
         }}
-        onDetectLocation={detectLocation}
+        onDetectLocation={() => detectLocation(true)}
         isDetectingLocation={isDetectingLocation}
       />
 
