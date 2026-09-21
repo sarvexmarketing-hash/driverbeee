@@ -7,7 +7,7 @@ export interface OutsideRates {
   hr2: number; hr4: number; hr6: number; hr8: number;
 }
 export interface OneWayRates {
-  hr2: number; hr4: number; hr6: number; hr8: number;
+  hr2: number; hr4: number; hr6: number; hr8: number; day1: number;
 }
 export interface OutstationSlabRates {
   slab100_150: number;
@@ -25,7 +25,7 @@ export interface PricingConfig {
 export const DEFAULT_PRICING: PricingConfig = {
   cityRates:    { hr2: 300,  hr4: 600,  hr6: 900,  hr8: 1200 },
   outsideRates: { hr2: 400,  hr4: 800,  hr6: 1200, hr8: 1600 },
-  oneWayRates:  { hr2: 300,  hr4: 600,  hr6: 900,  hr8: 1200 },
+  oneWayRates:  { hr2: 300,  hr4: 600,  hr6: 900,  hr8: 1200, day1: 1500 },
   outstationSlabs: { slab100_150: 1200, slab150_250: 1500, slabAbove250: 1800 },
   lastUpdated: new Date().toISOString(),
 };
@@ -56,6 +56,7 @@ export function loadPricing(): PricingConfig {
           hr4: Number(p.oneWayRates?.hr4 ?? DEFAULT_PRICING.oneWayRates.hr4),
           hr6: Number(p.oneWayRates?.hr6 ?? DEFAULT_PRICING.oneWayRates.hr6),
           hr8: Number(p.oneWayRates?.hr8 ?? DEFAULT_PRICING.oneWayRates.hr8),
+          day1: Number(p.oneWayRates?.day1 ?? DEFAULT_PRICING.oneWayRates.day1),
         },
         outstationSlabs: {
           slab100_150: Number(p.outstationSlabs?.slab100_150 ?? DEFAULT_PRICING.outstationSlabs.slab100_150),
@@ -173,6 +174,7 @@ export const PricingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const getOneWayFare = useCallback((hours: number): number => {
     const r = pricing.oneWayRates || DEFAULT_PRICING.oneWayRates;
+    if (hours === 1) return r.day1 ?? DEFAULT_PRICING.oneWayRates.day1;
     return hours === 2 ? r.hr2 : hours === 4 ? r.hr4 : hours === 6 ? r.hr6 : r.hr8;
   }, [pricing]);
 

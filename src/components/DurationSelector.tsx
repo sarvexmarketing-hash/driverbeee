@@ -24,12 +24,20 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
     return getCityFare(hours);
   };
 
-  const durations: { hours: DurationOption; price: number; perLabel: string }[] = [
-    { hours: 2, price: getFare(2), perLabel: '(per 2 hours)' },
-    { hours: 4, price: getFare(4), perLabel: '(per 4 hours)' },
-    { hours: 6, price: getFare(6), perLabel: '(per 6 hours)' },
-    { hours: 8, price: getFare(8), perLabel: '(per 8 hours)' },
-  ];
+  const durations: { hours: DurationOption; label?: string; price: number; perLabel: string }[] = isOneWay
+    ? [
+        { hours: 2, price: getFare(2), perLabel: '(per 2 hours)' },
+        { hours: 4, price: getFare(4), perLabel: '(per 4 hours)' },
+        { hours: 6, price: getFare(6), perLabel: '(per 6 hours)' },
+        { hours: 8, price: getFare(8), perLabel: '(per 8 hours)' },
+        { hours: 1, label: '+1 Day', price: getFare(1), perLabel: '(per 1 day)' },
+      ]
+    : [
+        { hours: 2, price: getFare(2), perLabel: '(per 2 hours)' },
+        { hours: 4, price: getFare(4), perLabel: '(per 4 hours)' },
+        { hours: 6, price: getFare(6), perLabel: '(per 6 hours)' },
+        { hours: 8, price: getFare(8), perLabel: '(per 8 hours)' },
+      ];
 
   return (
     <div className="space-y-2 sm:space-y-3">
@@ -59,8 +67,8 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
         )}
       </div>
 
-      {/* Grid: 2-column on mobile, 4-column on desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+      {/* Grid: 2-column on mobile, 5-column for oneway or 4-column for city */}
+      <div className={`grid ${isOneWay ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4'} gap-2.5 sm:gap-3.5`}>
         {durations.map((item) => {
           const isSelected = selectedDuration === item.hours;
 
@@ -88,7 +96,7 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
                     </div>
                   )}
                   <span className="text-sm sm:text-base lg:text-[17px] font-black text-navy-950 tracking-tight">
-                    {item.hours} Hours
+                    {item.label || `${item.hours} Hours`}
                   </span>
                 </div>
 

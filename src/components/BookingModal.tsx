@@ -490,7 +490,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     } else if (bookingState.tripType === 'oneway') {
       bookingNotes = [
         `[ONE WAY DROP TRIP]`,
-        `• Package Duration: ${bookingState.duration} Hours (${bookingState.duration === 2 ? '2-Hr Short Trip' : bookingState.duration === 4 ? '4-Hr Half Day' : bookingState.duration === 6 ? '6-Hr Extended' : '8-Hr Full Day'})`,
+        `• Package Duration: ${bookingState.duration === 1 ? '1 Day (+1 Day Full Day Package)' : `${bookingState.duration} Hours (${bookingState.duration === 2 ? '2-Hr Short Trip' : bookingState.duration === 4 ? '4-Hr Half Day' : bookingState.duration === 6 ? '6-Hr Extended' : '8-Hr Full Day'})`}`,
         `• Trip Mode: One Way Drop`,
         `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
         `• Car Type: ${carType.toUpperCase()}`,
@@ -1035,6 +1035,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <span className="font-bold text-navy-950 text-sm">
                     {bookingState.tripType === 'outside'
                       ? `${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDays || 1} Day${(bookingState.outstationDays || 1) > 1 ? 's' : ''})`
+                      : bookingState.duration === 1
+                      ? '1 Day (+1 Day)'
                       : `${bookingState.duration} Hours`}
                   </span>
                 </div>

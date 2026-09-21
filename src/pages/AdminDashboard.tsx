@@ -1544,6 +1544,7 @@ const PricingSection: React.FC = () => {
       init[`outsideRates.${f}`] = String(p.outsideRates[f]);
       init[`oneWayRates.${f}`] = String((p.oneWayRates || DEFAULT_PRICING.oneWayRates)[f]);
     });
+    init['oneWayRates.day1'] = String((p.oneWayRates || DEFAULT_PRICING.oneWayRates).day1 ?? DEFAULT_PRICING.oneWayRates.day1);
     init['outstationSlabs.slab100_150'] = String(p.outstationSlabs.slab100_150);
     init['outstationSlabs.slab150_250'] = String(p.outstationSlabs.slab150_250);
     init['outstationSlabs.slabAbove250'] = String(p.outstationSlabs.slabAbove250);
@@ -1569,6 +1570,7 @@ const PricingSection: React.FC = () => {
         'oneWayRates.hr4': String(pricing.oneWayRates?.hr4 ?? DEFAULT_PRICING.oneWayRates.hr4),
         'oneWayRates.hr6': String(pricing.oneWayRates?.hr6 ?? DEFAULT_PRICING.oneWayRates.hr6),
         'oneWayRates.hr8': String(pricing.oneWayRates?.hr8 ?? DEFAULT_PRICING.oneWayRates.hr8),
+        'oneWayRates.day1': String(pricing.oneWayRates?.day1 ?? DEFAULT_PRICING.oneWayRates.day1),
         'outstationSlabs.slab100_150': String(pricing.outstationSlabs.slab100_150),
         'outstationSlabs.slab150_250': String(pricing.outstationSlabs.slab150_250),
         'outstationSlabs.slabAbove250': String(pricing.outstationSlabs.slabAbove250),
@@ -1612,6 +1614,7 @@ const PricingSection: React.FC = () => {
         hr4: parse('oneWayRates.hr4'),
         hr6: parse('oneWayRates.hr6'),
         hr8: parse('oneWayRates.hr8'),
+        day1: parse('oneWayRates.day1'),
       },
       outstationSlabs: {
         slab100_150: parse('outstationSlabs.slab100_150'),
@@ -1726,7 +1729,7 @@ const PricingSection: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Navigation className="w-4 h-4 text-amber-600" />
-              <span className="text-sm font-extrabold text-navy-950">One Way Drop (Hourly)</span>
+              <span className="text-sm font-extrabold text-navy-950">One Way Drop (Hourly & Daily)</span>
             </div>
             <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-300">₹{oneWayHr}/hr</span>
           </div>
@@ -1735,6 +1738,9 @@ const PricingSection: React.FC = () => {
             {renderField('4 Hours', 'oneWayRates.hr4')}
             {renderField('6 Hours', 'oneWayRates.hr6')}
             {renderField('8 Hours', 'oneWayRates.hr8')}
+            <div className="col-span-2">
+              {renderField('+1 Day (Full Day Package)', 'oneWayRates.day1')}
+            </div>
           </div>
         </div>
       </div>
@@ -1758,7 +1764,7 @@ const PricingSection: React.FC = () => {
       {/* Live preview */}
       <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
         <div className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Live Preview — What Customers See</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {([2, 4, 6, 8] as const).map(h => (
             <div key={h} className="bg-white border border-gray-200 rounded-xl p-3 text-center">
               <div className="text-xs text-gray-400 font-medium mb-1">{h} Hours</div>
@@ -1770,6 +1776,11 @@ const PricingSection: React.FC = () => {
               <div className="text-[10px] text-gray-400">One Way</div>
             </div>
           ))}
+          <div className="bg-white border border-amber-300 rounded-xl p-3 text-center bg-amber-50/30">
+            <div className="text-xs text-amber-900 font-bold mb-1">+1 Day</div>
+            <div className="text-sm font-black text-amber-600 mt-5">₹{(parseInt(raw['oneWayRates.day1'] ?? '0', 10) || 0).toLocaleString('en-IN')}</div>
+            <div className="text-[10px] text-amber-800 font-medium">One Way Full Day</div>
+          </div>
         </div>
         <p className="text-[11px] text-gray-500 mt-3">💡 The preview updates as you type. Click "Save Pricing" to push changes live across all customer booking tabs.</p>
       </div>
