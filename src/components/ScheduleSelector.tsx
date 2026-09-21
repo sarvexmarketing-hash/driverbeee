@@ -11,51 +11,27 @@ interface ScheduleSelectorProps {
   setTime: (time: string) => void;
 }
 
-// Generate all 15-minute time slots for 24 hours (96 slots from 12:00 AM to 11:45 PM)
-export const generateTimeSlots = (): string[] => {
-  const slots: string[] = [];
-  for (let h = 0; h < 24; h++) {
-    for (const m of ['00', '15', '30', '45']) {
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      let displayH = h % 12;
-      if (displayH === 0) displayH = 12;
-      const hStr = String(displayH).padStart(2, '0');
-      slots.push(`${hStr}:${m} ${ampm}`);
+// Generate hour numbers 01 to 12
+export const hoursList = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+
+// Generate minute numbers 00 to 59
+export const minutesList = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
+// Parse time string like "04:45 PM" into hour, minute, and am/pm components
+export const parseTimeString = (t: string): { hour: string; minute: string; ampm: string } => {
+  const match = (t || '').trim().match(/(\d{1,2})[:.](\d{2})\s*(AM|PM)?/i);
+  if (match) {
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    let ampm = match[3] ? match[3].toUpperCase() : 'AM';
+    if (!match[3]) {
+      ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
     }
+    const hStr = String(h).padStart(2, '0');
+    return { hour: hStr, minute: m, ampm };
   }
-  return slots;
-};
-
-// Helper to convert 12-hour string (e.g. "04:45 PM" or "4.45 PM" or "16:45") to 24-hour "HH:mm"
-export const format12To24 = (timeStr: string): string => {
-  if (!timeStr) return '10:30';
-  const trimmed = timeStr.trim();
-  if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
-    const [h, m] = trimmed.split(':');
-    return `${h.padStart(2, '0')}:${m}`;
-  }
-  const match = trimmed.match(/(\d{1,2})[:.](\d{2})\s*(AM|PM)?/i);
-  if (!match) return '10:30';
-  let hours = parseInt(match[1], 10);
-  const minutes = match[2];
-  const ampm = match[3] ? match[3].toUpperCase() : (hours >= 12 ? 'PM' : 'AM');
-  if (ampm === 'PM' && hours < 12) hours += 12;
-  if (ampm === 'AM' && hours === 12) hours = 0;
-  return `${String(hours).padStart(2, '0')}:${minutes}`;
-};
-
-// Helper to convert 24-hour "HH:mm" to 12-hour "hh:mm AM/PM"
-export const format24To12 = (time24: string): string => {
-  if (!time24) return '10:30 AM';
-  const parts = time24.trim().split(':');
-  if (parts.length < 2) return '10:30 AM';
-  let hours = parseInt(parts[0], 10);
-  const minutes = parts[1] || '00';
-  if (isNaN(hours)) return '10:30 AM';
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  if (hours === 0) hours = 12;
-  return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+  return { hour: '10', minute: '30', ampm: 'AM' };
 };
 
 export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
@@ -79,14 +55,12 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   
   const quickTimes = ['08:00 AM', '10:30 AM', '02:00 PM', '05:30 PM', '08:00 PM'];
 
-  // All 15-minute time slots across 24h, ensuring current time is included if customized
-  const timeSlots = useMemo(() => {
-    const baseSlots = generateTimeSlots();
-    if (time && !baseSlots.includes(time)) {
-      return [time, ...baseSlots];
-    }
-    return baseSlots;
-  }, [time]);
+  // Parsed hour, minute, and AM/PM from current time string
+  const parsedTime = useMemo(() => parseTimeString(time), [time]);
+
+  const updateTime = (newHour: string, newMinute: string, newAmpm: string) => {
+    setTime(`${newHour}:${newMinute} ${newAmpm}`);
+  };
 
   return (
     <div className="space-y-2 sm:space-y-3">
@@ -201,7 +175,7 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
             </span>
           </div>
 
-          {/* Row 1: Date Buttons + Timing Dropdown */}
+          {/* Row 1: Date Buttons + Scrolling Dropdowns (Hours, Minutes, AM/PM) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
             {/* Date Quick Selection: Today / Tomorrow */}
             <div className="grid grid-cols-2 gap-1.5">
@@ -229,22 +203,67 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
               </button>
             </div>
 
-            {/* Timing Dropdown Selector */}
-            <div className="relative flex items-center">
-              <Clock className="w-4 h-4 text-bee-600 absolute left-3 pointer-events-none" />
-              <select
-                id="pickup-time-dropdown"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full pl-9 pr-9 py-2 text-xs font-bold text-navy-950 bg-white border border-navy-200 rounded-xl hover:border-bee-500 focus:border-bee-600 focus:ring-2 focus:ring-bee-500/20 outline-none appearance-none cursor-pointer transition-all shadow-xs"
-              >
-                {timeSlots.map((slot) => (
-                  <option key={slot} value={slot}>
-                    {slot}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-navy-500 absolute right-3 pointer-events-none" />
+            {/* Timing Dropdown: Scroll Hour, Minute, and AM/PM */}
+            <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-xl border border-navy-200 hover:border-bee-400 shadow-xs transition-colors">
+              <span className="text-[10.5px] uppercase tracking-wider font-extrabold text-navy-500 flex items-center gap-1 select-none">
+                <Clock className="w-3.5 h-3.5 text-bee-600" />
+                Time:
+              </span>
+
+              <div className="flex items-center gap-1">
+                {/* Hour Scroll Dropdown (01-12) */}
+                <div className="relative">
+                  <select
+                    id="pickup-hour-select"
+                    aria-label="Select hour"
+                    value={parsedTime.hour}
+                    onChange={(e) => updateTime(e.target.value, parsedTime.minute, parsedTime.ampm)}
+                    className="py-1 pl-1.5 pr-4 text-xs font-extrabold text-navy-950 bg-navy-50/80 hover:bg-navy-100 rounded-lg outline-none cursor-pointer appearance-none text-center transition-colors"
+                  >
+                    {hoursList.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-2.5 h-2.5 text-navy-500 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                <span className="text-navy-400 font-extrabold text-xs select-none">:</span>
+
+                {/* Minute Scroll Dropdown (00-59) */}
+                <div className="relative">
+                  <select
+                    id="pickup-minute-select"
+                    aria-label="Select minute"
+                    value={parsedTime.minute}
+                    onChange={(e) => updateTime(parsedTime.hour, e.target.value, parsedTime.ampm)}
+                    className="py-1 pl-1.5 pr-4 text-xs font-extrabold text-navy-950 bg-navy-50/80 hover:bg-navy-100 rounded-lg outline-none cursor-pointer appearance-none text-center transition-colors"
+                  >
+                    {minutesList.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-2.5 h-2.5 text-navy-500 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+
+                {/* AM / PM Scroll Dropdown */}
+                <div className="relative ml-0.5">
+                  <select
+                    id="pickup-ampm-select"
+                    aria-label="Select AM or PM"
+                    value={parsedTime.ampm}
+                    onChange={(e) => updateTime(parsedTime.hour, parsedTime.minute, e.target.value)}
+                    className="py-1 pl-2 pr-5 text-xs font-extrabold text-bee-700 bg-bee-50 rounded-lg outline-none cursor-pointer appearance-none text-center hover:bg-bee-100 transition-colors border border-bee-200"
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                  <ChevronDown className="w-2.5 h-2.5 text-bee-700 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -273,4 +292,3 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     </div>
   );
 };
-

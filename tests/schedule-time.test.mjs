@@ -104,3 +104,46 @@ test('9. Timing dropdown includes requested custom times like 04:45 PM and 04:45
   assert.ok(slots.includes('02:00 PM'), 'Should include 02:00 PM');
 });
 
+// Hours 01 to 12
+const hoursList = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+// Minutes 00 to 59
+const minutesList = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
+const parseTimeString = (t) => {
+  const match = (t || '').trim().match(/(\d{1,2})[:.](\d{2})\s*(AM|PM)?/i);
+  if (match) {
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    let ampm = match[3] ? match[3].toUpperCase() : 'AM';
+    if (!match[3]) {
+      ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+    }
+    const hStr = String(h).padStart(2, '0');
+    return { hour: hStr, minute: m, ampm };
+  }
+  return { hour: '10', minute: '30', ampm: 'AM' };
+};
+
+test('10. Scrolling numbers lists cover hours 01-12 and all 60 minutes 00-59', () => {
+  assert.equal(hoursList.length, 12);
+  assert.equal(hoursList[0], '01');
+  assert.equal(hoursList[11], '12');
+
+  assert.equal(minutesList.length, 60);
+  assert.equal(minutesList[0], '00');
+  assert.equal(minutesList[45], '45');
+  assert.equal(minutesList[59], '59');
+});
+
+test('11. parseTimeString correctly breaks down 04:45 PM for separate scrolling selectors', () => {
+  const parsed = parseTimeString('04:45 PM');
+  assert.deepEqual(parsed, { hour: '04', minute: '45', ampm: 'PM' });
+
+  const parsedDot = parseTimeString('4.45 PM');
+  assert.deepEqual(parsedDot, { hour: '04', minute: '45', ampm: 'PM' });
+
+  const parsedMorning = parseTimeString('08:00 AM');
+  assert.deepEqual(parsedMorning, { hour: '08', minute: '00', ampm: 'AM' });
+});
+
