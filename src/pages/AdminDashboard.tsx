@@ -2602,7 +2602,13 @@ export const AdminDashboard: React.FC = () => {
                     <tbody>
                       {todayFilteredBookings.map(booking => {
                         const isPending = booking.status === 'pending';
-                        const dPhone = booking.assignedDriverPhone || drivers.find(d => d.id === booking.assignedDriverId || d.name.toLowerCase().trim() === booking.assignedDriverName?.toLowerCase().trim())?.phone;
+                        const assignedDriver = drivers.find(d =>
+                          (booking.assignedDriverId && d.id === booking.assignedDriverId) ||
+                          (booking.assignedDriverName && d.name.toLowerCase().trim() === booking.assignedDriverName.toLowerCase().trim())
+                        );
+                        const driverDisplayName = booking.assignedDriverName || assignedDriver?.name || (booking.assignedDriverId ? 'Driver Assigned' : null);
+                        const driverDisplayPhone = booking.assignedDriverPhone || assignedDriver?.phone || null;
+                        const driverDisplayPhoto = assignedDriver?.photo || DEFAULT_DRIVER_NO_PHOTO;
 
                         return (
                           <tr
@@ -2707,18 +2713,54 @@ export const AdminDashboard: React.FC = () => {
                               <span className="text-amber-600 font-black text-sm">₹{booking.estimatedFare}</span>
                             </td>
 
-                            {/* 9. DRIVER STATUS */}
+                            {/* 9. DRIVER STATUS & ASSIGNED DRIVER */}
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              {booking.assignedDriverName || booking.assignedDriverId ? (
-                                <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs bg-emerald-100 text-emerald-800 border-emerald-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                                  <span>Assigned</span>
-                                </span>
+                              {driverDisplayName ? (
+                                <div className="flex items-center gap-2.5">
+                                  <div className="relative flex-shrink-0">
+                                    <img
+                                      src={driverDisplayPhoto}
+                                      alt={driverDisplayName}
+                                      onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_DRIVER_NO_PHOTO; }}
+                                      className="w-8 h-8 rounded-xl object-cover border border-slate-200 shadow-2xs bg-slate-100"
+                                    />
+                                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-extrabold text-slate-900 text-xs truncate max-w-[150px]" title={driverDisplayName}>
+                                      {driverDisplayName}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        Assigned
+                                      </span>
+                                      {driverDisplayPhone && (
+                                        <a
+                                          href={`tel:${driverDisplayPhone}`}
+                                          onClick={e => e.stopPropagation()}
+                                          className="text-[10px] text-slate-500 hover:text-emerald-700 font-semibold flex items-center gap-0.5"
+                                          title={`Call Driver: +91 ${driverDisplayPhone}`}
+                                        >
+                                          <PhoneCall className="w-2.5 h-2.5 text-emerald-600" />
+                                          <span>{driverDisplayPhone.slice(-10)}</span>
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
                               ) : (
-                                <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs bg-amber-100 text-amber-800 border-amber-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-                                  <span>Unassigned</span>
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 flex-shrink-0">
+                                    <UserX className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider inline-flex items-center gap-1 border shadow-2xs bg-amber-100 text-amber-800 border-amber-200">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                                      <span>Unassigned</span>
+                                    </span>
+                                    <div className="text-[10px] text-slate-400 font-medium mt-0.5">No driver assigned</div>
+                                  </div>
+                                </div>
                               )}
                             </td>
 
@@ -2792,21 +2834,27 @@ export const AdminDashboard: React.FC = () => {
                                 )}
 
                                 {/* Driver Assigned Tag and Call Driver in Actions */}
-                                {booking.assignedDriverName && (booking.status === 'assigned' || booking.status === 'accepted' || booking.status === 'active') && (
+                                {driverDisplayName && (booking.status === 'assigned' || booking.status === 'accepted' || booking.status === 'active') && (
                                   <div className="flex items-center gap-1">
-                                    <span className="text-[10px] font-bold text-[#00875A] bg-[#E8F8F0] border border-[#BDEBD0] px-2 py-1 rounded-lg whitespace-nowrap flex items-center gap-1">
-                                      <CheckCircle2 className="w-2.5 h-2.5 text-[#00875A]" />
-                                      <span>Driver Assigned</span>
-                                    </span>
-                                    {dPhone && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setAssigningBooking(booking)}
+                                      className="text-[10px] font-bold text-[#00875A] bg-[#E8F8F0] hover:bg-[#D4F4E2] border border-[#BDEBD0] px-2 py-1 rounded-lg whitespace-nowrap flex items-center gap-1.5 transition-colors cursor-pointer"
+                                      title={`Assigned to ${driverDisplayName}. Click to reassign.`}
+                                    >
+                                      <CheckCircle2 className="w-3 h-3 text-[#00875A] flex-shrink-0" />
+                                      <span className="font-extrabold truncate max-w-[110px]">{driverDisplayName}</span>
+                                      <Edit2 className="w-2.5 h-2.5 text-emerald-600 opacity-60 hover:opacity-100" />
+                                    </button>
+                                    {driverDisplayPhone && (
                                       <a
-                                        href={`tel:${dPhone}`}
+                                        href={`tel:${driverDisplayPhone}`}
                                         onClick={e => e.stopPropagation()}
                                         className="px-2 py-1 rounded-lg bg-[#00875A] hover:bg-[#00734c] text-white text-[10px] font-bold transition-colors shadow-xs flex items-center gap-1 whitespace-nowrap cursor-pointer"
-                                        title={`Call Driver ${booking.assignedDriverName}: +91 ${dPhone}`}
+                                        title={`Call Driver ${driverDisplayName}: +91 ${driverDisplayPhone}`}
                                       >
                                         <PhoneCall className="w-2.5 h-2.5" />
-                                        <span>Call Driver</span>
+                                        <span>Call</span>
                                       </a>
                                     )}
                                   </div>
@@ -3036,7 +3084,16 @@ export const AdminDashboard: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {previousFilteredBookings.map(booking => (
+                      {previousFilteredBookings.map(booking => {
+                        const prevAssignedDriver = drivers.find(d =>
+                          (booking.assignedDriverId && d.id === booking.assignedDriverId) ||
+                          (booking.assignedDriverName && d.name.toLowerCase().trim() === booking.assignedDriverName.toLowerCase().trim())
+                        );
+                        const prevDriverName = booking.assignedDriverName || prevAssignedDriver?.name || (booking.assignedDriverId ? 'Driver Assigned' : null);
+                        const prevDriverPhone = booking.assignedDriverPhone || prevAssignedDriver?.phone || null;
+                        const prevDriverPhoto = prevAssignedDriver?.photo || DEFAULT_DRIVER_NO_PHOTO;
+
+                        return (
                         <tr
                           key={booking.id}
                           className="hover:bg-gray-50 transition-colors cursor-pointer"
@@ -3114,11 +3171,34 @@ export const AdminDashboard: React.FC = () => {
                           </td>
                           <td className="px-4 py-3 text-bee-600 font-bold whitespace-nowrap">₹{booking.estimatedFare}</td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            {booking.assignedDriverName || booking.assignedDriverId ? (
-                              <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs bg-emerald-100 text-emerald-800 border-emerald-200">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                                <span>Assigned</span>
-                              </span>
+                            {prevDriverName ? (
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={prevDriverPhoto}
+                                  alt={prevDriverName}
+                                  onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_DRIVER_NO_PHOTO; }}
+                                  className="w-7 h-7 rounded-xl object-cover border border-slate-200 bg-slate-100 flex-shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-slate-900 text-xs truncate max-w-[130px]">{prevDriverName}</div>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      Assigned
+                                    </span>
+                                    {prevDriverPhone && (
+                                      <a
+                                        href={`tel:${prevDriverPhone}`}
+                                        onClick={e => e.stopPropagation()}
+                                        className="text-[10px] text-slate-500 hover:text-emerald-700 font-semibold flex items-center gap-0.5"
+                                        title={`Call Driver: +91 ${prevDriverPhone}`}
+                                      >
+                                        <PhoneCall className="w-2.5 h-2.5 text-emerald-600" />
+                                        <span>{prevDriverPhone.slice(-10)}</span>
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             ) : (
                               <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5 border shadow-2xs bg-amber-100 text-amber-800 border-amber-200">
                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
@@ -3142,16 +3222,17 @@ export const AdminDashboard: React.FC = () => {
                                 <Eye className="w-3.5 h-3.5" />
                                 <span>View</span>
                               </button>
-                              {booking.assignedDriverName && (
+                              {prevDriverName && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
                                   <UserCheck className="w-3 h-3 text-emerald-600" />
-                                  <span>{booking.assignedDriverName}</span>
+                                  <span>{prevDriverName}</span>
                                 </span>
                               )}
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
 
