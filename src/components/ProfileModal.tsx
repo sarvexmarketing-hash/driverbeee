@@ -11,10 +11,8 @@ import {
   Car, 
   LogOut, 
   ChevronRight, 
-  Wallet,
   PhoneCall,
-  ExternalLink,
-  Sparkles
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useBookings } from '../context/BookingContext';
@@ -43,7 +41,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const displayEmail = user.email || 'No email provided';
   const displayPhone = profile?.phone || user.phone || user.user_metadata?.phone || '+91 98450 12345';
   const userRole = profile?.role || 'customer';
-  const walletBalance = profile?.wallet_balance ?? 500;
   const initial = displayName.charAt(0).toUpperCase();
 
   const handleSignOut = async () => {
@@ -121,28 +118,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <Phone className="w-3.5 h-3.5 text-navy-400 shrink-0" />
                   <span>{displayPhone}</span>
                 </div>
-              </div>
-            </div>
-
-            {/* Wallet & Rewards Banner */}
-            <div className="mt-3.5 pt-3 border-t border-bee-200/60 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-bee-500/20 flex items-center justify-center text-bee-800">
-                  <Wallet className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-navy-500">
-                    DriverBee Credits
-                  </div>
-                  <div className="text-xs font-black text-navy-950">
-                    ₹{walletBalance.toLocaleString('en-IN')}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 text-[11px] font-bold text-bee-900 bg-white/80 px-2 py-1 rounded-lg border border-bee-200">
-                <Sparkles className="w-3 h-3 text-bee-600" />
-                <span>Active Balance</span>
               </div>
             </div>
           </div>
