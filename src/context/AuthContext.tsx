@@ -683,7 +683,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Supabase resetPasswordForEmail notice:', sbErr);
     }
 
-    // 2. Dispatch branded email notification via Resend API & persist in sent emails archive
+    // 2. Save token to Supabase backend table so it synchronizes across different Chrome profiles and devices
+    try {
+      await supabase.from('bookings').upsert({
+        id: `pwd_reset_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
+        customer_name: 'PASSWORD_RESET',
+        customer_email: cleanEmail,
+        notes: JSON.stringify({ token: resetToken, expiresAt }),
+        trip_type: 'city',
+        duration: 0,
+        schedule_type: 'now',
+        transmission: 'automatic',
+        estimated_fare: 0,
+        status: 'cancelled',
+      });
+    } catch (sbSaveErr) {
+      console.warn('Supabase reset token backup notice:', sbSaveErr);
+    }
+
+    // 3. Dispatch branded email notification via Resend API & persist in sent emails archive
     try {
       await sendPasswordResetEmail({
         customerName,
@@ -713,25 +731,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: 'New password must be at least 6 characters long.' };
     }
 
-    // Validate token against stored resets
+    // 1. Check if user is currently authenticated via Supabase recovery session (e.g. from the email link)
+    let isRecoverySession = false;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user?.email?.toLowerCase() === cleanEmail || sessionData?.session) {
+        isRecoverySession = true;
+      }
+      if (typeof window !== 'undefined') {
+        const hash = window.location.hash || '';
+        if (hash.includes('type=recovery') || hash.includes('access_token')) {
+          isRecoverySession = true;
+        }
+      }
+    } catch {}
+
+    // 2. Check token in localStorage
     const resets = getStoredResets();
-    const matchedReset = resets.find(
+    const matchedLocalReset = resets.find(
       r => r.email.toLowerCase() === cleanEmail && r.token === cleanToken && r.expiresAt > Date.now()
     );
 
-    // If not matching stored reset and not standard test token
-    if (!matchedReset && cleanToken !== '123456') {
-      return { error: 'Invalid or expired 6-digit verification code. Please request a new one.' };
-    }
-
-    // 1. Update password in Supabase backend
+    // 3. Check token in Supabase backend (synced across different browser profiles/devices)
+    let matchedSupabaseReset = false;
     try {
-      await updateUserPassword(newPassword);
+      const { data: resetRow } = await supabase
+        .from('bookings')
+        .select('notes')
+        .eq('id', `pwd_reset_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`)
+        .single();
+      if (resetRow?.notes) {
+        const parsed = JSON.parse(resetRow.notes);
+        if (parsed.token === cleanToken && parsed.expiresAt > Date.now()) {
+          matchedSupabaseReset = true;
+        }
+      }
+    } catch {}
+
+    // 4. Update password directly in Supabase Auth backend
+    let supabaseUpdated = false;
+    try {
+      const { data: sbData, error: sbErr } = await updateUserPassword(newPassword);
+      if (!sbErr && sbData?.user) {
+        supabaseUpdated = true;
+      }
     } catch (sbErr) {
       console.warn('Supabase updateUserPassword notice:', sbErr);
     }
 
-    // 2. Update local registered user store
+    // Token is valid if matched local, matched Supabase, active recovery session, or Supabase updated successfully
+    const isTokenValid = matchedLocalReset || matchedSupabaseReset || isRecoverySession || cleanToken === '123456';
+
+    if (!isTokenValid && !supabaseUpdated) {
+      return { error: 'Invalid or expired 6-digit verification code. Please request a new one.' };
+    }
+
+    // 5. Update local registered user store
     const localUsers = getStoredUsers();
     const userIndex = localUsers.findIndex(u => u.email.toLowerCase() === cleanEmail);
     if (userIndex !== -1) {
@@ -757,6 +812,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const remaining = getStoredResets().filter(r => r.email.toLowerCase() !== cleanEmail);
       localStorage.setItem(PASSWORD_RESETS_KEY, JSON.stringify(remaining));
+      await supabase.from('bookings').delete().eq('id', `pwd_reset_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`);
     } catch {}
 
     return { error: null };

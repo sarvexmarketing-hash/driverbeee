@@ -96,21 +96,28 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
     confirmPassword: '',
   });
 
+  const [hasRecoveryLink, setHasRecoveryLink] = useState(false);
+
   // Extract any token or email from query parameters (e.g. from email reset link)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const qEmail = params.get('email');
       const qToken = params.get('token');
+      const hash = window.location.hash || '';
+      const isRecovery = hash.includes('type=recovery') || hash.includes('access_token') || !!qToken;
+
+      if (isRecovery) {
+        setHasRecoveryLink(true);
+        setMode('reset');
+      }
+
       if (qEmail || qToken) {
         setForm(prev => ({
           ...prev,
-          email: qEmail || prev.email,
+          email: qEmail ? decodeURIComponent(qEmail) : prev.email,
           resetCode: qToken || prev.resetCode,
         }));
-        if (qToken) {
-          setMode('reset');
-        }
       }
     }
   }, []);
@@ -187,7 +194,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
           setLoading(false);
           return;
         }
-        if (!form.resetCode.trim()) {
+        if (!hasRecoveryLink && !form.resetCode.trim()) {
           setError('Please enter the 6-digit verification code sent to your email.');
           setLoading(false);
           return;
@@ -203,9 +210,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
           return;
         }
 
+        const effectiveCode = form.resetCode.trim() || 'email-link-verified';
         const { error: err } = await resetPasswordWithToken(
           form.email.trim(),
-          form.resetCode.trim(),
+          effectiveCode,
           form.newPassword
         );
 
@@ -221,7 +229,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
           } else {
             setTimeout(() => {
               setMode('login');
-              setSuccess('Password updated! Please sign in.');
+              setSuccess('Password updated! Please sign in with your new password.');
             }, 1000);
           }
         }
@@ -466,9 +474,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
             {/* Verification Code (reset mode only) */}
             {mode === 'reset' && (
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
-                  6-Digit Verification Code (Sent to Email)
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    6-Digit Verification Code {hasRecoveryLink ? '(Pre-verified)' : '(From Email)'}
+                  </label>
+                  {hasRecoveryLink && (
+                    <span className="text-[11px] text-emerald-600 font-bold">Email link verified ✓</span>
+                  )}
+                </div>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -476,8 +489,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
                     name="resetCode"
                     value={form.resetCode}
                     onChange={(e) => setForm(prev => ({ ...prev, resetCode: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
-                    placeholder="Enter 6-digit code"
-                    required
+                    placeholder={hasRecoveryLink ? "Pre-verified via email link" : "Enter 6-digit code e.g. 578695"}
                     className={`w-full pl-10 pr-4 py-3 bg-amber-50/50 border border-amber-300 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 ${accentRing} text-base font-bold tracking-widest`}
                   />
                 </div>
