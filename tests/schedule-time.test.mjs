@@ -147,3 +147,47 @@ test('11. parseTimeString correctly breaks down 04:45 PM for separate scrolling 
   assert.deepEqual(parsedMorning, { hour: '08', minute: '00', ampm: 'AM' });
 });
 
+const getTimeGreeting = (date = new Date()) => {
+  const hour = date.getHours();
+  if (hour >= 4 && hour < 12) {
+    return 'Good Morning';
+  } else if (hour >= 12 && hour < 17) {
+    return 'Good Afternoon';
+  } else {
+    return 'Good Evening';
+  }
+};
+
+test('12. getTimeGreeting returns Good Morning between 4:00 AM and 11:59 AM', () => {
+  const d9am = new Date('2026-09-21T09:00:00');
+  assert.equal(getTimeGreeting(d9am), 'Good Morning');
+
+  const d11am = new Date('2026-09-21T11:59:00');
+  assert.equal(getTimeGreeting(d11am), 'Good Morning');
+});
+
+test('13. getTimeGreeting returns Good Afternoon between 12:00 PM and 4:59 PM (e.g. 3:12 PM)', () => {
+  const d12pm = new Date('2026-09-21T12:00:00');
+  assert.equal(getTimeGreeting(d12pm), 'Good Afternoon');
+
+  const d312pm = new Date('2026-09-21T15:12:00');
+  assert.equal(getTimeGreeting(d312pm), 'Good Afternoon');
+
+  const d459pm = new Date('2026-09-21T16:59:00');
+  assert.equal(getTimeGreeting(d459pm), 'Good Afternoon');
+});
+
+test('14. getTimeGreeting returns Good Evening for evening and night hours', () => {
+  const d5pm = new Date('2026-09-21T17:00:00');
+  assert.equal(getTimeGreeting(d5pm), 'Good Evening');
+
+  const d8pm = new Date('2026-09-21T20:30:00');
+  assert.equal(getTimeGreeting(d8pm), 'Good Evening');
+
+  const d11pm = new Date('2026-09-21T23:45:00');
+  assert.equal(getTimeGreeting(d11pm), 'Good Evening');
+
+  const d2am = new Date('2026-09-21T02:00:00');
+  assert.equal(getTimeGreeting(d2am), 'Good Evening');
+});
+

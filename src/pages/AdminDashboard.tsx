@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useBookings, LiveBooking, BookingStatus, DriverProfile, getDriverActiveBooking } from '../context/BookingContext';
 import { usePricing, PricingConfig, DEFAULT_PRICING } from '../context/PricingContext';
-import { formatDisplayDate, DEFAULT_DRIVER_NO_PHOTO } from '../types';
+import { formatDisplayDate, DEFAULT_DRIVER_NO_PHOTO, getTimeGreeting } from '../types';
 import { DriverBeeLogo } from '../components/DriverBeeLogo';
 import {
   LayoutDashboard, Car, Users, Wallet, Bell, LogOut,
@@ -2344,7 +2344,7 @@ export const AdminDashboard: React.FC = () => {
         <header className="sticky top-0 z-30 bg-[#F4F7F5]/90 backdrop-blur-md px-5 lg:px-8 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-xl lg:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <span>Good Morning, DriverBee!</span>
+              <span>{getTimeGreeting()}, DriverBee!</span>
               <span className="text-2xl">👋</span>
             </h1>
             <p className="text-xs text-slate-500 font-medium mt-0.5">

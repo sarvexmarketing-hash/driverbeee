@@ -95,5 +95,16 @@ export function formatDisplayDate(dateStr: string): string {
   return dateStr;
 }
 
+export function getTimeGreeting(date: Date = new Date()): string {
+  const hour = date.getHours();
+  if (hour >= 4 && hour < 12) {
+    return 'Good Morning';
+  } else if (hour >= 12 && hour < 17) {
+    return 'Good Afternoon';
+  } else {
+    return 'Good Evening';
+  }
+}
+
 export const DEFAULT_DRIVER_NO_PHOTO =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none"><rect width="120" height="120" rx="24" fill="%23F1F5F9"/><circle cx="60" cy="46" r="19" fill="%2394A3B8"/><path d="M28 98c0-17.673 14.327-32 32-32s32 14.327 32 32H28z" fill="%2394A3B8"/></svg>';

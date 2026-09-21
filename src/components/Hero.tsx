@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { DriverBeeLogo } from './DriverBeeLogo';
 
 import { isWarangalLocation } from '../utils/location';
+import { getTimeGreeting } from '../types';
 
 interface HeroProps {
   onQuickBook?: () => void;
@@ -111,7 +112,7 @@ export const Hero: React.FC<HeroProps> = ({
                 <span>On-Demand Car Drivers</span>
               </div>
               <p className="text-xs text-navy-600 font-medium leading-none mb-1">
-                Good Morning
+                {getTimeGreeting()}
               </p>
               <h1 className="text-2xl font-extrabold tracking-tight text-navy-950 leading-tight font-display">
                 Book a Driver
