@@ -31,7 +31,7 @@ import { useAuth } from './context/AuthContext';
 
 export const App: React.FC = () => {
   const { bookings: contextBookings, drivers } = useBookings();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
 
   // Navigation & City
   const [activeTab, setActiveTab] = useState<string>('home');
@@ -179,10 +179,63 @@ export const App: React.FC = () => {
 
   // User State
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(INITIAL_FAMILY);
+
+  // Track bookings created on this device / browser session
+  const [localBookingIds, setLocalBookingIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('driverbee_my_booking_ids');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleConfirmSuccess = (bookingId: string) => {
+    if (!bookingId) return;
+    setLocalBookingIds(prev => {
+      const updated = prev.includes(bookingId) ? prev : [bookingId, ...prev];
+      try {
+        localStorage.setItem('driverbee_my_booking_ids', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Helper to normalize phone numbers for accurate comparison (last 10 digits)
+  const normalizePhone = (phone?: string | null): string => {
+    if (!phone) return '';
+    return phone.replace(/\D/g, '').slice(-10);
+  };
   
-  // Derive displayed bookings dynamically from shared contextBookings so Admin approvals instantly reflect
+  // Derive displayed bookings dynamically filtered to ONLY the logged-in user's own bookings
   const displayedBookings: BookingRecord[] = useMemo(() => {
-    return contextBookings.map(b => {
+    const userPhone = normalizePhone(profile?.phone || user?.phone);
+    const userId = profile?.id || user?.id;
+    const userName = profile?.full_name?.trim().toLowerCase();
+
+    // Filter contextBookings strictly to this customer's bookings
+    const myBookings = contextBookings.filter(b => {
+      // 1. Match by customer ID
+      if (userId && b.customerId && b.customerId === userId) {
+        return true;
+      }
+      // 2. Match by normalized 10-digit phone
+      const bPhone = normalizePhone(b.customerPhone);
+      if (userPhone && bPhone && userPhone === bPhone) {
+        return true;
+      }
+      // 3. Match by customer name if logged in
+      if (userName && b.customerName && userName === b.customerName.trim().toLowerCase()) {
+        return true;
+      }
+      // 4. Match if booked on this device/browser session
+      if (localBookingIds.includes(b.id)) {
+        return true;
+      }
+      return false;
+    });
+
+    return myBookings.map(b => {
       const driverMatch = drivers.find(d => d.id === b.assignedDriverId || d.name === b.assignedDriverName)
         || INITIAL_DRIVERS.find(d => d.id === b.assignedDriverId || d.name === b.assignedDriverName);
 
@@ -227,11 +280,7 @@ export const App: React.FC = () => {
         notes: b.notes,
       };
     });
-  }, [contextBookings, drivers]);
-
-  const handleConfirmSuccess = (_bookingId: string) => {
-    // Shared BookingContext automatically tracks the new booking
-  };
+  }, [contextBookings, drivers, profile, user, localBookingIds]);
 
   const handleSelectDriverToBook = (driver: Driver) => {
     setIsBookingModalOpen(true);

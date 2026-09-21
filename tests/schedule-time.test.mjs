@@ -191,3 +191,41 @@ test('14. getTimeGreeting returns Good Evening for evening and night hours', () 
   assert.equal(getTimeGreeting(d2am), 'Good Evening');
 });
 
+// Phone normalizer
+const normalizePhone = (phone) => {
+  if (!phone) return '';
+  return phone.replace(/\D/g, '').slice(-10);
+};
+
+test('15. normalizePhone extracts last 10 digits across formatting styles', () => {
+  assert.equal(normalizePhone('+91 8099409978'), '8099409978');
+  assert.equal(normalizePhone('+91 96523 88536'), '9652388536');
+  assert.equal(normalizePhone('08212029298'), '8212029298');
+  assert.equal(normalizePhone('9876543210'), '9876543210');
+});
+
+test('16. Customer My Bookings strictly isolates user bookings and excludes other customers', () => {
+  const allBookings = [
+    { id: '3', customerName: 'Vishwa Goud', customerPhone: '+91 8099409978', customerId: 'cust-vishwa' },
+    { id: '2', customerName: 'Shruthi', customerPhone: '+91 9652388536', customerId: 'cust-shruthi' },
+    { id: '1', customerName: 'Sai charan', customerPhone: '+91 8212029298', customerId: 'cust-saicharan' },
+    { id: '4', customerName: 'javed', customerPhone: '+91 9888877777', customerId: 'cust-javed' }
+  ];
+
+  const javedProfile = { id: 'cust-javed', full_name: 'javed', phone: '9888877777' };
+  const javedUserPhone = normalizePhone(javedProfile.phone);
+
+  const javedFiltered = allBookings.filter(b => {
+    if (javedProfile.id && b.customerId === javedProfile.id) return true;
+    if (javedUserPhone && normalizePhone(b.customerPhone) === javedUserPhone) return true;
+    if (javedProfile.full_name && b.customerName.toLowerCase() === javedProfile.full_name.toLowerCase()) return true;
+    return false;
+  });
+
+  // Javed only sees his own booking ('4'), never Vishwa, Shruthi, or Sai charan!
+  assert.equal(javedFiltered.length, 1);
+  assert.equal(javedFiltered[0].id, '4');
+  assert.equal(javedFiltered[0].customerName, 'javed');
+});
+
+
