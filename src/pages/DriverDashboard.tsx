@@ -13,7 +13,7 @@ import {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 function tripLabel(t: string): string {
-  return t === 'city' ? 'Within City' : t === 'outside' ? 'Outstation' : 'Intercity';
+  return t === 'city' ? 'Within City' : t === 'outside' ? 'Outstation' : t === 'oneway' ? 'One Way' : 'Intercity';
 }
 
 function extractDestination(b: LiveBooking): string {

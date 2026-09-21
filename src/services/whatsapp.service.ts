@@ -162,6 +162,8 @@ export class WhatsAppService {
     const fare = booking.estimated_fare ? `₹${Math.round(booking.estimated_fare)}` : 'Calculated on trip';
     const service = booking.trip_type === 'outside'
       ? `${booking.duration} Day(s) Outstation`
+      : booking.trip_type === 'oneway'
+      ? `${booking.duration} Hours One Way Drop`
       : `${booking.duration} Hours Local Driver`;
 
     return { pickup, drop, date, time, vehicle, fare, service };

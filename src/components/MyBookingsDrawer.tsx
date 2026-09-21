@@ -77,6 +77,8 @@ export const MyBookingsDrawer: React.FC<MyBookingsDrawerProps> = ({
                 <div className="font-bold text-sm text-navy-950 capitalize">
                   {booking.tripType === 'city'
                     ? `Within City Drive • ${booking.duration}h`
+                    : booking.tripType === 'oneway'
+                    ? `One Way Drop • ${booking.duration}h`
                     : `Outside City Drive • ${booking.duration} Day${booking.duration > 1 ? 's' : ''}`}
                 </div>
                 <div className="flex items-center gap-2 text-navy-500">

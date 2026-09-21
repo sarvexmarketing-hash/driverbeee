@@ -56,3 +56,43 @@ export const IntercityIcon: React.FC<{ className?: string }> = ({ className = "w
     <circle cx="28.2" cy="35" r="0.8" fill="#1A202C" />
   </svg>
 );
+
+export const OneWayIcon: React.FC<{ className?: string }> = ({ className = "w-10 h-10" }) => (
+  <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    {/* Soft rounded background plate */}
+    <rect width="48" height="48" rx="14" fill="#FEF3C7" />
+    
+    {/* Directional route dash A to B */}
+    <path 
+      d="M11 34C15 34 17 26 23 26C29 26 31 16 37 16" 
+      stroke="#D97706" 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeDasharray="3 3" 
+    />
+    
+    {/* Origin Point A */}
+    <circle cx="11" cy="34" r="3.2" fill="#B45309" />
+    <circle cx="11" cy="34" r="1.5" fill="#FEF3C7" />
+    
+    {/* Destination Pin B */}
+    <g transform="translate(32, 8)">
+      <path 
+        d="M5.5 0C2.46 0 0 2.46 0 5.5C0 9.6 5.5 14.5 5.5 14.5C5.5 14.5 11 9.6 11 5.5C11 2.46 8.54 0 5.5 0Z" 
+        fill="#D97706" 
+      />
+      <circle cx="5.5" cy="5.5" r="2" fill="#FFFFFF" />
+    </g>
+    
+    {/* Car moving forward on route */}
+    <g transform="translate(16, 18)">
+      <rect x="1" y="4" width="13" height="6.5" rx="2" fill="#1E293B" />
+      <path d="M3.5 4L5.5 1.5H10L12 4H3.5Z" fill="#334155" />
+      <circle cx="4.5" cy="10.5" r="1.8" fill="#F59E0B" />
+      <circle cx="11" cy="10.5" r="1.8" fill="#F59E0B" />
+      <circle cx="4.5" cy="10.5" r="0.8" fill="#1E293B" />
+      <circle cx="11" cy="10.5" r="0.8" fill="#1E293B" />
+    </g>
+  </svg>
+);
+

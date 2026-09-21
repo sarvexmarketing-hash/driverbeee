@@ -40,12 +40,19 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
           <p className="text-xs sm:text-sm text-navy-500 font-normal mt-0.5">
             {isOutside
               ? `Outside City tariff (₹${outsideHourlyRate}/hr) • Highway experienced drivers`
+              : tripType === 'oneway'
+              ? `One Way drop tariff (₹${cityHourlyRate}/hr) • Single drop point-to-point`
               : `Choose how long you need the driver for (₹${cityHourlyRate}/hr)`}
           </p>
         </div>
         {isOutside && (
           <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-bee-500/10 text-bee-700 border border-bee-500/30">
             Outstation Rate (₹{outsideHourlyRate}/hr)
+          </span>
+        )}
+        {tripType === 'oneway' && (
+          <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-800 border border-amber-500/30">
+            One Way Drop
           </span>
         )}
       </div>

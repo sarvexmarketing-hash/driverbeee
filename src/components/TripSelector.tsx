@@ -1,6 +1,6 @@
 import React from 'react';
 import { TripType } from '../types';
-import { CityIcon, OutsideCityIcon } from './CustomTripIcons';
+import { CityIcon, OutsideCityIcon, OneWayIcon } from './CustomTripIcons';
 
 interface TripSelectorProps {
   selectedTrip: TripType;
@@ -17,14 +17,20 @@ export const TripSelector: React.FC<TripSelectorProps> = ({
     {
       id: 'city' as TripType,
       title: 'Within the City',
-      subtitle: 'Local rides, errands, meetings',
+      subtitle: 'Local rides & errands',
       Icon: CityIcon,
     },
     {
       id: 'outside' as TripType,
       title: 'Outside City',
-      subtitle: 'Outstation trips & long distance',
+      subtitle: 'Outstation trips',
       Icon: OutsideCityIcon,
+    },
+    {
+      id: 'oneway' as TripType,
+      title: 'One Way',
+      subtitle: 'Single drop-off trip',
+      Icon: OneWayIcon,
     }
   ];
 
@@ -48,8 +54,8 @@ export const TripSelector: React.FC<TripSelectorProps> = ({
         </div>
       </div>
 
-      {/* 2-column Grid */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
+      {/* 3-column Grid */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3.5">
         {tripOptions.map((trip) => {
           const isSelected = selectedTrip === trip.id;
           const { Icon } = trip;
@@ -59,36 +65,30 @@ export const TripSelector: React.FC<TripSelectorProps> = ({
               key={trip.id}
               type="button"
               onClick={() => onSelectTrip(trip.id)}
-              className={`relative cursor-pointer rounded-2xl p-3 sm:p-4 transition-all duration-150 select-none min-h-[64px] sm:min-h-[72px] flex items-center gap-3 text-left w-full ${
+              className={`relative cursor-pointer rounded-2xl p-2.5 sm:p-4 transition-all duration-150 select-none min-h-[72px] flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-center sm:text-left w-full ${
                 isSelected
                   ? 'bg-white border-2 border-bee-600 shadow-sm'
                   : 'bg-[#F6F4EE] hover:bg-[#EFECE3] border border-transparent'
               }`}
             >
-              {/* Left: Custom SVG / PNG Icon */}
-              <div className="w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
-                <Icon className="w-9 h-9 sm:w-10 sm:h-10" />
+              {/* Custom SVG / PNG Icon */}
+              <div className="w-8 h-8 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+                <Icon className="w-8 h-8 sm:w-10 sm:h-10" />
               </div>
 
-              {/* Right: Label */}
+              {/* Label */}
               <div className="flex-1 min-w-0">
-                <div className="text-xs sm:text-sm font-bold text-navy-950 leading-tight flex items-center gap-1.5 flex-wrap">
-                  <span>{trip.title}</span>
-                  <span
-                    className={`text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap transition-colors ${
-                      isSelected
-                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                        : 'bg-white/90 text-amber-800 border border-amber-200/80 shadow-2xs'
-                    }`}
-                  >
-                    (One Way)
-                  </span>
+                <div className="text-[11px] sm:text-sm font-bold text-navy-950 leading-tight">
+                  {trip.title}
+                </div>
+                <div className="hidden sm:block text-[11px] text-navy-500 font-normal mt-0.5 truncate">
+                  {trip.subtitle}
                 </div>
               </div>
 
-              {/* Gold/amber circle indicator when selected (matches 2 Hours / DurationSelector) */}
+              {/* Gold/amber circle indicator when selected */}
               {isSelected && (
-                <span className="w-3.5 h-3.5 rounded-full bg-bee-600 flex-shrink-0" />
+                <span className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full bg-bee-600 flex-shrink-0" />
               )}
             </button>
           );

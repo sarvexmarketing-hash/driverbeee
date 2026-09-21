@@ -86,7 +86,7 @@ create table if not exists public.bookings (
   customer_name       text not null,
   customer_phone      text,
   customer_email      text,
-  trip_type           text not null check (trip_type in ('city', 'outside', 'airport', 'intercity')),
+  trip_type           text not null check (trip_type in ('city', 'outside', 'airport', 'intercity', 'oneway')),
   duration            integer not null,
   schedule_type       text not null check (schedule_type in ('now', 'later')),
   scheduled_date      date,

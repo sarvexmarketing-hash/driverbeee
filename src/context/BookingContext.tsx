@@ -102,7 +102,7 @@ function mapBooking(b: DBBooking): LiveBooking {
     customerId: b.customer_id,
     customerName: b.customer_name,
     customerPhone: b.customer_phone ?? '',
-    tripType: b.trip_type as TripType,
+    tripType: (b.trip_type === 'oneway' || (b.trip_type === 'intercity' && b.notes?.includes('ONE_WAY'))) ? 'oneway' : (b.trip_type as TripType),
     duration: b.duration,
     scheduleType: b.schedule_type,
     date: b.scheduled_date ?? '',
@@ -488,6 +488,29 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
           area: data.area,
           estimated_fare: data.estimatedFare,
           notes: data.notes || null,
+        });
+      }
+
+      // If check constraint error on trip_type (in case remote DB schema hasn't migrated 'oneway'), retry with 'intercity'
+      if (insertResult.error && (insertResult.error.message?.includes('trip_type') || insertResult.error.message?.includes('check constraint'))) {
+        console.log('[DriverBee] Retrying with compatible trip_type for DB constraint...');
+        insertResult = await sbCreateBooking({
+          id,
+          customer_id: data.customerId || null,
+          customer_name: data.customerName,
+          customer_phone: data.customerPhone,
+          trip_type: 'intercity',
+          duration: data.duration,
+          schedule_type: data.scheduleType,
+          scheduled_date: validDate,
+          scheduled_time: data.time || null,
+          transmission: data.transmission,
+          car_model: data.carModel,
+          car_plate: data.carPlate,
+          for_whom: data.forWhom,
+          area: data.area,
+          estimated_fare: data.estimatedFare,
+          notes: `${data.notes || ''}\n[TRIP_MODE:ONE_WAY]`,
         });
       }
 

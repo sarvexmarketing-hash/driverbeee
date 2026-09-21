@@ -69,7 +69,7 @@ export interface DBBooking {
   customer_id: string | null;
   customer_name: string;
   customer_phone: string | null;
-  trip_type: 'city' | 'outside' | 'intercity';
+  trip_type: 'city' | 'outside' | 'intercity' | 'oneway';
   duration: number;
   schedule_type: 'now' | 'later';
   scheduled_date: string | null;

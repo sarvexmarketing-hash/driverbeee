@@ -5,7 +5,7 @@ export interface BookingEmailPayload {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  tripType: 'city' | 'outside' | 'intercity';
+  tripType: 'city' | 'outside' | 'intercity' | 'oneway';
   duration: number;
   scheduleType: 'now' | 'later';
   date: string;
@@ -63,8 +63,11 @@ export function getEmailByBookingId(bookingId: string): SentEmailRecord | null {
 
 export function generateBookingEmailHtml(p: BookingEmailPayload): string {
   const isOutside = p.tripType === 'outside';
+  const isOneWay = p.tripType === 'oneway';
   const durationLabel = isOutside
     ? `${p.duration} Day${p.duration > 1 ? 's' : ''} Outstation Package`
+    : isOneWay
+    ? `${p.duration} Hours One Way Drop`
     : `${p.duration} Hours Local Trip`;
   const scheduleLabel = p.scheduleType === 'now' ? 'Immediate (~30 mins arrival)' : `${p.date} at ${p.time}`;
 
@@ -158,7 +161,7 @@ export function generateBookingEmailHtml(p: BookingEmailPayload): string {
 
         <div class="row">
           <span class="label">Trip Category</span>
-          <span class="value">${isOutside ? 'Outstation / Outside City' : 'Within Warangal City'}</span>
+          <span class="value">${isOutside ? 'Outstation / Outside City' : isOneWay ? 'One Way Drop' : 'Within Warangal City'}</span>
         </div>
 
         <div class="row">

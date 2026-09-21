@@ -1,4 +1,4 @@
-export type TripType = 'city' | 'outside' | 'intercity';
+export type TripType = 'city' | 'outside' | 'intercity' | 'oneway';
 
 export type DurationOption = 1 | 2 | 4 | 6 | 8;
 

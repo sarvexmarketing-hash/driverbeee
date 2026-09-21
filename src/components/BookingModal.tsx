@@ -484,6 +484,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         `• Fixed Driver Fare: ₹${total.toLocaleString('en-IN')}`,
         `• Terms & Conditions Accepted: Yes`,
       ].join('\n');
+    } else if (bookingState.tripType === 'oneway') {
+      bookingNotes = [
+        `[ONE WAY DROP TRIP]`,
+        `• Package Duration: ${bookingState.duration} Hours (${bookingState.duration === 2 ? '2-Hr Short Trip' : bookingState.duration === 4 ? '4-Hr Half Day' : bookingState.duration === 6 ? '6-Hr Extended' : '8-Hr Full Day'})`,
+        `• Trip Mode: One Way Drop`,
+        `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
+        `• Car Type: ${carType.toUpperCase()}`,
+        `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
+        `• Booked For: ${forWhomStr}`,
+        `• Pickup Doorstep: ${address}`,
+        `• Drop-off Destination: ${deliveryAddress}`,
+        `• Driver Fare: ₹${total.toLocaleString('en-IN')}`,
+        `• Terms & Conditions Accepted: Yes`,
+      ].join('\n');
     } else {
       bookingNotes = [
         `[WITHIN THE CITY TRIP (Warangal / Local)]`,
@@ -601,10 +615,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   ? 'Booking Confirmed' 
                   : 'Review & Confirm Drive'}
               </span>
-              <h3 className="text-lg sm:text-xl font-extrabold text-navy-950">
-                {isConfirmed 
-                  ? 'Your Driver Is Assigned' 
-                  : 'DriverBee Driver Booking'}
+              <h3 className="text-lg sm:text-xl font-extrabold text-navy-950 flex items-center gap-2 flex-wrap">
+                <span>
+                  {isConfirmed 
+                    ? 'Your Driver Is Assigned' 
+                    : 'DriverBee Driver Booking'}
+                </span>
+                {!isConfirmed && (
+                  <span className="text-xs sm:text-sm font-semibold text-amber-800 bg-amber-50 border border-amber-200/90 px-2 py-0.5 rounded-md">
+                    {bookingState.tripType === 'oneway' ? '(one way)' : bookingState.tripType === 'outside' ? '(outstation)' : '(within city)'}
+                  </span>
+                )}
               </h3>
             </div>
 
@@ -1001,7 +1022,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div>
                   <span className="text-navy-400 font-medium block">Trip Category</span>
                   <span className="font-bold text-navy-950 text-sm capitalize">
-                    {bookingState.tripType === 'city' ? 'Within the City' : 'Outside City'}
+                    {bookingState.tripType === 'city' ? 'Within the City' : bookingState.tripType === 'oneway' ? 'One Way Drop' : 'Outside City'}
                   </span>
                 </div>
                 <div>
