@@ -145,8 +145,12 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         ) : (
           <DurationSelector
             selectedDuration={bookingState.duration}
-            onSelectDuration={(duration: DurationOption) => updateBookingState({ duration })}
+            onSelectDuration={(duration: DurationOption) => updateBookingState({ duration, oneWayMode: 'hours' })}
             tripType={bookingState.tripType}
+            oneWayDays={bookingState.oneWayDays || 1}
+            oneWayMode={bookingState.oneWayMode || 'hours'}
+            onSelectOneWayDays={(days: number) => updateBookingState({ oneWayDays: days, oneWayMode: 'days' })}
+            onSelectOneWayMode={(mode: 'hours' | 'days') => updateBookingState({ oneWayMode: mode })}
           />
         )}
 

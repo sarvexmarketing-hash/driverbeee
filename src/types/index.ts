@@ -38,6 +38,8 @@ export interface BookingState {
   outstationDistanceRange?: string;
   outstationDays?: number;
   outstationPrice?: number;
+  oneWayDays?: number;
+  oneWayMode?: 'hours' | 'days';
 }
 
 export interface Driver {

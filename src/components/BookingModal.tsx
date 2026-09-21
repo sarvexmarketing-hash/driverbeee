@@ -405,6 +405,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return getOutsideFare(bookingState.duration);
     }
     if (bookingState.tripType === 'oneway') {
+      if (bookingState.oneWayMode === 'days') {
+        const dailyRate = getOneWayFare(8);
+        const days = Math.max(1, bookingState.oneWayDays || 1);
+        return dailyRate * days;
+      }
       return getOneWayFare(bookingState.duration);
     }
     return getCityFare(bookingState.duration);
@@ -488,10 +493,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         `• Terms & Conditions Accepted: Yes`,
       ].join('\n');
     } else if (bookingState.tripType === 'oneway') {
+      const isDays = bookingState.oneWayMode === 'days';
+      const daysCount = Math.max(1, bookingState.oneWayDays || 1);
+      const durationDesc = isDays
+        ? `${daysCount} Day${daysCount > 1 ? 's' : ''} Multi-Day Package`
+        : `${bookingState.duration} Hours (${bookingState.duration === 2 ? '2-Hr Short Trip' : bookingState.duration === 4 ? '4-Hr Half Day' : bookingState.duration === 6 ? '6-Hr Extended' : '8-Hr Full Day'})`;
+
       bookingNotes = [
         `[ONE WAY DROP TRIP]`,
-        `• Package Duration: ${bookingState.duration === 1 ? '1 Day (+1 Day Full Day Package)' : `${bookingState.duration} Hours (${bookingState.duration === 2 ? '2-Hr Short Trip' : bookingState.duration === 4 ? '4-Hr Half Day' : bookingState.duration === 6 ? '6-Hr Extended' : '8-Hr Full Day'})`}`,
-        `• Trip Mode: One Way Drop`,
+        `• Package Duration: ${durationDesc}`,
+        `• Trip Mode: One Way Drop${isDays ? ` (${daysCount} Days)` : ''}`,
         `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
         `• Car Type: ${carType.toUpperCase()}`,
         `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
@@ -517,12 +528,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
 
     try {
+      const resolvedDuration = bookingState.tripType === 'outside'
+        ? (bookingState.outstationDays || 1)
+        : (bookingState.tripType === 'oneway' && bookingState.oneWayMode === 'days')
+        ? (bookingState.oneWayDays || 1)
+        : bookingState.duration;
+
       const newId = await addBooking({
         customerId: profile?.id || null,
         customerName: cleanCustomerName,
         customerPhone: phone.startsWith('+91') ? phone : `+91 ${phone}`,
         tripType: bookingState.tripType,
-        duration: bookingState.tripType === 'outside' ? (bookingState.outstationDays || 1) : bookingState.duration,
+        duration: resolvedDuration,
         scheduleType: bookingState.scheduleType,
         date: bookingState.scheduleType === 'now' ? new Date().toISOString().split('T')[0] : bookingState.date,
         time: bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : bookingState.time,
@@ -546,7 +563,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         customerEmail: resolvedEmail,
         customerPhone: phone.startsWith('+91') ? phone : `+91 ${phone}`,
         tripType: bookingState.tripType,
-        duration: bookingState.tripType === 'outside' ? (bookingState.outstationDays || 1) : bookingState.duration,
+        duration: resolvedDuration,
         scheduleType: bookingState.scheduleType,
         date: bookingState.scheduleType === 'now' ? new Date().toISOString().split('T')[0] : bookingState.date,
         time: bookingState.scheduleType === 'now' ? 'Immediate (~30 mins)' : bookingState.time,
@@ -1035,8 +1052,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <span className="font-bold text-navy-950 text-sm">
                     {bookingState.tripType === 'outside'
                       ? `${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDays || 1} Day${(bookingState.outstationDays || 1) > 1 ? 's' : ''})`
-                      : bookingState.duration === 1
-                      ? '1 Day (+1 Day)'
+                      : (bookingState.tripType === 'oneway' && bookingState.oneWayMode === 'days')
+                      ? `${bookingState.oneWayDays || 1} Day${(bookingState.oneWayDays || 1) > 1 ? 's' : ''} Multi-Day Drive`
                       : `${bookingState.duration} Hours`}
                   </span>
                 </div>
