@@ -72,8 +72,17 @@ export const TripSelector: React.FC<TripSelectorProps> = ({
 
               {/* Right: Label */}
               <div className="flex-1 min-w-0">
-                <div className="text-xs sm:text-sm font-bold text-navy-950 leading-tight">
-                  {trip.title}
+                <div className="text-xs sm:text-sm font-bold text-navy-950 leading-tight flex items-center gap-1.5 flex-wrap">
+                  <span>{trip.title}</span>
+                  <span
+                    className={`text-[10px] sm:text-[11px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap transition-colors ${
+                      isSelected
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : 'bg-white/90 text-amber-800 border border-amber-200/80 shadow-2xs'
+                    }`}
+                  >
+                    (One Way)
+                  </span>
                 </div>
               </div>
 
