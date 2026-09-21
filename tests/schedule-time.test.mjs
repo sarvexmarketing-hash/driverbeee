@@ -106,18 +106,26 @@ test('9. Timing dropdown includes requested custom times like 04:45 PM and 04:45
 
 // Hours 01 to 12
 const hoursList = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
-// Minutes 00 to 59
-const minutesList = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+// Minutes: strictly 00, 15, 30, and 45
+const minutesList = ['00', '15', '30', '45'];
 
 const parseTimeString = (t) => {
   const match = (t || '').trim().match(/(\d{1,2})[:.](\d{2})\s*(AM|PM)?/i);
   if (match) {
     let h = parseInt(match[1], 10);
-    const m = match[2];
+    let m = match[2];
     let ampm = match[3] ? match[3].toUpperCase() : 'AM';
     if (!match[3]) {
       ampm = h >= 12 ? 'PM' : 'AM';
       h = h % 12 || 12;
+    }
+    if (!minutesList.includes(m)) {
+      const numM = parseInt(m, 10);
+      if (numM < 8) m = '00';
+      else if (numM < 23) m = '15';
+      else if (numM < 38) m = '30';
+      else if (numM < 53) m = '45';
+      else m = '00';
     }
     const hStr = String(h).padStart(2, '0');
     return { hour: hStr, minute: m, ampm };
@@ -125,15 +133,17 @@ const parseTimeString = (t) => {
   return { hour: '10', minute: '30', ampm: 'AM' };
 };
 
-test('10. Scrolling numbers lists cover hours 01-12 and all 60 minutes 00-59', () => {
+test('10. Minute dropdown strictly keeps only 15, 30, 45, and 00', () => {
   assert.equal(hoursList.length, 12);
   assert.equal(hoursList[0], '01');
   assert.equal(hoursList[11], '12');
 
-  assert.equal(minutesList.length, 60);
-  assert.equal(minutesList[0], '00');
-  assert.equal(minutesList[45], '45');
-  assert.equal(minutesList[59], '59');
+  assert.equal(minutesList.length, 4);
+  assert.deepEqual(minutesList, ['00', '15', '30', '45']);
+  assert.ok(minutesList.includes('00'));
+  assert.ok(minutesList.includes('15'));
+  assert.ok(minutesList.includes('30'));
+  assert.ok(minutesList.includes('45'));
 });
 
 test('11. parseTimeString correctly breaks down 04:45 PM for separate scrolling selectors', () => {

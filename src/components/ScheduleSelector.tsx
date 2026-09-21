@@ -14,19 +14,28 @@ interface ScheduleSelectorProps {
 // Generate hour numbers 01 to 12
 export const hoursList = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 
-// Generate minute numbers 00 to 59
-export const minutesList = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+// Minute numbers: strictly 00, 15, 30, and 45 as requested
+export const minutesList = ['00', '15', '30', '45'];
 
 // Parse time string like "04:45 PM" into hour, minute, and am/pm components
 export const parseTimeString = (t: string): { hour: string; minute: string; ampm: string } => {
   const match = (t || '').trim().match(/(\d{1,2})[:.](\d{2})\s*(AM|PM)?/i);
   if (match) {
     let h = parseInt(match[1], 10);
-    const m = match[2];
+    let m = match[2];
     let ampm = match[3] ? match[3].toUpperCase() : 'AM';
     if (!match[3]) {
       ampm = h >= 12 ? 'PM' : 'AM';
       h = h % 12 || 12;
+    }
+    // Snap to closest 15-minute slot if not in ['00', '15', '30', '45']
+    if (!minutesList.includes(m)) {
+      const numM = parseInt(m, 10);
+      if (numM < 8) m = '00';
+      else if (numM < 23) m = '15';
+      else if (numM < 38) m = '30';
+      else if (numM < 53) m = '45';
+      else m = '00';
     }
     const hStr = String(h).padStart(2, '0');
     return { hour: hStr, minute: m, ampm };
