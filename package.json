@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node tests/whatsapp.test.mjs && node tests/driver-onboarding.test.mjs"
+    "test": "node tests/whatsapp.test.mjs && node tests/driver-onboarding.test.mjs && node tests/schedule-time.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
