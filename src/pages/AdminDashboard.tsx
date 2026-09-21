@@ -1497,8 +1497,39 @@ const AssignRideToDriverModal: React.FC<AssignRideToDriverModalProps> = ({
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pricing Section Component
 // ─────────────────────────────────────────────────────────────────────────────
+// Pricing Section Components (Top-level to preserve input focus across keystrokes)
+// ─────────────────────────────────────────────────────────────────────────────
+interface PriceFieldProps {
+  label: string;
+  k: string;
+  value: string;
+  error?: string;
+  onChange: (key: string, val: string) => void;
+}
+
+const PriceField: React.FC<PriceFieldProps> = ({ label, k, value, error, onChange }) => (
+  <div>
+    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{label}</label>
+    <div className="relative">
+      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₹</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={value}
+        onChange={e => onChange(k, e.target.value)}
+        placeholder="e.g. 2000"
+        className={`w-full pl-7 pr-3 py-2.5 text-sm font-bold bg-white border rounded-xl focus:outline-none focus:ring-2 text-navy-950 transition-colors ${
+          error
+            ? 'border-red-400 focus:ring-red-300 bg-red-50'
+            : 'border-gray-200 focus:ring-bee-500/40'
+        }`}
+      />
+    </div>
+    {error && <p className="text-[10px] text-red-500 mt-1 font-semibold">{error}</p>}
+  </div>
+);
+
 const PricingSection: React.FC = () => {
   const { pricing, updatePricing, resetPricing } = usePricing();
   const [saved, setSaved] = useState(false);
@@ -1519,27 +1550,32 @@ const PricingSection: React.FC = () => {
     return init;
   });
 
-  // Sync raw inputs when pricing changes externally (e.g. cross-tab broadcast)
+  const lastSyncedUpdate = useRef(pricing.lastUpdated);
+
+  // Sync raw inputs ONLY when pricing changes externally to a new timestamp
   useEffect(() => {
-    setRaw({
-      'cityRates.hr2': String(pricing.cityRates.hr2),
-      'cityRates.hr4': String(pricing.cityRates.hr4),
-      'cityRates.hr6': String(pricing.cityRates.hr6),
-      'cityRates.hr8': String(pricing.cityRates.hr8),
-      'outsideRates.hr2': String(pricing.outsideRates.hr2),
-      'outsideRates.hr4': String(pricing.outsideRates.hr4),
-      'outsideRates.hr6': String(pricing.outsideRates.hr6),
-      'outsideRates.hr8': String(pricing.outsideRates.hr8),
-      'oneWayRates.hr2': String(pricing.oneWayRates?.hr2 ?? DEFAULT_PRICING.oneWayRates.hr2),
-      'oneWayRates.hr4': String(pricing.oneWayRates?.hr4 ?? DEFAULT_PRICING.oneWayRates.hr4),
-      'oneWayRates.hr6': String(pricing.oneWayRates?.hr6 ?? DEFAULT_PRICING.oneWayRates.hr6),
-      'oneWayRates.hr8': String(pricing.oneWayRates?.hr8 ?? DEFAULT_PRICING.oneWayRates.hr8),
-      'outstationSlabs.slab100_150': String(pricing.outstationSlabs.slab100_150),
-      'outstationSlabs.slab150_250': String(pricing.outstationSlabs.slab150_250),
-      'outstationSlabs.slabAbove250': String(pricing.outstationSlabs.slabAbove250),
-    });
-    setErrors({});
-  }, [pricing]);
+    if (pricing.lastUpdated !== lastSyncedUpdate.current) {
+      lastSyncedUpdate.current = pricing.lastUpdated;
+      setRaw({
+        'cityRates.hr2': String(pricing.cityRates.hr2),
+        'cityRates.hr4': String(pricing.cityRates.hr4),
+        'cityRates.hr6': String(pricing.cityRates.hr6),
+        'cityRates.hr8': String(pricing.cityRates.hr8),
+        'outsideRates.hr2': String(pricing.outsideRates.hr2),
+        'outsideRates.hr4': String(pricing.outsideRates.hr4),
+        'outsideRates.hr6': String(pricing.outsideRates.hr6),
+        'outsideRates.hr8': String(pricing.outsideRates.hr8),
+        'oneWayRates.hr2': String(pricing.oneWayRates?.hr2 ?? DEFAULT_PRICING.oneWayRates.hr2),
+        'oneWayRates.hr4': String(pricing.oneWayRates?.hr4 ?? DEFAULT_PRICING.oneWayRates.hr4),
+        'oneWayRates.hr6': String(pricing.oneWayRates?.hr6 ?? DEFAULT_PRICING.oneWayRates.hr6),
+        'oneWayRates.hr8': String(pricing.oneWayRates?.hr8 ?? DEFAULT_PRICING.oneWayRates.hr8),
+        'outstationSlabs.slab100_150': String(pricing.outstationSlabs.slab100_150),
+        'outstationSlabs.slab150_250': String(pricing.outstationSlabs.slab150_250),
+        'outstationSlabs.slabAbove250': String(pricing.outstationSlabs.slabAbove250),
+      });
+      setErrors({});
+    }
+  }, [pricing.lastUpdated]);
 
   const handleChange = (key: string, val: string) => {
     const clean = val.replace(/[^\d]/g, '');
@@ -1596,29 +1632,15 @@ const PricingSection: React.FC = () => {
     if (window.confirm('Reset all pricing to original defaults?')) resetPricing();
   };
 
-  const inputClass = (key: string) =>
-    `w-full pl-7 pr-3 py-2.5 text-sm font-bold bg-white border rounded-xl focus:outline-none focus:ring-2 text-navy-950 transition-colors ${
-      errors[key]
-        ? 'border-red-400 focus:ring-red-300 bg-red-50'
-        : 'border-gray-200 focus:ring-bee-500/40'
-    }`;
-
-  const Field = ({ label, k }: { label: string; k: string }) => (
-    <div>
-      <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{label}</label>
-      <div className="relative">
-        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₹</span>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={raw[k] ?? ''}
-          onChange={e => handleChange(k, e.target.value)}
-          placeholder="e.g. 2000"
-          className={inputClass(k)}
-        />
-      </div>
-      {errors[k] && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors[k]}</p>}
-    </div>
+  const renderField = (label: string, k: string) => (
+    <PriceField
+      key={k}
+      label={label}
+      k={k}
+      value={raw[k] ?? ''}
+      error={errors[k]}
+      onChange={handleChange}
+    />
   );
 
   const liveCity   = (key: string) => parseInt(raw[`cityRates.${key}`] ?? '0', 10) || 0;
@@ -1675,10 +1697,10 @@ const PricingSection: React.FC = () => {
             <span className="text-[10px] bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded-full border border-blue-200">₹{cityHr}/hr</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="2 Hours" k="cityRates.hr2" />
-            <Field label="4 Hours" k="cityRates.hr4" />
-            <Field label="6 Hours" k="cityRates.hr6" />
-            <Field label="8 Hours" k="cityRates.hr8" />
+            {renderField('2 Hours', 'cityRates.hr2')}
+            {renderField('4 Hours', 'cityRates.hr4')}
+            {renderField('6 Hours', 'cityRates.hr6')}
+            {renderField('8 Hours', 'cityRates.hr8')}
           </div>
         </div>
 
@@ -1692,10 +1714,10 @@ const PricingSection: React.FC = () => {
             <span className="text-[10px] bg-purple-50 text-purple-600 font-bold px-2 py-0.5 rounded-full border border-purple-200">₹{outHr}/hr</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="2 Hours" k="outsideRates.hr2" />
-            <Field label="4 Hours" k="outsideRates.hr4" />
-            <Field label="6 Hours" k="outsideRates.hr6" />
-            <Field label="8 Hours" k="outsideRates.hr8" />
+            {renderField('2 Hours', 'outsideRates.hr2')}
+            {renderField('4 Hours', 'outsideRates.hr4')}
+            {renderField('6 Hours', 'outsideRates.hr6')}
+            {renderField('8 Hours', 'outsideRates.hr8')}
           </div>
         </div>
 
@@ -1709,10 +1731,10 @@ const PricingSection: React.FC = () => {
             <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-300">₹{oneWayHr}/hr</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="2 Hours" k="oneWayRates.hr2" />
-            <Field label="4 Hours" k="oneWayRates.hr4" />
-            <Field label="6 Hours" k="oneWayRates.hr6" />
-            <Field label="8 Hours" k="oneWayRates.hr8" />
+            {renderField('2 Hours', 'oneWayRates.hr2')}
+            {renderField('4 Hours', 'oneWayRates.hr4')}
+            {renderField('6 Hours', 'oneWayRates.hr6')}
+            {renderField('8 Hours', 'oneWayRates.hr8')}
           </div>
         </div>
       </div>
@@ -1724,9 +1746,9 @@ const PricingSection: React.FC = () => {
           <span className="text-sm font-extrabold text-navy-950">Outstation Distance Slabs (per day)</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Field label="100 – 150 km / day" k="outstationSlabs.slab100_150" />
-          <Field label="150 – 250 km / day" k="outstationSlabs.slab150_250" />
-          <Field label="Above 250 km / day" k="outstationSlabs.slabAbove250" />
+          {renderField('100 – 150 km / day', 'outstationSlabs.slab100_150')}
+          {renderField('150 – 250 km / day', 'outstationSlabs.slab150_250')}
+          {renderField('Above 250 km / day', 'outstationSlabs.slabAbove250')}
         </div>
         <p className="text-[11px] text-gray-400 border-t border-gray-100 pt-2">
           These rates apply when customers select a destination trip by distance. Enter any amount (e.g. ₹2000).
