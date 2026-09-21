@@ -62,7 +62,9 @@ create table if not exists public.family_members (
 -- DRIVER PROFILES (extends profiles where role='driver')
 -- ─────────────────────────────────────────────
 create table if not exists public.driver_profiles (
-  id              uuid primary key references public.profiles(id) on delete cascade,
+  id              uuid primary key default uuid_generate_v4(),
+  name            text,
+  phone           text,
   badge           text,
   rating          numeric(3,2) default 5.0,
   trips_count     integer default 0,
@@ -156,16 +158,28 @@ create policy "Users manage own family"
   on public.family_members for all
   using (user_id = auth.uid());
 
--- Driver profiles: drivers see own; admins see all
+-- Driver profiles: full access for dispatch & driver management
 drop policy if exists "Driver reads own profile" on public.driver_profiles;
-create policy "Driver reads own profile"
+drop policy if exists "Allow read driver_profiles" on public.driver_profiles;
+create policy "Allow read driver_profiles"
   on public.driver_profiles for select
-  using (id = auth.uid() or public.is_admin());
+  using (true);
 
 drop policy if exists "Driver updates own profile" on public.driver_profiles;
-create policy "Driver updates own profile"
+drop policy if exists "Allow update driver_profiles" on public.driver_profiles;
+create policy "Allow update driver_profiles"
   on public.driver_profiles for update
-  using (id = auth.uid());
+  using (true);
+
+drop policy if exists "Allow insert driver_profiles" on public.driver_profiles;
+create policy "Allow insert driver_profiles"
+  on public.driver_profiles for insert
+  with check (true);
+
+drop policy if exists "Allow delete driver_profiles" on public.driver_profiles;
+create policy "Allow delete driver_profiles"
+  on public.driver_profiles for delete
+  using (true);
 
 -- Bookings: readable by app & admin dashboard; anyone can create a booking
 drop policy if exists "Customers see own bookings" on public.bookings;

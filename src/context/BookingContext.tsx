@@ -13,6 +13,9 @@ import {
   deleteBooking as sbDeleteBooking,
   isRemovedBooking,
   toggleDriverDuty as sbToggleDuty,
+  sbCreateDriver,
+  sbUpdateDriver,
+  sbDeleteDriver,
 } from '../lib/supabase';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -119,18 +122,18 @@ function mapBooking(b: DBBooking): LiveBooking {
   };
 }
 
-function mapDriver(d: DBDriverProfile & { profiles?: DBProfile }): DriverProfile {
+function mapDriver(d: DBDriverProfile & { profiles?: DBProfile; name?: string | null; phone?: string | null }): DriverProfile {
   return {
     id: d.id,
-    name: d.profiles?.full_name ?? 'Driver',
-    phone: d.profiles?.phone ?? '',
-    rating: Number(d.rating),
-    tripsCount: d.trips_count,
-    isOnDuty: d.is_on_duty,
+    name: (d as any).name || d.profiles?.full_name || 'Driver',
+    phone: (d as any).phone || d.profiles?.phone || '',
+    rating: Number(d.rating) || 5.0,
+    tripsCount: Number(d.trips_count) || 0,
+    isOnDuty: d.is_on_duty !== false,
     area: d.area ?? '',
-    photo: d.photo_url ?? 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80',
-    badge: d.badge ?? 'Professional Driver',
-    todayEarnings: Number(d.today_earnings),
+    photo: d.photo_url || (d as any).photo || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80',
+    badge: d.badge || 'Professional Driver',
+    todayEarnings: Number(d.today_earnings) || 0,
     assignedBookingId: d.assigned_booking_id,
   };
 }
@@ -301,14 +304,13 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const custom = loadCustomDrivers();
       if (dData && dData.length > 0) {
         const sbDrivers = dData.map(mapDriver);
-        const merged = [...custom];
-        for (const s of sbDrivers) {
-          const idx = merged.findIndex(m => m.id === s.id);
-          if (idx >= 0) merged[idx] = s;
-          else merged.push(s);
-        }
+        const mergedMap = new Map<string, DriverProfile>();
+        for (const c of custom) mergedMap.set(c.id, c);
+        for (const s of sbDrivers) mergedMap.set(s.id, s);
+        const merged = Array.from(mergedMap.values());
         setDrivers(merged);
-      } else {
+        saveCustomDrivers(merged);
+      } else if (custom && custom.length > 0) {
         setDrivers(custom);
       }
     }).catch(err => {
@@ -357,8 +359,32 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const driversSub = supabase
       .channel(`drivers-changes-${sessionId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'driver_profiles' }, _payload => {
-        fetchAllDrivers().then(dData => { if (dData && dData.length > 0) setDrivers(dData.map(mapDriver)); });
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_profiles' }, payload => {
+        if (payload.eventType === 'INSERT') {
+          const newD = mapDriver(payload.new as any);
+          setDrivers(prev => {
+            if (prev.some(d => d.id === newD.id)) return prev;
+            const updated = [newD, ...prev];
+            saveCustomDrivers(updated);
+            return updated;
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedD = mapDriver(payload.new as any);
+          setDrivers(prev => {
+            const next = prev.map(d => (d.id === updatedD.id ? { ...d, ...updatedD } : d));
+            saveCustomDrivers(next);
+            return next;
+          });
+        } else if (payload.eventType === 'DELETE') {
+          const deletedId = (payload.old as any)?.id;
+          if (deletedId) {
+            setDrivers(prev => {
+              const next = prev.filter(d => d.id !== deletedId);
+              saveCustomDrivers(next);
+              return next;
+            });
+          }
+        }
       })
       .subscribe();
 
@@ -717,7 +743,13 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // ── Add driver (Admin manually enters driver) ─────────────────────────────
   const addDriver = useCallback((driverData: Omit<DriverProfile, 'id' | 'todayEarnings' | 'tripsCount' | 'assignedBookingId'>): DriverProfile => {
-    const id = `drv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+
     const newDriver: DriverProfile = {
       ...driverData,
       id,
@@ -725,11 +757,31 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       tripsCount: 0,
       assignedBookingId: null,
     };
+
     setDrivers(prev => {
-      const updated = [newDriver, ...prev];
+      const updated = [newDriver, ...prev.filter(d => d.id !== id)];
       saveCustomDrivers(updated);
       return updated;
     });
+
+    // Persist directly to Supabase driver_profiles table
+    sbCreateDriver({
+      id,
+      name: newDriver.name,
+      phone: newDriver.phone,
+      area: newDriver.area,
+      badge: newDriver.badge,
+      rating: newDriver.rating,
+      is_on_duty: newDriver.isOnDuty,
+      photo: newDriver.photo,
+    }).then(({ error }: any) => {
+      if (error) {
+        console.warn('[DriverBee] Supabase driver insert notice:', error.message);
+      } else {
+        console.log('[DriverBee] Driver persisted to Supabase successfully:', id, newDriver.name);
+      }
+    });
+
     return newDriver;
   }, []);
 
@@ -740,6 +792,10 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       saveCustomDrivers(updated);
       return updated;
     });
+
+    sbUpdateDriver(driverId, updates).then(({ error }: any) => {
+      if (error) console.warn('[DriverBee] Supabase updateDriver error:', error.message);
+    });
   }, []);
 
   // ── Delete driver ────────────────────────────────────────────────────────
@@ -748,6 +804,10 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const updated = prev.filter(d => d.id !== driverId);
       saveCustomDrivers(updated);
       return updated;
+    });
+
+    sbDeleteDriver(driverId).then(({ error }: any) => {
+      if (error) console.warn('[DriverBee] Supabase deleteDriver error:', error.message);
     });
   }, []);
 

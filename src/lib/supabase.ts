@@ -58,6 +58,8 @@ export interface DBDriverProfile {
   assigned_booking_id: string | null;
   created_at: string;
   profiles?: DBProfile;
+  name?: string | null;
+  phone?: string | null;
 }
 
 export interface DBBooking {
@@ -288,12 +290,96 @@ export async function updateBookingCustomerName(bookingId: string, customerName:
 
 // ─── Driver Helpers ──────────────────────────────────────────────────────────
 
-export async function fetchAllDrivers(): Promise<(DBDriverProfile & { profiles: DBProfile })[]> {
-  const { data, error } = await supabase
-    .from('driver_profiles')
-    .select('*, profiles(*)');
-  if (error) return [];
-  return data as any;
+export async function fetchAllDrivers(): Promise<(DBDriverProfile & { profiles?: DBProfile })[]> {
+  try {
+    // Attempt 1: Fetch with nested profiles relation
+    const resWithProfiles = await supabase
+      .from('driver_profiles')
+      .select('*, profiles(*)')
+      .order('created_at', { ascending: false });
+
+    if (!resWithProfiles.error && resWithProfiles.data) {
+      return resWithProfiles.data as any;
+    }
+  } catch {}
+
+  try {
+    // Attempt 2: Fetch driver_profiles directly
+    const { data, error } = await supabase
+      .from('driver_profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[DriverBee] fetchAllDrivers warning:', error.message);
+      return [];
+    }
+    return (data || []) as any;
+  } catch (err: any) {
+    console.warn('[DriverBee] fetchAllDrivers network error:', err);
+    return [];
+  }
+}
+
+export async function sbCreateDriver(driverData: {
+  id?: string;
+  name: string;
+  phone: string;
+  area: string;
+  badge: string;
+  rating?: number;
+  is_on_duty?: boolean;
+  photo?: string;
+}) {
+  const id = driverData.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'drv-' + Date.now());
+  const payload: any = {
+    id,
+    name: driverData.name,
+    phone: driverData.phone,
+    area: driverData.area || 'Warangal Operations',
+    badge: driverData.badge || 'Professional Driver',
+    rating: driverData.rating ?? 5.0,
+    trips_count: 0,
+    is_on_duty: driverData.is_on_duty ?? true,
+    photo_url: driverData.photo || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80',
+    today_earnings: 0,
+    created_at: new Date().toISOString(),
+  };
+
+  const result = await supabase.from('driver_profiles').insert(payload).select().single();
+  if (result.error) {
+    console.warn('[DriverBee] sbCreateDriver warning:', result.error.message);
+  }
+  return { ...result, id };
+}
+
+export async function sbUpdateDriver(driverId: string, updates: Partial<{
+  name: string;
+  phone: string;
+  area: string;
+  badge: string;
+  rating: number;
+  isOnDuty: boolean;
+  photo: string;
+  todayEarnings: number;
+  assignedBookingId: string | null;
+}>) {
+  const payload: any = {};
+  if (updates.name !== undefined) payload.name = updates.name;
+  if (updates.phone !== undefined) payload.phone = updates.phone;
+  if (updates.area !== undefined) payload.area = updates.area;
+  if (updates.badge !== undefined) payload.badge = updates.badge;
+  if (updates.rating !== undefined) payload.rating = updates.rating;
+  if (updates.isOnDuty !== undefined) payload.is_on_duty = updates.isOnDuty;
+  if (updates.photo !== undefined) payload.photo_url = updates.photo;
+  if (updates.todayEarnings !== undefined) payload.today_earnings = updates.todayEarnings;
+  if (updates.assignedBookingId !== undefined) payload.assigned_booking_id = updates.assignedBookingId;
+
+  return supabase.from('driver_profiles').update(payload).eq('id', driverId);
+}
+
+export async function sbDeleteDriver(driverId: string) {
+  return supabase.from('driver_profiles').delete().eq('id', driverId);
 }
 
 export async function toggleDriverDuty(driverId: string, isOnDuty: boolean) {
