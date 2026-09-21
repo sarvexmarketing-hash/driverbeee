@@ -149,7 +149,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 }) => {
   const { user, profile } = useAuth();
   const { bookings, drivers, addBooking, acceptBooking, refreshBookings } = useBookings();
-  const { getCityFare, getOutsideFare, getPriceForKm } = usePricing();
+  const { getCityFare, getOutsideFare, getOneWayFare, getPriceForKm } = usePricing();
   const [address, setAddress] = useState('');
   const [isLocatingPickup, setIsLocatingPickup] = useState(false);
   const stateName = bookingState.outstationState === 'andhra' ? 'Andhra Pradesh' : 'Telangana';
@@ -403,6 +403,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       }
       if (bookingState.outstationPrice) return bookingState.outstationPrice;
       return getOutsideFare(bookingState.duration);
+    }
+    if (bookingState.tripType === 'oneway') {
+      return getOneWayFare(bookingState.duration);
     }
     return getCityFare(bookingState.duration);
   };

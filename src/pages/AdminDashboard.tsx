@@ -1511,6 +1511,7 @@ const PricingSection: React.FC = () => {
     (['hr2','hr4','hr6','hr8'] as const).forEach(f => {
       init[`cityRates.${f}`] = String(p.cityRates[f]);
       init[`outsideRates.${f}`] = String(p.outsideRates[f]);
+      init[`oneWayRates.${f}`] = String((p.oneWayRates || DEFAULT_PRICING.oneWayRates)[f]);
     });
     init['outstationSlabs.slab100_150'] = String(p.outstationSlabs.slab100_150);
     init['outstationSlabs.slab150_250'] = String(p.outstationSlabs.slab150_250);
@@ -1529,6 +1530,10 @@ const PricingSection: React.FC = () => {
       'outsideRates.hr4': String(pricing.outsideRates.hr4),
       'outsideRates.hr6': String(pricing.outsideRates.hr6),
       'outsideRates.hr8': String(pricing.outsideRates.hr8),
+      'oneWayRates.hr2': String(pricing.oneWayRates?.hr2 ?? DEFAULT_PRICING.oneWayRates.hr2),
+      'oneWayRates.hr4': String(pricing.oneWayRates?.hr4 ?? DEFAULT_PRICING.oneWayRates.hr4),
+      'oneWayRates.hr6': String(pricing.oneWayRates?.hr6 ?? DEFAULT_PRICING.oneWayRates.hr6),
+      'oneWayRates.hr8': String(pricing.oneWayRates?.hr8 ?? DEFAULT_PRICING.oneWayRates.hr8),
       'outstationSlabs.slab100_150': String(pricing.outstationSlabs.slab100_150),
       'outstationSlabs.slab150_250': String(pricing.outstationSlabs.slab150_250),
       'outstationSlabs.slabAbove250': String(pricing.outstationSlabs.slabAbove250),
@@ -1565,6 +1570,12 @@ const PricingSection: React.FC = () => {
         hr4: parse('outsideRates.hr4'),
         hr6: parse('outsideRates.hr6'),
         hr8: parse('outsideRates.hr8'),
+      },
+      oneWayRates: {
+        hr2: parse('oneWayRates.hr2'),
+        hr4: parse('oneWayRates.hr4'),
+        hr6: parse('oneWayRates.hr6'),
+        hr8: parse('oneWayRates.hr8'),
       },
       outstationSlabs: {
         slab100_150: parse('outstationSlabs.slab100_150'),
@@ -1610,10 +1621,12 @@ const PricingSection: React.FC = () => {
     </div>
   );
 
-  const liveCity = (key: string) => parseInt(raw[`cityRates.${key}`] ?? '0', 10) || 0;
-  const liveOut  = (key: string) => parseInt(raw[`outsideRates.${key}`] ?? '0', 10) || 0;
-  const cityHr   = Math.round(liveCity('hr2') / 2);
-  const outHr    = Math.round(liveOut('hr2')  / 2);
+  const liveCity   = (key: string) => parseInt(raw[`cityRates.${key}`] ?? '0', 10) || 0;
+  const liveOut    = (key: string) => parseInt(raw[`outsideRates.${key}`] ?? '0', 10) || 0;
+  const liveOneWay = (key: string) => parseInt(raw[`oneWayRates.${key}`] ?? '0', 10) || 0;
+  const cityHr     = Math.round(liveCity('hr2') / 2);
+  const outHr      = Math.round(liveOut('hr2')  / 2);
+  const oneWayHr   = Math.round(liveOneWay('hr2') / 2);
 
   const lastUpdated = new Date(pricing.lastUpdated).toLocaleString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -1628,12 +1641,12 @@ const PricingSection: React.FC = () => {
           <p className="text-xs text-gray-400 mt-0.5">Changes apply instantly to the booking form. Last saved: {lastUpdated}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleReset} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors">
+          <button onClick={handleReset} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors cursor-pointer">
             <RefreshCw className="w-3.5 h-3.5" /> Reset Defaults
           </button>
           <button
             onClick={handleSave}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm ${saved ? 'bg-emerald-600 text-white' : 'bg-bee-600 hover:bg-bee-700 text-white'}`}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-sm cursor-pointer ${saved ? 'bg-emerald-600 text-white' : 'bg-bee-600 hover:bg-bee-700 text-white'}`}
           >
             {saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
             {saved ? 'Saved!' : 'Save Pricing'}
@@ -1650,8 +1663,8 @@ const PricingSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Hourly rate cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Hourly rate cards (3 columns) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* City */}
         <div className="bg-white border border-blue-200/60 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
@@ -1668,12 +1681,13 @@ const PricingSection: React.FC = () => {
             <Field label="8 Hours" k="cityRates.hr8" />
           </div>
         </div>
-        {/* Outside */}
+
+        {/* Outside City */}
         <div className="bg-white border border-purple-200/60 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <IndianRupee className="w-4 h-4 text-purple-600" />
-              <span className="text-sm font-extrabold text-navy-950">Outside City / Outstation (Hourly)</span>
+              <span className="text-sm font-extrabold text-navy-950">Outside City (Hourly)</span>
             </div>
             <span className="text-[10px] bg-purple-50 text-purple-600 font-bold px-2 py-0.5 rounded-full border border-purple-200">₹{outHr}/hr</span>
           </div>
@@ -1682,6 +1696,23 @@ const PricingSection: React.FC = () => {
             <Field label="4 Hours" k="outsideRates.hr4" />
             <Field label="6 Hours" k="outsideRates.hr6" />
             <Field label="8 Hours" k="outsideRates.hr8" />
+          </div>
+        </div>
+
+        {/* One Way Drop */}
+        <div className="bg-white border border-amber-300/80 rounded-2xl p-5 shadow-xs space-y-4 bg-gradient-to-b from-amber-50/20 to-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Navigation className="w-4 h-4 text-amber-600" />
+              <span className="text-sm font-extrabold text-navy-950">One Way Drop (Hourly)</span>
+            </div>
+            <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-300">₹{oneWayHr}/hr</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="2 Hours" k="oneWayRates.hr2" />
+            <Field label="4 Hours" k="oneWayRates.hr4" />
+            <Field label="6 Hours" k="oneWayRates.hr6" />
+            <Field label="8 Hours" k="oneWayRates.hr8" />
           </div>
         </div>
       </div>
@@ -1713,10 +1744,12 @@ const PricingSection: React.FC = () => {
               <div className="text-[10px] text-gray-400">City</div>
               <div className="text-sm font-black text-purple-700 mt-1">₹{(liveOut(`hr${h}`) || 0).toLocaleString('en-IN')}</div>
               <div className="text-[10px] text-gray-400">Outside</div>
+              <div className="text-sm font-black text-amber-600 mt-1">₹{(liveOneWay(`hr${h}`) || 0).toLocaleString('en-IN')}</div>
+              <div className="text-[10px] text-gray-400">One Way</div>
             </div>
           ))}
         </div>
-        <p className="text-[11px] text-gray-500 mt-3">💡 The preview updates as you type. Click "Save Pricing" to push changes live.</p>
+        <p className="text-[11px] text-gray-500 mt-3">💡 The preview updates as you type. Click "Save Pricing" to push changes live across all customer booking tabs.</p>
       </div>
     </div>
   );

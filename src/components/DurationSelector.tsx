@@ -15,10 +15,12 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
   tripType = 'city',
 }) => {
   const isOutside = tripType === 'outside';
-  const { getCityFare, getOutsideFare, cityHourlyRate, outsideHourlyRate } = usePricing();
+  const isOneWay = tripType === 'oneway';
+  const { getCityFare, getOutsideFare, getOneWayFare, cityHourlyRate, outsideHourlyRate, oneWayHourlyRate } = usePricing();
 
   const getFare = (hours: DurationOption) => {
     if (isOutside) return getOutsideFare(hours);
+    if (isOneWay) return getOneWayFare(hours);
     return getCityFare(hours);
   };
 
@@ -40,8 +42,8 @@ export const DurationSelector: React.FC<DurationSelectorProps> = ({
           <p className="text-xs sm:text-sm text-navy-500 font-normal mt-0.5">
             {isOutside
               ? `Outside City tariff (₹${outsideHourlyRate}/hr) • Highway experienced drivers`
-              : tripType === 'oneway'
-              ? `One Way drop tariff (₹${cityHourlyRate}/hr) • Single drop point-to-point`
+              : isOneWay
+              ? `One Way drop tariff (₹${oneWayHourlyRate}/hr) • Single drop point-to-point`
               : `Choose how long you need the driver for (₹${cityHourlyRate}/hr)`}
           </p>
         </div>

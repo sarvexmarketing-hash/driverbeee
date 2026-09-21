@@ -6,6 +6,9 @@ export interface CityRates {
 export interface OutsideRates {
   hr2: number; hr4: number; hr6: number; hr8: number;
 }
+export interface OneWayRates {
+  hr2: number; hr4: number; hr6: number; hr8: number;
+}
 export interface OutstationSlabRates {
   slab100_150: number;
   slab150_250: number;
@@ -14,6 +17,7 @@ export interface OutstationSlabRates {
 export interface PricingConfig {
   cityRates: CityRates;
   outsideRates: OutsideRates;
+  oneWayRates: OneWayRates;
   outstationSlabs: OutstationSlabRates;
   lastUpdated: string;
 }
@@ -21,6 +25,7 @@ export interface PricingConfig {
 export const DEFAULT_PRICING: PricingConfig = {
   cityRates:    { hr2: 300,  hr4: 600,  hr6: 900,  hr8: 1200 },
   outsideRates: { hr2: 400,  hr4: 800,  hr6: 1200, hr8: 1600 },
+  oneWayRates:  { hr2: 300,  hr4: 600,  hr6: 900,  hr8: 1200 },
   outstationSlabs: { slab100_150: 1200, slab150_250: 1500, slabAbove250: 1800 },
   lastUpdated: new Date().toISOString(),
 };
@@ -46,6 +51,12 @@ export function loadPricing(): PricingConfig {
           hr6: Number(p.outsideRates?.hr6 ?? DEFAULT_PRICING.outsideRates.hr6),
           hr8: Number(p.outsideRates?.hr8 ?? DEFAULT_PRICING.outsideRates.hr8),
         },
+        oneWayRates: {
+          hr2: Number(p.oneWayRates?.hr2 ?? DEFAULT_PRICING.oneWayRates.hr2),
+          hr4: Number(p.oneWayRates?.hr4 ?? DEFAULT_PRICING.oneWayRates.hr4),
+          hr6: Number(p.oneWayRates?.hr6 ?? DEFAULT_PRICING.oneWayRates.hr6),
+          hr8: Number(p.oneWayRates?.hr8 ?? DEFAULT_PRICING.oneWayRates.hr8),
+        },
         outstationSlabs: {
           slab100_150: Number(p.outstationSlabs?.slab100_150 ?? DEFAULT_PRICING.outstationSlabs.slab100_150),
           slab150_250: Number(p.outstationSlabs?.slab150_250 ?? DEFAULT_PRICING.outstationSlabs.slab150_250),
@@ -70,10 +81,12 @@ interface PricingContextValue {
   resetPricing: () => void;
   getCityFare: (hours: number) => number;
   getOutsideFare: (hours: number) => number;
+  getOneWayFare: (hours: number) => number;
   /** Returns the per-day slab rate for a given distance in km */
   getPriceForKm: (km: number | string | undefined) => number;
   cityHourlyRate: number;
   outsideHourlyRate: number;
+  oneWayHourlyRate: number;
 }
 
 const PricingContext = createContext<PricingContextValue | null>(null);
@@ -158,6 +171,11 @@ export const PricingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return hours === 2 ? r.hr2 : hours === 4 ? r.hr4 : hours === 6 ? r.hr6 : r.hr8;
   }, [pricing]);
 
+  const getOneWayFare = useCallback((hours: number): number => {
+    const r = pricing.oneWayRates || DEFAULT_PRICING.oneWayRates;
+    return hours === 2 ? r.hr2 : hours === 4 ? r.hr4 : hours === 6 ? r.hr6 : r.hr8;
+  }, [pricing]);
+
   const getPriceForKm = useCallback((km: number | string | undefined): number => {
     const slabs = pricing.outstationSlabs;
     const dist = typeof km === 'string' ? parseFloat(km) : (km ?? 0);
@@ -169,9 +187,10 @@ export const PricingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <PricingContext.Provider value={{
       pricing, updatePricing, resetPricing,
-      getCityFare, getOutsideFare, getPriceForKm,
+      getCityFare, getOutsideFare, getOneWayFare, getPriceForKm,
       cityHourlyRate: Math.round(pricing.cityRates.hr2 / 2),
       outsideHourlyRate: Math.round(pricing.outsideRates.hr2 / 2),
+      oneWayHourlyRate: Math.round((pricing.oneWayRates?.hr2 || DEFAULT_PRICING.oneWayRates.hr2) / 2),
     }}>
       {children}
     </PricingContext.Provider>
