@@ -133,6 +133,16 @@ export async function getSession() {
   return supabase.auth.getSession();
 }
 
+export async function resetPasswordForEmail(email: string, redirectTo?: string) {
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectTo || (typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined),
+  });
+}
+
+export async function updateUserPassword(newPassword: string) {
+  return supabase.auth.updateUser({ password: newPassword });
+}
+
 export async function getProfile(userId: string): Promise<DBProfile | null> {
   const { data, error } = await supabase
     .from('profiles')

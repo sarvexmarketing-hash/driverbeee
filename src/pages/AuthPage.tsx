@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { DriverBeeLogo } from '../components/DriverBeeLogo';
-import { Car, Shield, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { 
+  Car, 
+  Shield, 
+  Eye, 
+  EyeOff, 
+  ArrowRight, 
+  CheckCircle2, 
+  AlertCircle, 
+  Loader2, 
+  KeyRound, 
+  ArrowLeft 
+} from 'lucide-react';
 
-type AuthMode = 'login' | 'signup';
+type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
 type PortalType = 'customer' | 'admin' | 'driver';
 
 interface AuthPageProps {
@@ -67,9 +78,10 @@ const GoogleIcon = () => (
 );
 
 export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initialMode = 'login', onSuccess }) => {
-  const { login, loginWithGoogle, register } = useAuth();
+  const { login, loginWithGoogle, register, forgotPassword, resetPasswordWithToken } = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -79,7 +91,29 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
     password: '',
     fullName: '',
     phone: '',
+    resetCode: '',
+    newPassword: '',
+    confirmPassword: '',
   });
+
+  // Extract any token or email from query parameters (e.g. from email reset link)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const qEmail = params.get('email');
+      const qToken = params.get('token');
+      if (qEmail || qToken) {
+        setForm(prev => ({
+          ...prev,
+          email: qEmail || prev.email,
+          resetCode: qToken || prev.resetCode,
+        }));
+        if (qToken) {
+          setMode('reset');
+        }
+      }
+    }
+  }, []);
 
   const config = portalConfig[portal];
   const Icon = config.icon;
@@ -95,28 +129,108 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
     setSuccess('');
     setLoading(true);
 
-    if (mode === 'login') {
-      const { error: err } = await login(form.email, form.password, portal === 'admin' ? 'admin' : 'customer');
-      if (err) {
-        setError(err);
-      } else {
-        onSuccess?.();
-      }
-    } else {
-      if (!form.fullName.trim()) { setError('Full name is required.'); setLoading(false); return; }
-      if (form.password.length < 6) { setError('Password must be at least 6 characters.'); setLoading(false); return; }
-      const { error: err } = await register(form.email, form.password, form.fullName, form.phone, config.defaultRole);
-      if (err) {
-        setError(err);
-      } else {
-        setSuccess('Account created successfully! Logging you in...');
-        setTimeout(() => {
+    try {
+      if (mode === 'login') {
+        const { error: err } = await login(form.email.trim(), form.password, portal === 'admin' ? 'admin' : 'customer');
+        if (err) {
+          setError(err);
+        } else {
           onSuccess?.();
-        }, 600);
-      }
-    }
+        }
+      } else if (mode === 'signup') {
+        if (!form.fullName.trim()) { setError('Full name is required.'); setLoading(false); return; }
+        if (!form.phone.trim() || form.phone.replace(/\D/g, '').length < 10) {
+          setError('Please enter a valid 10-digit mobile number.');
+          setLoading(false);
+          return;
+        }
+        if (!form.email.trim() || !form.email.includes('@')) {
+          setError('Please enter a valid email address.');
+          setLoading(false);
+          return;
+        }
+        if (form.password.length < 6) { setError('Password must be at least 6 characters.'); setLoading(false); return; }
+        
+        const formattedPhone = form.phone.startsWith('+91') ? form.phone : `+91 ${form.phone.trim()}`;
+        const { error: err } = await register(form.email.trim(), form.password, form.fullName.trim(), formattedPhone, config.defaultRole);
+        if (err) {
+          setError(err);
+        } else {
+          setSuccess('Account created successfully! Logging you in...');
+          setTimeout(() => {
+            onSuccess?.();
+          }, 600);
+        }
+      } else if (mode === 'forgot') {
+        if (!form.email.trim() || !form.email.includes('@')) {
+          setError('Please enter a valid email address.');
+          setLoading(false);
+          return;
+        }
 
-    setLoading(false);
+        const { error: err, resetToken } = await forgotPassword(form.email.trim());
+        if (err) {
+          setError(err);
+        } else {
+          setSuccess(`Password reset instructions and verification code have been sent to ${form.email.trim()}.`);
+          if (resetToken) {
+            setForm(prev => ({ ...prev, resetCode: resetToken }));
+          }
+          setTimeout(() => {
+            setMode('reset');
+            setError('');
+          }, 1000);
+        }
+      } else if (mode === 'reset') {
+        if (!form.email.trim()) {
+          setError('Email address is required.');
+          setLoading(false);
+          return;
+        }
+        if (!form.resetCode.trim()) {
+          setError('Please enter the 6-digit verification code sent to your email.');
+          setLoading(false);
+          return;
+        }
+        if (!form.newPassword || form.newPassword.length < 6) {
+          setError('New password must be at least 6 characters long.');
+          setLoading(false);
+          return;
+        }
+        if (form.newPassword !== form.confirmPassword) {
+          setError('Passwords do not match. Please verify.');
+          setLoading(false);
+          return;
+        }
+
+        const { error: err } = await resetPasswordWithToken(
+          form.email.trim(),
+          form.resetCode.trim(),
+          form.newPassword
+        );
+
+        if (err) {
+          setError(err);
+        } else {
+          setSuccess('Password reset successfully! Logging you in with your new credentials...');
+          const { error: loginErr } = await login(form.email.trim(), form.newPassword, 'customer');
+          if (!loginErr) {
+            setTimeout(() => {
+              onSuccess?.();
+            }, 800);
+          } else {
+            setTimeout(() => {
+              setMode('login');
+              setSuccess('Password updated! Please sign in.');
+            }, 1000);
+          }
+        }
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleAuth = async () => {
@@ -147,12 +261,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
     driver:   'bg-emerald-600 hover:bg-emerald-700',
   }[portal];
 
-  const accentText = {
-    customer: 'text-bee-600',
-    admin:    'text-indigo-600',
-    driver:   'text-emerald-600',
-  }[portal];
-
   const accentRing = {
     customer: 'focus:ring-bee-500',
     admin:    'focus:ring-indigo-500',
@@ -181,106 +289,80 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
               <Icon className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-navy-950 text-base leading-tight">
-                {config.label}
+              <h1 className="font-extrabold text-navy-950 text-lg leading-tight">
+                {mode === 'login' && 'Sign In'}
+                {mode === 'signup' && 'Create Account'}
+                {mode === 'forgot' && 'Reset Password'}
+                {mode === 'reset' && 'Set New Password'}
               </h1>
-              <p className="text-gray-400 text-xs">
-                {mode === 'login' ? 'Sign in to continue' : 'Create your account'}
-              </p>
+              <p className="text-xs text-gray-500">{config.label}</p>
             </div>
           </div>
+
+          {(mode === 'forgot' || mode === 'reset') ? (
+            <button
+              onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
+              className="inline-flex items-center gap-1 text-xs font-bold text-navy-700 hover:text-navy-950"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+          ) : (
+            <div className="flex bg-gray-200/70 p-1 rounded-xl text-xs font-semibold">
+              <button
+                onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  mode === 'login' ? 'bg-white text-navy-950 shadow-sm' : 'text-gray-500 hover:text-navy-950'
+                }`}
+              >
+                Login
+              </button>
+              <button
+                onClick={() => { setMode('signup'); setError(''); setSuccess(''); }}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  mode === 'signup' ? 'bg-white text-navy-950 shadow-sm' : 'text-gray-500 hover:text-navy-950'
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Tab switch */}
-        <div className="flex border-b border-gray-100">
-          <button
-            type="button"
-            onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
-            className={`flex-1 py-3 text-xs font-bold transition-colors ${
-              mode === 'login'
-                ? `text-navy-950 border-b-2 border-bee-600 bg-white`
-                : 'text-gray-400 hover:text-gray-600 bg-gray-50/50'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('signup'); setError(''); setSuccess(''); }}
-            className={`flex-1 py-3 text-xs font-bold transition-colors ${
-              mode === 'signup'
-                ? `text-navy-950 border-b-2 border-bee-600 bg-white`
-                : 'text-gray-400 hover:text-gray-600 bg-gray-50/50'
-            }`}
-          >
-            Sign Up
-          </button>
-        </div>
-
-        <div className="p-6 sm:p-8">
-          {/* Alerts */}
+        {/* Card Body */}
+        <div className="p-6">
+          {/* Feedback messages */}
           {error && (
-            <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-rose-800">
-              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2.5 text-xs text-red-700 font-medium">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <div>{error}</div>
-                {error.includes('/admin') && (
-                  <a
-                    href="/admin"
-                    className="inline-flex items-center gap-1 text-bee-700 font-bold hover:underline mt-1 text-[11px]"
-                  >
-                    <span>Open Admin Portal</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </a>
+                {error.toLowerCase().includes('already exists') && (
+                  <div className="flex items-center gap-3 mt-2 pt-1 border-t border-red-200/70">
+                    <button
+                      type="button"
+                      onClick={() => { setMode('login'); setError(''); }}
+                      className="text-bee-700 hover:underline font-bold text-xs"
+                    >
+                      Sign in with existing account &rarr;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setMode('forgot'); setError(''); }}
+                      className="text-navy-600 hover:underline font-semibold text-xs"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
           )}
 
           {success && (
-            <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-800">
+            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs text-emerald-800 font-medium">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
               <span>{success}</span>
-            </div>
-          )}
-
-          {/* Customer Credentials Helper Callout */}
-          {portal === 'customer' && mode === 'login' && (
-            <div className="mb-5 p-3.5 bg-bee-50/80 border border-bee-200/80 rounded-2xl">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-bold text-bee-950 flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 text-bee-600" />
-                  Customer Demo Account
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForm(prev => ({
-                      ...prev,
-                      email: 'customer@driverbee.in',
-                      password: 'driverbeepassword'
-                    }));
-                    setError('');
-                  }}
-                  className="text-[11px] font-bold text-bee-700 hover:text-bee-900 underline cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-bee-300"
-                >
-                  Auto-fill
-                </button>
-              </div>
-              <div className="text-xs text-bee-900 space-y-0.5">
-                <div>Email: <span className="font-mono font-bold text-bee-950">customer@driverbee.in</span></div>
-                <div>Password: <span className="font-mono font-bold text-bee-950">driverbeepassword</span></div>
-              </div>
-            </div>
-          )}
-
-          {/* Admin Portal Security Notice */}
-          {portal === 'admin' && (
-            <div className="mb-5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3">
-              <Shield className="w-4 h-4 text-navy-700 flex-shrink-0" />
-              <div className="text-xs text-navy-800 font-medium">
-                DriverBee Operations Security: Access is restricted to authorized personnel only.
-              </div>
             </div>
           )}
 
@@ -308,20 +390,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
             {mode === 'signup' && (
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
-                  Phone Number
+                  Mobile Number (Unique to Account)
                 </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={form.phone}
-                  onChange={handleChange}
-                  placeholder="+91 98450 XXXXX"
-                  className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 ${accentRing} text-sm`}
-                />
+                <div className="flex gap-2">
+                  <span className="inline-flex items-center px-3 py-3 bg-gray-100 border border-gray-200 rounded-2xl text-xs font-bold text-navy-800 select-none">
+                    +91
+                  </span>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={form.phone}
+                    onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                    placeholder="10-digit mobile number"
+                    required
+                    className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 ${accentRing} text-sm`}
+                  />
+                </div>
               </div>
             )}
 
-            {/* Email */}
+            {/* Email Address */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
                 Email Address
@@ -337,30 +425,117 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
               />
             </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder={mode === 'signup' ? 'Min. 6 characters' : '••••••••'}
-                  required
-                  className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 ${accentRing} text-sm pr-12`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(p => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {/* Password (login and signup) */}
+            {(mode === 'login' || mode === 'signup') && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Password
+                  </label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => { setMode('forgot'); setError(''); setSuccess(''); }}
+                      className="text-xs text-bee-700 hover:underline font-bold"
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    placeholder={mode === 'signup' ? 'Min. 6 characters' : '••••••••'}
+                    required
+                    className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 ${accentRing} text-sm pr-12`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(p => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Verification Code (reset mode only) */}
+            {mode === 'reset' && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
+                  6-Digit Verification Code (Sent to Email)
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    name="resetCode"
+                    value={form.resetCode}
+                    onChange={(e) => setForm(prev => ({ ...prev, resetCode: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                    placeholder="Enter 6-digit code"
+                    required
+                    className={`w-full pl-10 pr-4 py-3 bg-amber-50/50 border border-amber-300 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 ${accentRing} text-base font-bold tracking-widest`}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* New Password & Confirm Password (reset mode only) */}
+            {mode === 'reset' && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
+                    New Password (Min. 6 characters)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="newPassword"
+                      value={form.newPassword}
+                      onChange={handleChange}
+                      placeholder="Enter new password"
+                      required
+                      className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 ${accentRing} text-sm pr-12`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(p => !p)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
+                    Confirm New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={form.confirmPassword}
+                      onChange={handleChange}
+                      placeholder="Re-enter new password"
+                      required
+                      className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 text-navy-950 placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 ${accentRing} text-sm pr-12`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(p => !p)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Submit */}
             <button
@@ -372,12 +547,32 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <span>{mode === 'login' ? 'Sign In' : 'Create Account'}</span>
+                  <span>
+                    {mode === 'login' && 'Sign In'}
+                    {mode === 'signup' && 'Create Account'}
+                    {mode === 'forgot' && 'Send Reset Link & Code'}
+                    {mode === 'reset' && 'Save New Password & Sign In'}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
+
+          {/* Google Sign In option (Customer Portal only) */}
+          {portal === 'customer' && (mode === 'login' || mode === 'signup') && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                disabled={loading}
+                className="w-full py-2.5 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-navy-950 text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
+              >
+                <GoogleIcon />
+                <span>Continue with Google</span>
+              </button>
+            </div>
+          )}
 
           {/* Portal links */}
           <div className="mt-6 pt-5 border-t border-gray-100 flex flex-wrap justify-center gap-3 text-xs text-gray-400">

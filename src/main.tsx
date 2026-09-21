@@ -85,6 +85,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <Route path="/" element={<App />} />
                   <Route path="/login" element={<AuthPage portal="customer" initialMode="login" onSuccess={() => (window.location.href = '/')} />} />
                   <Route path="/signup" element={<AuthPage portal="customer" initialMode="signup" onSuccess={() => (window.location.href = '/')} />} />
+                  <Route path="/forgot-password" element={<AuthPage portal="customer" initialMode="forgot" onSuccess={() => (window.location.href = '/')} />} />
+                  <Route path="/reset-password" element={<AuthPage portal="customer" initialMode="reset" onSuccess={() => (window.location.href = '/')} />} />
                   <Route path="/admin" element={<AdminRoute />} />
                   <Route path="/driver" element={<DriverDashboard />} />
                   <Route path="/join-as-driver" element={<JoinAsDriverPage />} />

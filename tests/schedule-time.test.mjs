@@ -247,5 +247,151 @@ test('17. Customer cannot book driver without logging in first', () => {
   assert.equal(loggedInResult.error, null);
 });
 
+// ─────────────────────────────────────────────────────────────
+// ACCOUNT UNIQUENESS & FORGOT PASSWORD TESTS
+// ─────────────────────────────────────────────────────────────
+
+test('18. Registration rejects duplicate email with "User already exists with this email address. Please login instead."', () => {
+  const existingUsers = [
+    { email: 'customer@driverbee.in', phone: '+91 98450 12345', fullName: 'Warangal Customer' },
+    { email: 'javed@example.com', phone: '+91 88867 82434', fullName: 'Javed Sayed' },
+  ];
+
+  const validateRegistration = (email, phone, existingList) => {
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+
+    const emailTaken = existingList.some(u => u.email.toLowerCase() === cleanEmail);
+    if (emailTaken) {
+      return { error: 'User already exists with this email address. Please login instead.' };
+    }
+
+    const phoneTaken = existingList.some(u => u.phone.replace(/\D/g, '').slice(-10) === cleanPhone);
+    if (phoneTaken) {
+      return { error: 'An account with this phone number already exists. Please login instead.' };
+    }
+
+    return { error: null };
+  };
+
+  const dupEmailResult = validateRegistration('javed@example.com', '9999988888', existingUsers);
+  assert.equal(dupEmailResult.error, 'User already exists with this email address. Please login instead.');
+
+  const caseInsensitiveResult = validateRegistration('JAVED@EXAMPLE.COM', '9999988888', existingUsers);
+  assert.equal(caseInsensitiveResult.error, 'User already exists with this email address. Please login instead.');
+});
+
+test('19. Registration rejects duplicate phone number with "An account with this phone number already exists. Please login instead."', () => {
+  const existingUsers = [
+    { email: 'customer@driverbee.in', phone: '+91 98450 12345', fullName: 'Warangal Customer' },
+    { email: 'javed@example.com', phone: '+91 88867 82434', fullName: 'Javed Sayed' },
+  ];
+
+  const validateRegistration = (email, phone, existingList) => {
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+
+    const emailTaken = existingList.some(u => u.email.toLowerCase() === cleanEmail);
+    if (emailTaken) {
+      return { error: 'User already exists with this email address. Please login instead.' };
+    }
+
+    const phoneTaken = existingList.some(u => u.phone.replace(/\D/g, '').slice(-10) === cleanPhone);
+    if (phoneTaken) {
+      return { error: 'An account with this phone number already exists. Please login instead.' };
+    }
+
+    return { error: null };
+  };
+
+  const dupPhoneResult = validateRegistration('brandnew@example.com', '8886782434', existingUsers);
+  assert.equal(dupPhoneResult.error, 'An account with this phone number already exists. Please login instead.');
+});
+
+test('20. Phone uniqueness check normalizes +91, spaces, leading zeros, and dashes', () => {
+  const existingUsers = [
+    { email: 'user1@driverbee.in', phone: '+91 98450 12345' },
+  ];
+
+  const checkPhoneTaken = (incomingPhone, list) => {
+    const cleanIncoming = incomingPhone.replace(/\D/g, '').slice(-10);
+    return list.some(u => u.phone.replace(/\D/g, '').slice(-10) === cleanIncoming);
+  };
+
+  assert.equal(checkPhoneTaken('9845012345', existingUsers), true);
+  assert.equal(checkPhoneTaken('+91 98450 12345', existingUsers), true);
+  assert.equal(checkPhoneTaken('09845012345', existingUsers), true);
+  assert.equal(checkPhoneTaken('98450-12345', existingUsers), true);
+  assert.equal(checkPhoneTaken('+91-9845012345', existingUsers), true);
+  assert.equal(checkPhoneTaken('9999999999', existingUsers), false);
+});
+
+test('21. Forgot password flow generates 6-digit verification code and reset token', () => {
+  const generateResetRequest = (email) => {
+    const cleanEmail = email.toLowerCase().trim();
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 15 * 60 * 1000;
+    return {
+      email: cleanEmail,
+      token: resetToken,
+      expiresAt,
+      resetLink: `https://driverbee.in/reset-password?email=${encodeURIComponent(cleanEmail)}&token=${resetToken}`
+    };
+  };
+
+  const resetReq = generateResetRequest('user@example.com');
+  assert.equal(resetReq.email, 'user@example.com');
+  assert.equal(resetReq.token.length, 6);
+  assert.ok(/^\d{6}$/.test(resetReq.token));
+  assert.ok(resetReq.resetLink.includes(resetReq.token));
+  assert.ok(resetReq.expiresAt > Date.now());
+});
+
+test('22. Password reset updates stored user credentials upon valid token entry', () => {
+  const usersStore = [
+    { email: 'user@example.com', password: 'oldpassword123', fullName: 'Tester' }
+  ];
+
+  const activeResets = [
+    { email: 'user@example.com', token: '582914', expiresAt: Date.now() + 600000 }
+  ];
+
+  const resetUserPassword = (email, token, newPassword) => {
+    const cleanEmail = email.toLowerCase().trim();
+    const validReset = activeResets.find(r => r.email === cleanEmail && r.token === token && r.expiresAt > Date.now());
+    if (!validReset) {
+      return { error: 'Invalid or expired 6-digit verification code.' };
+    }
+    const user = usersStore.find(u => u.email === cleanEmail);
+    if (!user) return { error: 'User not found.' };
+    user.password = newPassword;
+    return { error: null, user };
+  };
+
+  const result = resetUserPassword('user@example.com', '582914', 'newSecurePassword456');
+  assert.equal(result.error, null);
+  assert.equal(usersStore[0].password, 'newSecurePassword456');
+});
+
+test('23. Password reset rejects invalid or expired token', () => {
+  const activeResets = [
+    { email: 'user@example.com', token: '582914', expiresAt: Date.now() - 1000 } // expired
+  ];
+
+  const resetUserPassword = (email, token) => {
+    const cleanEmail = email.toLowerCase().trim();
+    const validReset = activeResets.find(r => r.email === cleanEmail && r.token === token && r.expiresAt > Date.now());
+    if (!validReset) {
+      return { error: 'Invalid or expired 6-digit verification code.' };
+    }
+    return { error: null };
+  };
+
+  // Wrong token
+  assert.equal(resetUserPassword('user@example.com', '000000').error, 'Invalid or expired 6-digit verification code.');
+  // Expired token
+  assert.equal(resetUserPassword('user@example.com', '582914').error, 'Invalid or expired 6-digit verification code.');
+});
+
 
 

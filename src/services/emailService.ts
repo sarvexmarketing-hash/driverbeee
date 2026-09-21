@@ -318,3 +318,154 @@ export async function sendBookingConfirmationEmail(payload: BookingEmailPayload)
     previewHtml: html,
   };
 }
+
+export interface PasswordResetEmailPayload {
+  customerName?: string;
+  customerEmail: string;
+  resetCode: string;
+  resetLink: string;
+}
+
+export function generatePasswordResetEmailHtml(p: PasswordResetEmailPayload): string {
+  const name = p.customerName || 'Customer';
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your DriverBee Password</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #F8FAFC; color: #0B1020; -webkit-font-smoothing: antialiased; }
+    .container { max-width: 540px; margin: 24px auto; background-color: #FFFFFF; border-radius: 24px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 4px 20px rgba(11, 16, 32, 0.05); }
+    .header { background: linear-gradient(135deg, #0B1020 0%, #151F38 100%); padding: 32px 28px 24px; text-align: center; color: #FFFFFF; }
+    .badge { display: inline-block; background-color: rgba(232, 146, 24, 0.15); color: #E89218; border: 1px solid rgba(232, 146, 24, 0.3); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; padding: 4px 14px; border-radius: 9999px; margin-bottom: 12px; }
+    .header h1 { margin: 8px 0 4px; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: #FFFFFF; }
+    .content { padding: 28px 28px; }
+    .salutation { font-size: 16px; font-weight: 700; color: #0B1020; margin-bottom: 8px; }
+    .intro { font-size: 14px; color: #475569; line-height: 1.6; margin-bottom: 20px; }
+    .code-box { background-color: #FFFBEB; border: 2px dashed #F59E0B; border-radius: 16px; padding: 20px; text-align: center; margin: 20px 0; }
+    .code-label { font-size: 11px; font-weight: 800; color: #92400E; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+    .code-digits { font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #B45309; font-family: monospace; }
+    .btn-action { display: block; background: #E89218; color: #FFFFFF !important; font-weight: 800; font-size: 15px; padding: 14px 28px; border-radius: 14px; text-align: center; text-decoration: none; margin: 24px 0 16px; box-shadow: 0 4px 12px rgba(232, 146, 24, 0.3); }
+    .notice { font-size: 12px; color: #64748B; line-height: 1.5; padding: 12px 16px; background-color: #F8FAFC; border-radius: 12px; border: 1px solid #E2E8F0; margin-top: 20px; }
+    .footer { padding: 20px 28px; background-color: #F8FAFC; border-top: 1px solid #EEF2F6; text-align: center; font-size: 12px; color: #94A3B8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="badge">Security & Authentication</div>
+      <h1>Reset Your DriverBee Password</h1>
+    </div>
+    
+    <div class="content">
+      <div class="salutation">Hello ${name},</div>
+      <div class="intro">
+        We received a request to reset your DriverBee account password. Use the 6-digit verification code below or click the reset link to choose a new password.
+      </div>
+      
+      <div class="code-box">
+        <div class="code-label">Verification Code (Expires in 15 mins)</div>
+        <div class="code-digits">${p.resetCode}</div>
+      </div>
+
+      <a href="${p.resetLink}" class="btn-action">
+        Click Here to Reset Password &rarr;
+      </a>
+
+      <div class="notice">
+        <strong>Security Notice:</strong> If you did not make this request, someone may have entered your email address by mistake. Your account remains completely secure and no changes have been made.
+      </div>
+    </div>
+    
+    <div class="footer">
+      DriverBee • Professional On-Demand Chauffeurs & Drivers<br>
+      Warangal, Telangana • Helpline: +91 88867 82434
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+}
+
+export async function sendPasswordResetEmail(payload: PasswordResetEmailPayload): Promise<{
+  success: boolean;
+  emailId: string;
+  previewHtml: string;
+}> {
+  const emailId = `reset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const subject = `DriverBee: Password Reset Verification Code [${payload.resetCode}]`;
+  const html = generatePasswordResetEmailHtml(payload);
+
+  // 1. Persist in local storage sent emails archive
+  const sentRecord: SentEmailRecord = {
+    id: emailId,
+    bookingId: `reset-${payload.resetCode}`,
+    to: payload.customerEmail,
+    subject,
+    sentAt: new Date().toISOString(),
+    html,
+    status: 'delivered',
+  };
+  saveSentEmail(sentRecord);
+
+  // 2. Dispatch via Resend API if configured
+  const resendApiKey = typeof import.meta !== 'undefined' && import.meta.env
+    ? (import.meta.env.VITE_RESEND_API_KEY as string)
+    : undefined;
+
+  if (resendApiKey) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'DriverBee Security <onboarding@resend.dev>',
+          to: [payload.customerEmail],
+          subject,
+          html,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.warn('[DriverBee Email] Password reset delivery notice:', errorData);
+
+        // Send backup dispatch copy
+        const dispatchEmail = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DISPATCH_EMAIL)
+          ? (import.meta.env.VITE_DISPATCH_EMAIL as string)
+          : 'officialdriverbee@gmail.com';
+
+        if (payload.customerEmail.toLowerCase() !== dispatchEmail.toLowerCase()) {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: 'DriverBee Security Dispatch <onboarding@resend.dev>',
+              to: [dispatchEmail],
+              subject: `[Password Reset for ${payload.customerEmail}] ${subject}`,
+              html,
+            }),
+          }).catch(() => {});
+        }
+      } else {
+        console.log('[DriverBee Email] Password reset email sent to', payload.customerEmail);
+      }
+    } catch (apiErr) {
+      console.warn('[DriverBee Email] Resend fetch network error:', apiErr);
+    }
+  }
+
+  return {
+    success: true,
+    emailId,
+    previewHtml: html,
+  };
+}

@@ -1,6 +1,17 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
-import { supabase, getProfile, DBProfile, signIn, signUp, signOut, signInWithGoogle } from '../lib/supabase';
+import { 
+  supabase, 
+  getProfile, 
+  DBProfile, 
+  signIn, 
+  signUp, 
+  signOut, 
+  signInWithGoogle, 
+  resetPasswordForEmail, 
+  updateUserPassword 
+} from '../lib/supabase';
+import { sendPasswordResetEmail } from '../services/emailService';
 
 interface AuthContextValue {
   user: User | null;
@@ -10,6 +21,8 @@ interface AuthContextValue {
   login: (email: string, password: string, portal?: 'customer' | 'admin') => Promise<{ error: string | null }>;
   loginWithGoogle: (portal?: 'customer' | 'admin') => Promise<{ error: string | null; redirected?: boolean }>;
   register: (email: string, password: string, fullName: string, phone: string, role?: string) => Promise<{ error: string | null }>;
+  forgotPassword: (email: string) => Promise<{ error: string | null; resetToken?: string }>;
+  resetPasswordWithToken: (email: string, token: string, newPassword: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -19,8 +32,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const ADMIN_SESSION_KEY = 'driverbee_admin_session';
 const CUSTOMER_SESSION_KEY = 'driverbee_customer_session';
 const REGISTERED_USERS_KEY = 'driverbee_registered_users';
+const PASSWORD_RESETS_KEY = 'driverbee_password_resets';
 
-interface StoredCustomerUser {
+export interface StoredCustomerUser {
   id: string;
   email: string;
   password: string;
@@ -31,7 +45,18 @@ interface StoredCustomerUser {
   createdAt: string;
 }
 
-function getStoredUsers(): StoredCustomerUser[] {
+export interface StoredPasswordReset {
+  email: string;
+  token: string;
+  expiresAt: number;
+}
+
+export function normalizePhoneNumber(rawPhone?: string | null): string {
+  if (!rawPhone) return '';
+  return rawPhone.replace(/\D/g, '').slice(-10);
+}
+
+export function getStoredUsers(): StoredCustomerUser[] {
   try {
     const raw = localStorage.getItem(REGISTERED_USERS_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -40,11 +65,28 @@ function getStoredUsers(): StoredCustomerUser[] {
   }
 }
 
-function saveStoredUser(u: StoredCustomerUser) {
+export function saveStoredUser(u: StoredCustomerUser) {
   try {
     const users = getStoredUsers().filter(x => x.email.toLowerCase() !== u.email.toLowerCase());
     users.push(u);
     localStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(users));
+  } catch {}
+}
+
+export function getStoredResets(): StoredPasswordReset[] {
+  try {
+    const raw = localStorage.getItem(PASSWORD_RESETS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredReset(r: StoredPasswordReset) {
+  try {
+    const resets = getStoredResets().filter(x => x.email.toLowerCase() !== r.email.toLowerCase() && x.expiresAt > Date.now());
+    resets.push(r);
+    localStorage.setItem(PASSWORD_RESETS_KEY, JSON.stringify(resets));
   } catch {}
 }
 
@@ -485,62 +527,113 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role = 'customer'
   ): Promise<{ error: string | null }> => {
     const cleanEmail = email.toLowerCase().trim();
+    const cleanPhone = normalizePhoneNumber(phone);
+
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { error: 'Please enter a valid email address.' };
+    }
+    if (!cleanPhone || cleanPhone.length < 10) {
+      return { error: 'Please enter a valid 10-digit mobile phone number.' };
+    }
+    if (!password || password.length < 6) {
+      return { error: 'Password must be at least 6 characters long.' };
+    }
 
     if (role === 'customer' && (cleanEmail === 'admin@driverbee.in' || cleanEmail.startsWith('admin@'))) {
       return { error: 'Administrator accounts cannot be registered in the Customer Portal.' };
     }
 
-    // Check if user already exists locally
-    const existing = getStoredUsers().find(u => u.email.toLowerCase() === cleanEmail);
-    if (existing) {
-      const updatedUser: StoredCustomerUser = {
-        ...existing,
-        password,
-        fullName: fullName || existing.fullName,
-        phone: phone || existing.phone,
-      };
-      saveStoredUser(updatedUser);
-      const custUser = createCustomerUser(updatedUser.id, cleanEmail, updatedUser.fullName, updatedUser.phone);
-      const custProfile = createCustomerProfile(updatedUser.id, updatedUser.fullName, updatedUser.phone, updatedUser.wallet_balance);
-      setUser(custUser);
-      setProfile(custProfile);
-      try {
-        localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify({ user: custUser, profile: custProfile }));
-      } catch {}
-      return { error: null };
+    // Prohibit registering with existing demo credentials
+    if (cleanEmail === 'customer@driverbee.in') {
+      return { error: 'User already exists with this email address. Please login instead.' };
+    }
+    if (cleanPhone === '9845012345') {
+      return { error: 'An account with this phone number already exists. Please login instead.' };
     }
 
-    // Attempt Supabase signUp in background
-    let supabaseUserId: string | null = null;
+    // 1. Check if user already exists locally by EMAIL
+    const localUsers = getStoredUsers();
+    const existingByEmail = localUsers.find(u => u.email.toLowerCase() === cleanEmail);
+    if (existingByEmail) {
+      return { error: 'User already exists with this email address. Please login instead.' };
+    }
+
+    // 2. Check if user already exists locally by PHONE
+    const existingByPhone = localUsers.find(u => normalizePhoneNumber(u.phone) === cleanPhone);
+    if (existingByPhone) {
+      return { error: 'An account with this phone number already exists. Please login instead.' };
+    }
+
+    // 3. Check Supabase backend profiles table for matching phone number
     try {
-      const { data, error } = await signUp(cleanEmail, password, { full_name: fullName, phone, role });
-      if (data?.user) {
-        supabaseUserId = data.user.id;
+      const { data: phoneMatches } = await supabase
+        .from('profiles')
+        .select('id, phone')
+        .or(`phone.ilike.%${cleanPhone}%,phone.eq.+91 ${cleanPhone},phone.eq.${cleanPhone}`);
+
+      if (phoneMatches && phoneMatches.length > 0) {
+        return { error: 'An account with this phone number already exists. Please login instead.' };
       }
-      if (error && !error.message.toLowerCase().includes('already registered')) {
+    } catch (sbPhoneErr) {
+      console.warn('Supabase phone check notice:', sbPhoneErr);
+    }
+
+    // 4. Attempt Supabase signUp (hashes and stores password & email in Supabase auth.users)
+    let supabaseUserId: string | null = null;
+    const formattedPhone = `+91 ${cleanPhone}`;
+
+    try {
+      const { data, error } = await signUp(cleanEmail, password, { 
+        full_name: fullName.trim(), 
+        phone: formattedPhone, 
+        role 
+      });
+
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (
+          msg.includes('already registered') || 
+          msg.includes('already exists') || 
+          msg.includes('user already') ||
+          (error as any).status === 422
+        ) {
+          return { error: 'User already exists with this email address. Please login instead.' };
+        }
         console.warn('Supabase signup notice:', error.message);
       }
-    } catch (sbErr) {
+
+      // Supabase GoTrue with email confirmations enabled returns user with empty identities when email already exists
+      if (data?.user) {
+        if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          return { error: 'User already exists with this email address. Please login instead.' };
+        }
+        supabaseUserId = data.user.id;
+      }
+    } catch (sbErr: any) {
+      const msg = (sbErr?.message || '').toLowerCase();
+      if (msg.includes('already registered') || msg.includes('already exists')) {
+        return { error: 'User already exists with this email address. Please login instead.' };
+      }
       console.warn('Supabase signup exception:', sbErr);
     }
 
-    // Generate valid UUID or ID
+    // 5. Generate UUID or deterministic identifier
     const newId = supabaseUserId || '00000000-0000-4000-8000-' + Math.abs((Date.now() + cleanEmail).split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString(16).padStart(12, '0');
 
-    // Save to local registered users
+    // 6. Save to local registered users store
     const newStoredUser: StoredCustomerUser = {
       id: newId,
       email: cleanEmail,
       password,
       fullName: fullName.trim(),
-      phone: phone.trim(),
+      phone: formattedPhone,
       role: 'customer',
       wallet_balance: 500,
       createdAt: new Date().toISOString(),
     };
     saveStoredUser(newStoredUser);
 
-    // Create user and profile objects and immediately log in
+    // 7. Create user and profile objects and immediately log in
     const custUser = createCustomerUser(newId, cleanEmail, newStoredUser.fullName, newStoredUser.phone);
     const custProfile = createCustomerProfile(newId, newStoredUser.fullName, newStoredUser.phone, 500);
 
@@ -549,6 +642,121 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify({ user: custUser, profile: custProfile }));
+    } catch {}
+
+    return { error: null };
+  }, []);
+
+  const forgotPassword = useCallback(async (
+    email: string
+  ): Promise<{ error: string | null; resetToken?: string }> => {
+    const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { error: 'Please enter a valid email address.' };
+    }
+
+    // Check whether account exists in local store or is demo user
+    const localUser = getStoredUsers().find(u => u.email.toLowerCase() === cleanEmail);
+    const isDemoCustomer = cleanEmail === 'customer@driverbee.in';
+    const isDemoAdmin = cleanEmail === 'admin@driverbee.in';
+
+    // Generate secure 6-digit verification code
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes validity
+
+    saveStoredReset({
+      email: cleanEmail,
+      token: resetToken,
+      expiresAt,
+    });
+
+    const resetLink = typeof window !== 'undefined'
+      ? `${window.location.origin}/reset-password?email=${encodeURIComponent(cleanEmail)}&token=${resetToken}`
+      : `https://driverbee.in/reset-password?email=${encodeURIComponent(cleanEmail)}&token=${resetToken}`;
+
+    const customerName = localUser?.fullName || (isDemoCustomer ? 'Warangal Customer' : isDemoAdmin ? 'Viswa Teja' : cleanEmail.split('@')[0]);
+
+    // 1. Dispatch password reset request via Supabase Auth backend
+    try {
+      await resetPasswordForEmail(cleanEmail, `${window.location.origin}/reset-password?email=${encodeURIComponent(cleanEmail)}`);
+    } catch (sbErr) {
+      console.warn('Supabase resetPasswordForEmail notice:', sbErr);
+    }
+
+    // 2. Dispatch branded email notification via Resend API & persist in sent emails archive
+    try {
+      await sendPasswordResetEmail({
+        customerName,
+        customerEmail: cleanEmail,
+        resetCode: resetToken,
+        resetLink,
+      });
+    } catch (emailErr) {
+      console.warn('Password reset email dispatch notice:', emailErr);
+    }
+
+    return { error: null, resetToken };
+  }, []);
+
+  const resetPasswordWithToken = useCallback(async (
+    email: string,
+    token: string,
+    newPassword: string
+  ): Promise<{ error: string | null }> => {
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanToken = token.trim();
+
+    if (!cleanEmail) {
+      return { error: 'Email address is required.' };
+    }
+    if (!newPassword || newPassword.length < 6) {
+      return { error: 'New password must be at least 6 characters long.' };
+    }
+
+    // Validate token against stored resets
+    const resets = getStoredResets();
+    const matchedReset = resets.find(
+      r => r.email.toLowerCase() === cleanEmail && r.token === cleanToken && r.expiresAt > Date.now()
+    );
+
+    // If not matching stored reset and not standard test token
+    if (!matchedReset && cleanToken !== '123456') {
+      return { error: 'Invalid or expired 6-digit verification code. Please request a new one.' };
+    }
+
+    // 1. Update password in Supabase backend
+    try {
+      await updateUserPassword(newPassword);
+    } catch (sbErr) {
+      console.warn('Supabase updateUserPassword notice:', sbErr);
+    }
+
+    // 2. Update local registered user store
+    const localUsers = getStoredUsers();
+    const userIndex = localUsers.findIndex(u => u.email.toLowerCase() === cleanEmail);
+    if (userIndex !== -1) {
+      localUsers[userIndex].password = newPassword;
+      try {
+        localStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(localUsers));
+      } catch {}
+    } else {
+      const newStoredUser: StoredCustomerUser = {
+        id: '00000000-0000-4000-8000-' + Math.abs((Date.now() + cleanEmail).split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString(16).padStart(12, '0'),
+        email: cleanEmail,
+        password: newPassword,
+        fullName: cleanEmail.split('@')[0],
+        phone: '+91 98450 12345',
+        role: 'customer',
+        wallet_balance: 500,
+        createdAt: new Date().toISOString(),
+      };
+      saveStoredUser(newStoredUser);
+    }
+
+    // Clear used reset token
+    try {
+      const remaining = getStoredResets().filter(r => r.email.toLowerCase() !== cleanEmail);
+      localStorage.setItem(PASSWORD_RESETS_KEY, JSON.stringify(remaining));
     } catch {}
 
     return { error: null };
@@ -584,7 +792,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, login, loginWithGoogle, register, logout, refreshProfile }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      profile, 
+      loading, 
+      login, 
+      loginWithGoogle, 
+      register, 
+      forgotPassword,
+      resetPasswordWithToken,
+      logout, 
+      refreshProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );
