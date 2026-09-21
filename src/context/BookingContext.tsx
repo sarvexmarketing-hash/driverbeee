@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { TripType, DurationOption } from '../types';
+import { TripType, DurationOption, DEFAULT_DRIVER_NO_PHOTO } from '../types';
 import {
   supabase,
   DBBooking,
@@ -131,7 +131,7 @@ function mapDriver(d: DBDriverProfile & { profiles?: DBProfile; name?: string | 
     tripsCount: Number(d.trips_count) || 0,
     isOnDuty: d.is_on_duty !== false,
     area: d.area ?? '',
-    photo: d.photo_url || (d as any).photo || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80',
+    photo: d.photo_url || (d as any).photo || DEFAULT_DRIVER_NO_PHOTO,
     badge: d.badge || 'Professional Driver',
     todayEarnings: Number(d.today_earnings) || 0,
     assignedBookingId: d.assigned_booking_id,

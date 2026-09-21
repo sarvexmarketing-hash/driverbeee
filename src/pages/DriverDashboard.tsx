@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useBookings, LiveBooking, DriverProfile } from '../context/BookingContext';
 import { useAuth } from '../context/AuthContext';
 import { DriverBeeLogo } from '../components/DriverBeeLogo';
+import { DEFAULT_DRIVER_NO_PHOTO } from '../types';
 import {
   Car, CheckCircle2, XCircle, Bell,
   Star, LogOut, Activity, Shield, Home,
@@ -59,7 +60,12 @@ const DriverSelect: React.FC<{ drivers: DriverProfile[]; onSelect: (d: DriverPro
             className="w-full flex items-center gap-4 p-4 bg-white hover:bg-bee-50 border border-gray-200 hover:border-bee-300 rounded-2xl transition-all text-left group shadow-sm"
           >
             <div className="relative flex-shrink-0">
-              <img src={driver.photo} alt={driver.name} className="w-12 h-12 rounded-xl object-cover" />
+              <img
+                src={driver.photo && driver.photo.trim() ? driver.photo : DEFAULT_DRIVER_NO_PHOTO}
+                alt={driver.name}
+                onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_DRIVER_NO_PHOTO; }}
+                className="w-12 h-12 rounded-xl object-cover bg-gray-100"
+              />
               <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${driver.isOnDuty ? 'bg-emerald-500' : 'bg-gray-300'}`} />
             </div>
             <div className="flex-1 min-w-0">
@@ -265,7 +271,12 @@ export const DriverDashboard: React.FC = () => {
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <img src={liveDriver.photo} alt={liveDriver.name} className="w-10 h-10 rounded-xl object-cover" />
+            <img
+              src={liveDriver.photo && liveDriver.photo.trim() ? liveDriver.photo : DEFAULT_DRIVER_NO_PHOTO}
+              alt={liveDriver.name}
+              onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_DRIVER_NO_PHOTO; }}
+              className="w-10 h-10 rounded-xl object-cover bg-gray-100"
+            />
             <span className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${liveDriver.isOnDuty ? 'bg-emerald-500' : 'bg-gray-300'}`} />
           </div>
           <div>

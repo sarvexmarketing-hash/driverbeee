@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { DEFAULT_DRIVER_NO_PHOTO } from '../types';
 
 const supabaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL)
   ? (import.meta.env.VITE_SUPABASE_URL as string)
@@ -341,7 +342,7 @@ export async function sbCreateDriver(driverData: {
     rating: driverData.rating ?? 5.0,
     trips_count: 0,
     is_on_duty: driverData.is_on_duty ?? true,
-    photo_url: driverData.photo || 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&q=80',
+    photo_url: driverData.photo || DEFAULT_DRIVER_NO_PHOTO,
     today_earnings: 0,
     created_at: new Date().toISOString(),
   };

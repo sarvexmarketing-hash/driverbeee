@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useBookings, LiveBooking, BookingStatus, DriverProfile, getDriverActiveBooking } from '../context/BookingContext';
 import { usePricing, PricingConfig, DEFAULT_PRICING } from '../context/PricingContext';
-import { formatDisplayDate } from '../types';
+import { formatDisplayDate, DEFAULT_DRIVER_NO_PHOTO } from '../types';
 import { DriverBeeLogo } from '../components/DriverBeeLogo';
 import {
   LayoutDashboard, Car, Users, Wallet, Bell, LogOut,
@@ -11,7 +11,8 @@ import {
   Tag, IndianRupee, RefreshCw, Save, PlayCircle, FlagTriangleRight,
   UserPlus, UserX, Search, Filter, Plus, ChevronRight, Sparkles, Copy, History,
   FileText, ExternalLink, Download, AlertTriangle, CheckCircle, Smartphone,
-  ChevronDown, ArrowUpRight, CloudSun, MoreVertical, User, ListFilter
+  ChevronDown, ArrowUpRight, CloudSun, MoreVertical, User, ListFilter,
+  Camera, Upload
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
@@ -634,7 +635,12 @@ const BookingDetailDrawer: React.FC<{
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="relative flex-shrink-0">
-                            <img src={driver.photo} alt={driver.name} className="w-8 h-8 rounded-full object-cover" />
+                            <img
+                              src={driver.photo && driver.photo.trim() ? driver.photo : DEFAULT_DRIVER_NO_PHOTO}
+                              alt={driver.name}
+                              onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_DRIVER_NO_PHOTO; }}
+                              className="w-8 h-8 rounded-full object-cover bg-gray-100"
+                            />
                             <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-white ${isBusyOnOtherRide ? 'bg-amber-500 animate-pulse' : driver.isOnDuty ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                           </div>
                           <div className="min-w-0">
@@ -742,14 +748,6 @@ const BookingDetailDrawer: React.FC<{
 // Driver Management Modals
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PRESET_DRIVER_AVATARS = [
-  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80',
-];
-
 const WARANGAL_AREA_PRESETS = [
   'Hanamkonda',
   'Kazipet',
@@ -785,8 +783,7 @@ const AddDriverModal: React.FC<AddDriverModalProps> = ({ isOpen, onClose, onSave
   const [badge, setBadge] = useState('Professional Chauffeur');
   const [rating, setRating] = useState('4.9');
   const [isOnDuty, setIsOnDuty] = useState(true);
-  const [photo, setPhoto] = useState(PRESET_DRIVER_AVATARS[0]);
-  const [customPhoto, setCustomPhoto] = useState('');
+  const [photo, setPhoto] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -797,8 +794,7 @@ const AddDriverModal: React.FC<AddDriverModalProps> = ({ isOpen, onClose, onSave
       setBadge(initialData.badge);
       setRating(String(initialData.rating));
       setIsOnDuty(initialData.isOnDuty);
-      setPhoto(initialData.photo);
-      setCustomPhoto('');
+      setPhoto(initialData.photo && initialData.photo !== DEFAULT_DRIVER_NO_PHOTO ? initialData.photo : '');
     } else {
       setName('');
       setPhone('');
@@ -806,13 +802,69 @@ const AddDriverModal: React.FC<AddDriverModalProps> = ({ isOpen, onClose, onSave
       setBadge('Professional Chauffeur');
       setRating('4.9');
       setIsOnDuty(true);
-      setPhoto(PRESET_DRIVER_AVATARS[0]);
-      setCustomPhoto('');
+      setPhoto('');
     }
     setError(null);
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
+
+  const handlePhotoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      setError('Photo size should be under 8MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 400;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.85);
+            setPhoto(compressed);
+            setError(null);
+          } else {
+            setPhoto(dataUrl);
+            setError(null);
+          }
+        };
+        img.onerror = () => {
+          setPhoto(dataUrl);
+          setError(null);
+        };
+        img.src = dataUrl;
+      }
+    };
+    reader.onerror = () => {
+      setError('Could not read image file. Please try another photo.');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -826,7 +878,7 @@ const AddDriverModal: React.FC<AddDriverModalProps> = ({ isOpen, onClose, onSave
       setError('Please enter a valid 10-digit phone number.');
       return;
     }
-    const finalPhoto = customPhoto.trim() || photo;
+    const finalPhoto = photo.trim() || DEFAULT_DRIVER_NO_PHOTO;
     onSave({
       name: cleanName,
       phone: cleanPhone,
@@ -998,24 +1050,89 @@ const AddDriverModal: React.FC<AddDriverModalProps> = ({ isOpen, onClose, onSave
             </div>
           </div>
 
-          {/* Avatar Selection */}
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
-              Profile Avatar
-            </label>
-            <div className="flex items-center gap-2.5">
-              {PRESET_DRIVER_AVATARS.map((url, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => { setPhoto(url); setCustomPhoto(''); }}
-                  className={`w-11 h-11 rounded-2xl overflow-hidden border-2 transition-all p-0.5 ${
-                    photo === url && !customPhoto ? 'border-bee-600 scale-105 shadow-xs' : 'border-transparent opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img src={url} alt={`Preset ${i}`} className="w-full h-full object-cover rounded-xl" />
-                </button>
-              ))}
+          {/* Driver Photo Section (Upload or Default No Photo) */}
+          <div className="pt-1">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                Driver Photo
+              </label>
+              <span className="text-[10px] text-gray-400 font-medium">Upload photo or keep default (no photo)</span>
+            </div>
+
+            <div className="flex items-center gap-3.5 p-3.5 bg-gray-50/80 border border-gray-200/80 rounded-2xl">
+              {/* Photo Preview Thumbnail */}
+              <div className="relative flex-shrink-0">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-xs bg-gray-100 flex items-center justify-center">
+                  {photo && photo !== DEFAULT_DRIVER_NO_PHOTO ? (
+                    <img
+                      src={photo}
+                      alt="Driver preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = DEFAULT_DRIVER_NO_PHOTO;
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 text-slate-400">
+                      <User className="w-7 h-7 text-slate-400" />
+                      <span className="text-[8px] font-bold mt-0.5 text-slate-400 uppercase tracking-wider">No Photo</span>
+                    </div>
+                  )}
+                </div>
+
+                {photo && photo !== DEFAULT_DRIVER_NO_PHOTO && (
+                  <button
+                    type="button"
+                    onClick={() => setPhoto('')}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-xs transition-colors cursor-pointer"
+                    title="Remove Photo (Keep Default No Photo)"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="px-3 py-1.5 rounded-xl bg-bee-600 hover:bg-bee-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer hover:scale-102 active:scale-98">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>{photo && photo !== DEFAULT_DRIVER_NO_PHOTO ? 'Change Photo' : 'Upload Driver Photo'}</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      className="hidden"
+                      onChange={handlePhotoFileUpload}
+                    />
+                  </label>
+
+                  {photo && photo !== DEFAULT_DRIVER_NO_PHOTO ? (
+                    <button
+                      type="button"
+                      onClick={() => setPhoto('')}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                      <span>Set as No Photo</span>
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-[11px] font-bold text-gray-600 shadow-2xs">
+                      <Check className="w-3 h-3 text-emerald-600" /> Default: No Photo
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-gray-400 flex-shrink-0">or photo URL:</span>
+                  <input
+                    type="url"
+                    value={photo && photo !== DEFAULT_DRIVER_NO_PHOTO && !photo.startsWith('data:') ? photo : ''}
+                    onChange={(e) => setPhoto(e.target.value.trim())}
+                    placeholder="https://example.com/driver-photo.jpg"
+                    className="flex-1 px-2 py-1 text-[11px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-bee-500 text-navy-950 font-medium"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1174,7 +1291,12 @@ const AssignDriverModal: React.FC<AssignDriverModalProps> = ({
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative flex-shrink-0">
-                      <img src={driver.photo} alt={driver.name} className="w-11 h-11 rounded-2xl object-cover" />
+                      <img
+                        src={driver.photo && driver.photo.trim() ? driver.photo : DEFAULT_DRIVER_NO_PHOTO}
+                        alt={driver.name}
+                        onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_DRIVER_NO_PHOTO; }}
+                        className="w-11 h-11 rounded-2xl object-cover bg-gray-100"
+                      />
                       <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${isBusyOnOtherRide ? 'bg-amber-500 animate-pulse' : driver.isOnDuty ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                     </div>
                     <div className="min-w-0">
@@ -1285,7 +1407,12 @@ const AssignRideToDriverModal: React.FC<AssignRideToDriverModalProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-[#FAFBFD]">
           <div className="flex items-center gap-3">
-            <img src={driver.photo} alt={driver.name} className="w-10 h-10 rounded-2xl object-cover border" />
+            <img
+              src={driver.photo && driver.photo.trim() ? driver.photo : DEFAULT_DRIVER_NO_PHOTO}
+              alt={driver.name}
+              onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_DRIVER_NO_PHOTO; }}
+              className="w-10 h-10 rounded-2xl object-cover border bg-gray-100"
+            />
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-bee-600">Assign Ride to Driver</div>
               <h3 className="text-base font-extrabold text-navy-950">{driver.name} ({driver.area})</h3>
@@ -3449,7 +3576,7 @@ export const AdminDashboard: React.FC = () => {
                               badge: 'Highway & Outstation Expert',
                               rating: 4.9,
                               isOnDuty: true,
-                              photo: PRESET_DRIVER_AVATARS[0],
+                              photo: DEFAULT_DRIVER_NO_PHOTO,
                             });
                             showToast(`Added sample driver ${added.name}`);
                           }}
@@ -3492,7 +3619,14 @@ export const AdminDashboard: React.FC = () => {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="relative flex-shrink-0">
-                                <img src={driver.photo} alt={driver.name} className="w-12 h-12 rounded-2xl object-cover border border-gray-200 shadow-2xs" />
+                                <img
+                                  src={driver.photo && driver.photo.trim() ? driver.photo : DEFAULT_DRIVER_NO_PHOTO}
+                                  alt={driver.name}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = DEFAULT_DRIVER_NO_PHOTO;
+                                  }}
+                                  className="w-12 h-12 rounded-2xl object-cover border border-gray-200 shadow-2xs bg-gray-100"
+                                />
                                 <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${driver.isOnDuty ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                               </div>
                               <div className="min-w-0">
