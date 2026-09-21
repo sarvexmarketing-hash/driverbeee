@@ -158,6 +158,12 @@ export const App: React.FC = () => {
   };
 
   const handleBookNow = () => {
+    // 1. COMPULSORY LOGIN: Customers must be logged in before booking
+    if (!profile && !user) {
+      handleOpenAuth('login');
+      return;
+    }
+
     // PRIMARY CHECK: if the user's selected city name is a Warangal-area location,
     // always allow booking — this covers manual selections and correct auto-detections.
     if (isWarangalLocation(selectedCity)) {
@@ -283,10 +289,18 @@ export const App: React.FC = () => {
   }, [contextBookings, drivers, profile, user, localBookingIds]);
 
   const handleSelectDriverToBook = (driver: Driver) => {
+    if (!profile && !user) {
+      handleOpenAuth('login');
+      return;
+    }
     setIsBookingModalOpen(true);
   };
 
   const handleBookForFamilyMember = (member: FamilyMember) => {
+    if (!profile && !user) {
+      handleOpenAuth('login');
+      return;
+    }
     updateBookingState({
       passengerType: 'family',
       familyMemberName: `${member.name} (${member.relation})`
@@ -423,6 +437,7 @@ export const App: React.FC = () => {
         onOpenEmailReceipt={handleOpenEmailReceipt}
         selectedCity={selectedCity}
         userCoords={userCoords}
+        onOpenAuth={handleOpenAuth}
       />
 
       {/* My Bookings Drawer */}

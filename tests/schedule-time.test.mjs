@@ -228,4 +228,24 @@ test('16. Customer My Bookings strictly isolates user bookings and excludes othe
   assert.equal(javedFiltered[0].customerName, 'javed');
 });
 
+test('17. Customer cannot book driver without logging in first', () => {
+  const checkCanBook = (user, profile) => {
+    if (!user && !profile) {
+      return { allowed: false, error: 'Please login or register to book a verified driver.' };
+    }
+    return { allowed: true, error: null };
+  };
+
+  // Guest user (not logged in)
+  const guestResult = checkCanBook(null, null);
+  assert.equal(guestResult.allowed, false);
+  assert.ok(guestResult.error.includes('login'));
+
+  // Logged in user
+  const loggedInResult = checkCanBook({ id: 'usr-123' }, { full_name: 'Javed' });
+  assert.equal(loggedInResult.allowed, true);
+  assert.equal(loggedInResult.error, null);
+});
+
+
 

@@ -19,6 +19,7 @@ interface BookingModalProps {
   onOpenEmailReceipt?: (bookingId: string) => void;
   selectedCity?: string;
   userCoords?: { lat: number; lon: number } | null;
+  onOpenAuth?: (mode?: 'login' | 'signup') => void;
 }
 
 const RadarSearchVisual: React.FC = () => {
@@ -146,6 +147,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onOpenEmailReceipt,
   selectedCity,
   userCoords,
+  onOpenAuth,
 }) => {
   const { user, profile } = useAuth();
   const { bookings, drivers, addBooking, acceptBooking, refreshBookings } = useBookings();
@@ -421,6 +423,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     if (isProcessing || isWaitingAdminAcceptance) return;
     setFormError(null);
     setHasAttemptedSubmit(true);
+
+    // Compulsory Login Requirement
+    if (!user && !profile) {
+      setFormError('Please login to your DriverBee account before booking a driver.');
+      onOpenAuth?.('login');
+      return;
+    }
 
     if (!agreedTerms) {
       setFormError('Please accept the driver terms and conditions before confirming.');
@@ -1525,24 +1534,35 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             )}
 
             {/* Confirm CTA */}
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={isProcessing}
-              className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer"
-            >
-              {isProcessing ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Placing Booking Request...</span>
-                </>
-              ) : (
-                <>
-                  <span>Confirm Booking (Pay on Completion)</span>
-                  <Check className="w-4 h-4 stroke-[3]" />
-                </>
-              )}
-            </button>
+            {!user && !profile ? (
+              <button
+                type="button"
+                onClick={() => onOpenAuth?.('login')}
+                className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer"
+              >
+                <span>Login to Book Driver</span>
+                <Check className="w-4 h-4 stroke-[3]" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={isProcessing}
+                className="w-full h-12 sm:h-14 rounded-full bg-bee-600 hover:bg-bee-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm sm:text-base shadow-cta flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Placing Booking Request...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Confirm Booking (Pay on Completion)</span>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                  </>
+                )}
+              </button>
+            )}
 
           </div>
         )}
