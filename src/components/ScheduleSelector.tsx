@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ScheduleType, formatDisplayDate } from '../types';
-import { Clock } from 'lucide-react';
+import { Clock, ChevronDown } from 'lucide-react';
 
 interface ScheduleSelectorProps {
   scheduleType: ScheduleType;
@@ -10,6 +10,21 @@ interface ScheduleSelectorProps {
   time: string;
   setTime: (time: string) => void;
 }
+
+// Generate all 15-minute time slots for 24 hours (96 slots from 12:00 AM to 11:45 PM)
+export const generateTimeSlots = (): string[] => {
+  const slots: string[] = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of ['00', '15', '30', '45']) {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      let displayH = h % 12;
+      if (displayH === 0) displayH = 12;
+      const hStr = String(displayH).padStart(2, '0');
+      slots.push(`${hStr}:${m} ${ampm}`);
+    }
+  }
+  return slots;
+};
 
 // Helper to convert 12-hour string (e.g. "04:45 PM" or "4.45 PM" or "16:45") to 24-hour "HH:mm"
 export const format12To24 = (timeStr: string): string => {
@@ -63,7 +78,15 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   }, [date, todayStr, tomorrowStr, setDate]);
   
   const quickTimes = ['08:00 AM', '10:30 AM', '02:00 PM', '05:30 PM', '08:00 PM'];
-  const isQuickTime = quickTimes.includes(time);
+
+  // All 15-minute time slots across 24h, ensuring current time is included if customized
+  const timeSlots = useMemo(() => {
+    const baseSlots = generateTimeSlots();
+    if (time && !baseSlots.includes(time)) {
+      return [time, ...baseSlots];
+    }
+    return baseSlots;
+  }, [time]);
 
   return (
     <div className="space-y-2 sm:space-y-3">
@@ -169,16 +192,19 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
       {/* Inline Date & Time Picker when Schedule for Later is active */}
       {scheduleType === 'later' && (
         <div className="p-3 bg-[#FAFBFD] rounded-2xl border border-bee-200/80 space-y-2.5 animate-fade-in mt-2">
+          {/* Header Row */}
           <div className="flex items-center justify-between text-[11px] font-bold text-navy-800">
-            <span className="text-navy-600">Pickup Date & Slot:</span>
-            <span className="text-bee-700 bg-bee-50 border border-bee-200/80 px-2 py-0.5 rounded-md font-extrabold">
+            <span className="text-navy-600">Pickup Date & Timing:</span>
+            <span className="text-bee-700 bg-bee-50 border border-bee-200/80 px-2.5 py-0.5 rounded-md font-extrabold flex items-center gap-1">
+              <Clock className="w-3 h-3 text-bee-600" />
               {formatDisplayDate(date)} at {time}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+          {/* Row 1: Date Buttons + Timing Dropdown */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
             {/* Date Quick Selection: Today / Tomorrow */}
-            <div className="grid grid-cols-2 gap-1.5 sm:col-span-4">
+            <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => setDate(todayStr)}
@@ -203,54 +229,48 @@ export const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
               </button>
             </div>
 
-            {/* Time Slots: Quick Buttons + Custom Time Picker */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 sm:col-span-8">
-              {quickTimes.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTime(t)}
-                  className={`px-2 py-1.5 text-[10.5px] rounded-xl font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                    time === t
-                      ? 'bg-bee-600 text-white font-bold shadow-xs'
-                      : 'bg-white border border-navy-200 text-navy-700 hover:bg-navy-50'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-
-              {/* Custom Time Selector */}
-              <label
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-[10.5px] rounded-xl font-semibold whitespace-nowrap border transition-all cursor-pointer select-none ${
-                  !isQuickTime
-                    ? 'bg-bee-600 text-white border-bee-600 shadow-xs font-bold ring-2 ring-bee-400/50'
-                    : 'bg-white border-navy-200 text-navy-700 hover:bg-navy-50 hover:border-bee-300'
-                }`}
-                title="Enter or select any custom pickup time (e.g. 04:45 PM)"
+            {/* Timing Dropdown Selector */}
+            <div className="relative flex items-center">
+              <Clock className="w-4 h-4 text-bee-600 absolute left-3 pointer-events-none" />
+              <select
+                id="pickup-time-dropdown"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full pl-9 pr-9 py-2 text-xs font-bold text-navy-950 bg-white border border-navy-200 rounded-xl hover:border-bee-500 focus:border-bee-600 focus:ring-2 focus:ring-bee-500/20 outline-none appearance-none cursor-pointer transition-all shadow-xs"
               >
-                <Clock className={`w-3 h-3 flex-shrink-0 ${!isQuickTime ? 'text-white' : 'text-bee-600'}`} />
-                <span className={`text-[10.5px] font-bold ${!isQuickTime ? 'text-white' : 'text-navy-800'}`}>
-                  {!isQuickTime ? 'Custom:' : 'Custom'}
-                </span>
-                <input
-                  type="time"
-                  aria-label="Set custom pickup time"
-                  value={format12To24(time)}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setTime(format24To12(e.target.value));
-                    }
-                  }}
-                  className={`text-[11px] font-bold bg-transparent border-none outline-none focus:ring-0 p-0 cursor-pointer ${
-                    !isQuickTime ? 'text-white' : 'text-navy-900'
-                  }`}
-                />
-              </label>
+                {timeSlots.map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slot}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-navy-500 absolute right-3 pointer-events-none" />
             </div>
+          </div>
+
+          {/* Row 2: Quick Shortcut Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pt-1 border-t border-navy-100/60 pb-0.5">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-navy-400 whitespace-nowrap mr-0.5">
+              Quick:
+            </span>
+            {quickTimes.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTime(t)}
+                className={`px-2.5 py-1 text-[10.5px] rounded-lg font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                  time === t
+                    ? 'bg-bee-600 text-white font-bold shadow-xs'
+                    : 'bg-white border border-navy-200 text-navy-700 hover:bg-navy-50'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
           </div>
         </div>
       )}
     </div>
   );
 };
+

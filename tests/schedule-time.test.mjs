@@ -65,6 +65,21 @@ test('6. Converts 08:15 AM correctly in both directions', () => {
   assert.equal(format24To12('08:15'), '08:15 AM');
 });
 
+// Generate all 15-minute time slots for 24 hours (96 slots from 12:00 AM to 11:45 PM)
+const generateTimeSlots = () => {
+  const slots = [];
+  for (let h = 0; h < 24; h++) {
+    for (const m of ['00', '15', '30', '45']) {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      let displayH = h % 12;
+      if (displayH === 0) displayH = 12;
+      const hStr = String(displayH).padStart(2, '0');
+      slots.push(`${hStr}:${m} ${ampm}`);
+    }
+  }
+  return slots;
+};
+
 test('7. Quick slot presets (08:00 AM, 10:30 AM, etc.) remain valid 12-hour values', () => {
   const presets = ['08:00 AM', '10:30 AM', '02:00 PM', '05:30 PM', '08:00 PM'];
   presets.forEach((preset) => {
@@ -73,3 +88,19 @@ test('7. Quick slot presets (08:00 AM, 10:30 AM, etc.) remain valid 12-hour valu
     assert.equal(roundTrip, preset);
   });
 });
+
+test('8. Timing dropdown generates 96 15-minute slots across 24 hours', () => {
+  const slots = generateTimeSlots();
+  assert.equal(slots.length, 96);
+  assert.equal(slots[0], '12:00 AM');
+  assert.equal(slots[slots.length - 1], '11:45 PM');
+});
+
+test('9. Timing dropdown includes requested custom times like 04:45 PM and 04:45 AM', () => {
+  const slots = generateTimeSlots();
+  assert.ok(slots.includes('04:45 PM'), 'Should include 04:45 PM');
+  assert.ok(slots.includes('04:45 AM'), 'Should include 04:45 AM');
+  assert.ok(slots.includes('10:30 AM'), 'Should include 10:30 AM');
+  assert.ok(slots.includes('02:00 PM'), 'Should include 02:00 PM');
+});
+
