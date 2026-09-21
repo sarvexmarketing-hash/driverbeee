@@ -33,11 +33,8 @@ export const TripSelector: React.FC<TripSelectorProps> = ({
       {/* Header with Title and 1,250+ count on the right */}
       <div className="flex items-baseline justify-between">
         <div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-navy-950 tracking-tight flex items-center gap-2 flex-wrap">
-            <span>Select Your Trip</span>
-            <span className="text-xs sm:text-sm font-semibold text-amber-800 bg-amber-50 border border-amber-200/90 px-2 py-0.5 rounded-md">
-              (only one way)
-            </span>
+          <h2 className="text-lg sm:text-xl font-extrabold text-navy-950 tracking-tight">
+            Select Your Trip
           </h2>
           <p className="text-xs sm:text-sm text-navy-500 font-normal mt-0.5">
             Choose your destination type.
