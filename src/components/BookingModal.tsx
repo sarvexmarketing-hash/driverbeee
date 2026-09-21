@@ -601,17 +601,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   ? 'Booking Confirmed' 
                   : 'Review & Confirm Drive'}
               </span>
-              <h3 className="text-lg sm:text-xl font-extrabold text-navy-950 flex items-center gap-2 flex-wrap">
-                <span>
-                  {isConfirmed 
-                    ? 'Your Driver Is Assigned' 
-                    : 'DriverBee Driver Booking'}
-                </span>
-                {!isConfirmed && (
-                  <span className="text-xs sm:text-sm font-semibold text-amber-800 bg-amber-50 border border-amber-200/90 px-2 py-0.5 rounded-md">
-                    (one way only)
-                  </span>
-                )}
+              <h3 className="text-lg sm:text-xl font-extrabold text-navy-950">
+                {isConfirmed 
+                  ? 'Your Driver Is Assigned' 
+                  : 'DriverBee Driver Booking'}
               </h3>
             </div>
 
