@@ -9,7 +9,6 @@ import { OneDriverEveryJourney } from './components/OneDriverEveryJourney';
 import { INITIAL_DRIVERS } from './components/TrustedDrivers';
 import { INITIAL_FAMILY } from './components/FamilySafety';
 import { HowItWorks } from './components/HowItWorks';
-import { FoundersSection } from './components/FoundersSection';
 import { CustomerStories } from './components/CustomerStories';
 import { FaqSection } from './components/FaqSection';
 import { Footer } from './components/Footer';
@@ -399,13 +398,6 @@ export const App: React.FC = () => {
         }} 
       />
 
-      {/* 9. Founders Section: Mr. Viswa Teja */}
-      <FoundersSection 
-        onBookClick={() => {
-          const el = document.getElementById('booking-card-section');
-          el?.scrollIntoView({ behavior: 'smooth' });
-        }}
-      />
 
       {/* 10. Customer Stories from Warangal */}
       <CustomerStories />

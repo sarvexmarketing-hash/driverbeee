@@ -10,7 +10,6 @@ import {
   Users, 
   CalendarDays,
   Check,
-  Sparkles,
   Crosshair,
   LogIn,
   LogOut,
@@ -80,7 +79,6 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'home', label: 'Home', action: () => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
     { id: 'book', label: 'Book a Driver', action: () => { setActiveTab('book'); const el = document.getElementById('booking-card-section'); el?.scrollIntoView({ behavior: 'smooth' }); } },
     { id: 'bookings', label: 'My Bookings', action: () => onOpenBookings() },
-    { id: 'founder', label: 'Founder', action: () => { setActiveTab('founder'); const el = document.getElementById('founder-section'); el?.scrollIntoView({ behavior: 'smooth' }); } },
   ];
 
   return (
@@ -457,13 +455,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <CalendarDays className="w-4 h-4 text-bee-600" />
               <span>My Bookings</span>
-            </button>
-            <button
-              onClick={() => { const el = document.getElementById('founder-section'); el?.scrollIntoView({ behavior: 'smooth' }); setIsMobileMenuOpen(false); }}
-              className="col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-bee-50 to-amber-50 text-left text-xs font-semibold text-navy-950 border border-bee-200/80 hover:bg-bee-100"
-            >
-              <Sparkles className="w-4 h-4 text-bee-600" />
-              <span>Meet Founder: Mr. Viswa Teja</span>
             </button>
           </div>
 
