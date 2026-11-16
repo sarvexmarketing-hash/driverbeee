@@ -44,7 +44,6 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2 text-xs font-medium">
               <li><a href="/#booking-card-section" className="hover:text-bee-600 transition-colors">Within City Drives</a></li>
               <li><a href="/#booking-card-section" className="hover:text-bee-600 transition-colors">Outstation Trips</a></li>
-              <li><a href="/cars" className="text-navy-900 font-bold hover:text-bee-600 transition-colors">🚗 Cars Directory</a></li>
               <li><a href="/blog" className="text-navy-900 font-bold hover:text-bee-600 transition-colors">📖 Chauffeur Blog</a></li>
               <li><a href="/join-as-driver" className="text-bee-600 font-bold hover:underline flex items-center gap-1">🚖 Join as Driver</a></li>
             </ul>

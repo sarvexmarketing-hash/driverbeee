@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { DEFAULT_DRIVER_NO_PHOTO } from '../types';
-import { getFirebaseIdToken } from './firebase';
 
 const supabaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL)
   ? (import.meta.env.VITE_SUPABASE_URL as string)
@@ -15,29 +14,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Custom fetch wrapper that attaches Firebase ID Token when a Firebase user is authenticated,
-// while preserving Supabase Auth for Admin logins and anonymous access.
-const customFetch: typeof fetch = async (input, init) => {
-  try {
-    const firebaseToken = await getFirebaseIdToken();
-    if (firebaseToken) {
-      const headers = new Headers(init?.headers);
-      headers.set('Authorization', `Bearer ${firebaseToken}`);
-      return fetch(input, { ...init, headers });
-    }
-  } catch (err) {
-    console.warn('[DriverBee Supabase] Notice attaching Firebase token:', err);
-  }
-  return fetch(input, init);
-};
-
 export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-anon-key', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-  },
-  global: {
-    fetch: customFetch,
   },
   realtime: {
     params: { eventsPerSecond: 10 },
@@ -529,7 +509,11 @@ export async function fetchAllBookings(): Promise<DBBooking[]> {
     .from('bookings')
     .select('*')
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
+  if (error) {
+    console.error('[DriverBee] fetchAllBookings error from Supabase:', error.message, error);
+    return [];
+  }
+  if (!data) return [];
   return data.filter(b => !isRemovedBooking(b));
 }
 

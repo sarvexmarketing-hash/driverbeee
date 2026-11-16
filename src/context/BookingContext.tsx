@@ -294,11 +294,21 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const refreshFromSupabase = useCallback(() =>
     Promise.all([fetchAllBookings(), fetchAllDrivers()]).then(([bData, dData]) => {
-      if (bData) {
+      if (bData && bData.length > 0) {
         const mapped = bData.map(mapBooking);
         setBookings(mapped);
         try {
           localStorage.setItem('driverbee_live_bookings', JSON.stringify(mapped));
+        } catch {}
+      } else if (bData && bData.length === 0) {
+        try {
+          const cached = localStorage.getItem('driverbee_live_bookings');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setBookings(parsed.filter(b => !isRemovedBooking(b as any)));
+            }
+          }
         } catch {}
       }
       const custom = loadCustomDrivers();

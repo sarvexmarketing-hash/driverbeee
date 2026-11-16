@@ -51,7 +51,7 @@ interface AuthContextValue {
   profile: DBProfile | null;
   loading: boolean;
   login: (email: string, password: string, portal?: 'customer' | 'admin') => Promise<{ error: string | null }>;
-  loginWithGoogle: (portal?: 'customer' | 'admin', intent?: 'signin' | 'signup', fullNameHint?: string) => Promise<{ 
+  loginWithGoogle: (portal?: 'customer' | 'admin', intent?: 'signin' | 'signup', fullNameHint?: string, googleEmailHint?: string) => Promise<{ 
     error: string | null; 
     profile?: DBProfile; 
     role?: string; 
@@ -537,7 +537,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = useCallback(async (
     portal: 'customer' | 'admin' = 'customer',
     intent: 'signin' | 'signup' = 'signin',
-    fullNameHint?: string
+    fullNameHint?: string,
+    googleEmailHint?: string
   ): Promise<{ 
     error: string | null; 
     profile?: DBProfile; 
@@ -557,8 +558,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If Firebase credentials are not yet configured in local environment, provide demo flow
       if (!isFirebaseConfigured) {
         console.warn('[DriverBee Auth] Firebase credentials unconfigured in environment. Using demo Google customer flow.');
-        const mockEmail = 'javed.driverbee@gmail.com';
-        const mockName = 'Javed Sayed (Google)';
+        const mockEmail = (googleEmailHint || 'javed.driverbee@gmail.com').toLowerCase().trim();
+        const mockName = fullNameHint || 'Javed Sayed (Google)';
         const mockPhone = '+91 88867 82434';
         const mockUid = '00000000-0000-4000-8000-000000000003';
 
@@ -614,8 +615,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
-      // 1. Authenticate with Firebase Google Sign-In popup
-      const { user: fbUser } = await signInWithFirebaseGoogle();
+      // 1. Authenticate with Google (Secure: Zero Firebase API keys in browser URL)
+      const { user: fbUser } = await signInWithFirebaseGoogle(googleEmailHint);
 
       // STRICT PERMISSION RULE: Check if Google email is an administrator account trying to log into customer portal
       const cleanEmail = (fbUser.email || '').toLowerCase().trim();

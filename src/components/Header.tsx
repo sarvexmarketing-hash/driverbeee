@@ -80,7 +80,6 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems: Array<{ id: string; label: string; action?: () => void; href?: string }> = [
     { id: 'home', label: 'Home', action: () => { setActiveTab('home'); if (window.location.pathname === '/') { window.scrollTo({ top: 0, behavior: 'smooth' }); } else { window.location.href = '/'; } } },
     { id: 'book', label: 'Book a Driver', action: () => { setActiveTab('book'); const el = document.getElementById('booking-card-section'); if (el) { el.scrollIntoView({ behavior: 'smooth' }); } else { window.location.href = '/#booking-card-section'; } } },
-    { id: 'cars', label: 'Cars Directory', href: '/cars' },
     { id: 'blog', label: 'Blog', href: '/blog' },
     { id: 'bookings', label: 'My Bookings', action: () => onOpenBookings() },
   ];

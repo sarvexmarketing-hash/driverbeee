@@ -32,16 +32,16 @@ export const CarsCatalogPage: React.FC = () => {
     : vehicles.filter((v) => v.body_type.toLowerCase().includes(selectedBodyType.toLowerCase()));
 
   const breadcrumbs = [
-    { label: 'Cars Directory', url: '/cars', current: true },
+    { label: 'Cars', url: '/cars', current: true },
   ];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <SeoHead
-        title="Car Brands & Vehicle Directory — DriverBee"
+        title="Car Brands & Supported Models — DriverBee"
         description="Browse supported car brands and vehicle models on DriverBee. Hire verified, background-checked personal car drivers and chauffeurs for your car."
         canonicalUrl="https://driverbee.in/cars"
-        ogTitle="Car Brands & Vehicle Models Directory | DriverBee"
+        ogTitle="Car Brands & Supported Models | DriverBee"
         ogDescription="Hire professional drivers for your Toyota, Hyundai, Honda, Tata, Mahindra, BMW, and Mercedes personal car."
         breadcrumbs={breadcrumbs}
         jsonLd={{

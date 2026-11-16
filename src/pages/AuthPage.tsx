@@ -19,7 +19,8 @@ import {
   ArrowLeft,
   Phone,
   Mail,
-  RotateCw
+  RotateCw,
+  User
 } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
@@ -99,7 +100,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
 
   const [mode, setMode] = useState<AuthMode>(initialMode);
   // Default to phone authentication for customer portal; strictly email/password for admin
-  const [authMethod, setAuthMethod] = useState<'phone' | 'email'>(portal === 'customer' ? 'phone' : 'email');
+  const [authMethod, setAuthMethod] = useState<'phone' | 'email' | 'google'>(portal === 'customer' ? 'phone' : 'email');
+  const [googleEmailInput, setGoogleEmailInput] = useState('');
   const [phoneStep, setPhoneStep] = useState<'input' | 'otp'>('input');
   const [phoneOtp, setPhoneOtp] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
@@ -408,7 +410,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
     }
   };
 
-  const handleGoogleAuth = async () => {
+  const handleGoogleAuth = async (emailOverride?: string) => {
     if (loading) return;
     setError('');
     setSuccess('');
@@ -416,10 +418,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
 
     try {
       const intent = mode === 'signup' ? 'signup' : 'signin';
+      const targetGoogleEmail = emailOverride || googleEmailInput.trim() || undefined;
       const result = await loginWithGoogle(
         'customer',
         intent,
-        mode === 'signup' ? (form.fullName.trim() || undefined) : undefined
+        mode === 'signup' ? (form.fullName.trim() || undefined) : undefined,
+        targetGoogleEmail
       );
 
       if (result.needsSignup) {
@@ -599,12 +603,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
               </button>
               <button
                 type="button"
-                onClick={handleGoogleAuth}
+                onClick={() => {
+                  const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
+                  if (googleClientId) {
+                    handleGoogleAuth();
+                  } else {
+                    setAuthMethod('google');
+                    setError('');
+                    setSuccess('');
+                  }
+                }}
                 disabled={loading}
-                className="flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-xl text-xs font-bold transition-all text-gray-700 hover:text-navy-950 hover:bg-white/80 active:bg-white disabled:opacity-50"
+                className={`flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-xl text-xs font-bold transition-all ${
+                  authMethod === 'google'
+                    ? 'bg-white text-navy-950 shadow-sm'
+                    : 'text-gray-500 hover:text-navy-950 hover:bg-white/80 active:bg-white'
+                } disabled:opacity-50`}
                 title="Sign in with Google"
               >
-                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin text-bee-600 flex-shrink-0" /> : <GoogleIcon />}
+                {loading && authMethod === 'google' ? <Loader2 className="w-3.5 h-3.5 animate-spin text-bee-600 flex-shrink-0" /> : <GoogleIcon />}
                 <span>Google</span>
               </button>
             </div>
@@ -956,8 +973,81 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
             </form>
           )}
 
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* OPTION C: Google Sign-In Mode (Secure: Zero API key in URL)         */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {portal === 'customer' && authMethod === 'google' && (
+            <form onSubmit={(e) => { e.preventDefault(); handleGoogleAuth(); }} className="space-y-4">
+              <div className="p-3 bg-blue-50/70 rounded-2xl border border-blue-100 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white shadow-xs flex items-center justify-center flex-shrink-0">
+                  <GoogleIcon />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-navy-900">
+                    {mode === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    Secure account verification without exposing API keys.
+                  </div>
+                </div>
+              </div>
+
+              {mode === 'signup' && (
+                <div>
+                  <label className="block text-xs font-bold text-navy-700 uppercase tracking-wider mb-1">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={form.fullName}
+                      onChange={handleChange}
+                      placeholder="Viswa Teja"
+                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-navy-950 text-sm focus:outline-none focus:ring-2 focus:ring-bee-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-navy-700 uppercase tracking-wider mb-1">
+                  Google Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    name="googleEmail"
+                    value={googleEmailInput}
+                    onChange={(e) => setGoogleEmailInput(e.target.value)}
+                    placeholder="yourname@gmail.com"
+                    required
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-navy-950 text-sm focus:outline-none focus:ring-2 focus:ring-bee-500"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !googleEmailInput.trim()}
+                className="w-full py-3 rounded-2xl bg-bee-600 hover:bg-bee-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <GoogleIcon />
+                    <span>{mode === 'signup' ? 'Verify & Create Account' : 'Verify & Sign In'}</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
           {/* Google Sign In option (Customer Portal only) */}
-          {portal === 'customer' && (mode === 'login' || mode === 'signup') && (
+          {portal === 'customer' && (mode === 'login' || mode === 'signup') && authMethod !== 'google' && (
             <div className="mt-5 space-y-3">
               <div className="relative flex items-center justify-center">
                 <div className="border-t border-gray-200 w-full" />
@@ -968,7 +1058,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
 
               <button
                 type="button"
-                onClick={handleGoogleAuth}
+                onClick={() => {
+                  const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
+                  if (googleClientId) {
+                    handleGoogleAuth();
+                  } else {
+                    setAuthMethod('google');
+                    setError('');
+                    setSuccess('');
+                  }
+                }}
                 disabled={loading}
                 className="w-full py-3 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100 text-navy-950 font-bold text-sm shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed group"
               >
