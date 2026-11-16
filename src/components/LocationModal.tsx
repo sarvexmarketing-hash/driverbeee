@@ -15,6 +15,8 @@ interface LocationModalProps {
 
 const PRIMARY_CITIES = [
   { name: 'Warangal, Telangana', hub: 'Primary Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Hyderabad, Telangana', hub: 'Metropolitan Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Visakhapatnam, Andhra Pradesh', hub: 'Coastal Hub (Live Bookings)', badge: 'Live Hub' },
   { name: 'Hanamkonda, Warangal', hub: 'Tri-City Hub (Live Bookings)', badge: 'Live Hub' },
   { name: 'Kazipet, Warangal', hub: 'Station & Junction Hub (Live Bookings)', badge: 'Live Hub' },
   { name: 'Narsampet, Telangana', hub: '~25 km from Warangal • Live Bookings', badge: 'Live Hub' },
@@ -23,25 +25,60 @@ const PRIMARY_CITIES = [
   { name: 'Jangaon, Telangana', hub: '~55 km from Warangal • Live Bookings', badge: 'Live Hub' },
   { name: 'Mahabubabad, Telangana', hub: '~55 km from Warangal • Live Bookings', badge: 'Live Hub' },
   { name: 'Mulugu, Telangana', hub: '~55 km from Warangal • Live Bookings', badge: 'Live Hub' },
-  { name: 'Hyderabad, Telangana', hub: 'Driver dispatch launching soon', badge: 'Coming Soon' },
-  { name: 'Visakhapatnam, Andhra Pradesh', hub: 'Coastal Hub launching soon', badge: 'Coming Soon' },
   { name: 'Vijayawada, Andhra Pradesh', hub: 'Capital Region launching soon', badge: 'Coming Soon' },
   { name: 'Karimnagar, Telangana', hub: 'Northern Hub launching soon', badge: 'Coming Soon' },
   { name: 'Khammam, Telangana', hub: 'Eastern Hub launching soon', badge: 'Coming Soon' },
 ];
 
-const LOCAL_WARANGAL_AREAS = [
-  'Hunter Road, Warangal',
-  'Subedari, Warangal',
-  'Nakkalagutta, Warangal',
-  'Ramnagar, Warangal',
-  'Balasamudram, Warangal',
-  'Pochamma Maidan, Warangal',
-  'Waddepally, Warangal',
-  'Kishanpura, Hanamkonda',
-  'Kakatiya University Area, Hanamkonda',
-  'Mandi Bazar, Warangal',
-];
+const LOCAL_AREAS_BY_CITY: Record<string, { label: string; areas: string[] }> = {
+  warangal: {
+    label: 'Local Areas (Warangal / Hanamkonda)',
+    areas: [
+      'Hunter Road, Warangal',
+      'Subedari, Warangal',
+      'Nakkalagutta, Warangal',
+      'Ramnagar, Warangal',
+      'Balasamudram, Warangal',
+      'Pochamma Maidan, Warangal',
+      'Waddepally, Warangal',
+      'Kishanpura, Hanamkonda',
+      'Kakatiya University Area, Hanamkonda',
+      'Mandi Bazar, Warangal',
+    ],
+  },
+  hyderabad: {
+    label: 'Popular Hyderabad Localities & Tech Hubs',
+    areas: [
+      'Banjara Hills, Hyderabad',
+      'Jubilee Hills, Hyderabad',
+      'Gachibowli, Hyderabad',
+      'Hitec City, Hyderabad',
+      'Madhapur, Hyderabad',
+      'Kondapur, Hyderabad',
+      'Kukatpally, Hyderabad',
+      'Begumpet, Hyderabad',
+      'Secunderabad',
+      'Miyapur, Hyderabad',
+      'Ameerpet, Hyderabad',
+      'Dilsukhnagar, Hyderabad',
+    ],
+  },
+  visakhapatnam: {
+    label: 'Popular Visakhapatnam Coastal & Urban Areas',
+    areas: [
+      'MVP Colony, Visakhapatnam',
+      'Dwaraka Nagar, Visakhapatnam',
+      'Madhurawada, Visakhapatnam',
+      'Gajuwaka, Visakhapatnam',
+      'Siripuram, Visakhapatnam',
+      'Rushikonda, Visakhapatnam',
+      'Beach Road / RK Beach, Visakhapatnam',
+      'Kurmannapalem, Visakhapatnam',
+      'Seethammadhara, Visakhapatnam',
+      'Jagadamba Junction, Visakhapatnam',
+    ],
+  },
+};
 
 export const LocationModal: React.FC<LocationModalProps> = ({
   isOpen,
@@ -62,9 +99,21 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     c.name.toLowerCase().includes(normalizedSearch) || c.hub.toLowerCase().includes(normalizedSearch)
   );
 
-  const filteredAreas = LOCAL_WARANGAL_AREAS.filter((a) =>
-    a.toLowerCase().includes(normalizedSearch)
-  );
+  const activeCityKey = selectedCity.toLowerCase().includes('hyderabad')
+    ? 'hyderabad'
+    : (selectedCity.toLowerCase().includes('visakhapatnam') || selectedCity.toLowerCase().includes('vizag'))
+    ? 'visakhapatnam'
+    : 'warangal';
+
+  const allAreas = Object.values(LOCAL_AREAS_BY_CITY).flatMap((g) => g.areas);
+
+  const displayedAreas = normalizedSearch
+    ? allAreas.filter((a) => a.toLowerCase().includes(normalizedSearch))
+    : LOCAL_AREAS_BY_CITY[activeCityKey]?.areas || LOCAL_AREAS_BY_CITY.warangal.areas;
+
+  const areasSectionTitle = normalizedSearch
+    ? 'Matching Local Areas'
+    : LOCAL_AREAS_BY_CITY[activeCityKey]?.label || 'Local Areas';
 
   const handleSelect = (city: string) => {
     onSelectCity(city);
@@ -103,7 +152,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 Select Your City / Area
               </h3>
               <p className="text-[11px] text-navy-500 font-medium">
-                Service area: Warangal &amp; within 60 km radius
+                Live in Warangal, Hyderabad &amp; Visakhapatnam
               </p>
             </div>
           </div>
@@ -162,7 +211,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
           {/* Service Cities List */}
           <div>
             <div className="flex items-center justify-between text-[11px] uppercase tracking-wider font-extrabold text-navy-500 mb-2 px-1">
-              <span>Service Hubs (within 60 km)</span>
+              <span>Active Service Hubs</span>
               <span className="text-[10px] text-bee-700 font-bold lowercase">live bookings</span>
             </div>
 
@@ -206,14 +255,14 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             </div>
           </div>
 
-          {/* Local Warangal Areas */}
-          {filteredAreas.length > 0 && (
+          {/* Local / Popular Hub Areas */}
+          {displayedAreas.length > 0 && (
             <div className="pt-2 border-t border-navy-100">
               <div className="text-[11px] uppercase tracking-wider font-extrabold text-navy-500 mb-2 px-1">
-                Local Areas (Warangal / Hanamkonda)
+                {areasSectionTitle}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                {filteredAreas.map((area) => {
+                {displayedAreas.map((area) => {
                   const isSelected = selectedCity === area;
                   return (
                     <button

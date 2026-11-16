@@ -43,11 +43,11 @@ export const BookingCard: React.FC<BookingCardProps> = ({
             <div className="flex items-center gap-1.5 font-black text-amber-950 flex-wrap">
               <span>DriverBee is Coming Soon to {cityName}!</span>
               <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.2 bg-amber-200 text-amber-900 font-extrabold rounded">
-                Warangal Only
+                Active Hubs Only
               </span>
             </div>
             <p className="text-[11.5px] text-amber-900/90 mt-0.5 leading-relaxed">
-              Driver bookings are currently available exclusively with pickup originating from <strong>Warangal</strong> (Tri-City). Trips can travel anywhere across Telangana & AP, but driver pickup must start in Warangal.
+              Driver bookings are currently available in <strong>Warangal, Hyderabad, and Visakhapatnam</strong>. Trips can travel anywhere across Telangana &amp; AP, but driver pickup must originate from an active hub.
             </p>
             {onSwitchToWarangal && (
               <button
@@ -189,7 +189,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
           </button>
           {!isWarangal && (
             <p className="text-center text-[11.5px] text-amber-900 font-semibold mt-2">
-              ⚠️ Driver bookings currently only originate from Warangal. Click above to view launch details or switch to Warangal.
+              ⚠️ Driver bookings currently originate from Warangal, Hyderabad, and Visakhapatnam. Click above to view launch details or switch city.
             </p>
           )}
         </div>

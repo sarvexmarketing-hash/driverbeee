@@ -469,7 +469,7 @@ export const JoinAsDriverPage: React.FC = () => {
                 Join DriverBee as a Professional Driver
               </h1>
               <p className="text-sm text-navy-600 leading-relaxed">
-                Earn steady daily income driving personal vehicles in Warangal. Sign in or create a DriverBee account to start your verification application.
+                Earn steady daily income driving personal vehicles in Warangal, Hyderabad &amp; Visakhapatnam. Sign in or create a DriverBee account to start your verification application.
               </p>
             </div>
 
@@ -871,7 +871,7 @@ export const JoinAsDriverPage: React.FC = () => {
                         type="text"
                         value={formData.address}
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        placeholder="House / Street / Locality in Warangal"
+                        placeholder="House / Street / Locality in Warangal, Hyderabad or Visakhapatnam"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-navy-200 text-sm font-semibold focus:border-bee-500 focus:outline-none"
                       />
                     </div>
@@ -907,7 +907,7 @@ export const JoinAsDriverPage: React.FC = () => {
               {step === 2 && (
                 <div className="space-y-4 animate-fade-in">
                   <p className="text-xs text-navy-500 leading-relaxed">
-                    Tell us about your driving history and preferred operating zones in Warangal.
+                    Tell us about your driving history and preferred operating zones (Warangal, Hyderabad, or Visakhapatnam).
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -23,7 +23,7 @@ import { ComingSoonModal } from './components/ComingSoonModal';
 import { EmailReceiptModal } from './components/EmailReceiptModal';
 import { CookieBanner } from './components/CookieBanner';
 import { getEmailByBookingId, getSentEmails, SentEmailRecord } from './services/emailService';
-import { isWarangalLocation, isWithin60kmOfWarangal, detectAccurateLocation } from './utils/location';
+import { isWarangalLocation, isWithin60kmOfWarangal, isWithinServiceArea, detectAccurateLocation } from './utils/location';
 import { BookingState, BookingRecord, Driver, FamilyMember, TripType } from './types';
 import { useBookings } from './context/BookingContext';
 import { useAuth } from './context/AuthContext';
@@ -169,9 +169,9 @@ export const App: React.FC = () => {
       setIsBookingModalOpen(true);
       return;
     }
-    // SECONDARY CHECK: if we have GPS coords, use Haversine distance as the truth
+    // SECONDARY CHECK: if we have GPS coords, check if within service radius of any active hub
     if (userCoords) {
-      if (isWithin60kmOfWarangal(userCoords.lat, userCoords.lon)) {
+      if (isWithinServiceArea(userCoords.lat, userCoords.lon)) {
         setIsBookingModalOpen(true);
       } else {
         setIsComingSoonModalOpen(true);

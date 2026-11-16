@@ -1,6 +1,10 @@
-// Warangal city center coordinates
+// City center coordinates
 export const WARANGAL_LAT = 17.9784;
 export const WARANGAL_LON = 79.5941;
+export const HYDERABAD_LAT = 17.3850;
+export const HYDERABAD_LON = 78.4867;
+export const VISAKHAPATNAM_LAT = 17.6868;
+export const VISAKHAPATNAM_LON = 83.2185;
 
 export interface LocationResult {
   formattedAddress: string;
@@ -12,6 +16,8 @@ export interface LocationResult {
 
 export const REGIONAL_HUBS = [
   { name: 'Warangal, Telangana', lat: 17.9784, lon: 79.5941 },
+  { name: 'Hyderabad, Telangana', lat: 17.3850, lon: 78.4867 },
+  { name: 'Visakhapatnam, Andhra Pradesh', lat: 17.6868, lon: 83.2185 },
   { name: 'Hanamkonda, Warangal', lat: 18.0125, lon: 79.5583 },
   { name: 'Kazipet, Warangal', lat: 17.9808, lon: 79.5244 },
   { name: 'Parkal, Warangal', lat: 18.1970, lon: 79.7140 },
@@ -21,10 +27,8 @@ export const REGIONAL_HUBS = [
   { name: 'Mahabubabad, Telangana', lat: 17.5980, lon: 80.0030 },
   { name: 'Mulugu, Telangana', lat: 18.1900, lon: 79.9400 },
   { name: 'Karimnagar, Telangana', lat: 18.4386, lon: 79.1288 },
-  { name: 'Hyderabad, Telangana', lat: 17.3850, lon: 78.4867 },
   { name: 'Khammam, Telangana', lat: 17.2473, lon: 80.1514 },
   { name: 'Vijayawada, Andhra Pradesh', lat: 16.5062, lon: 80.6480 },
-  { name: 'Visakhapatnam, Andhra Pradesh', lat: 17.6868, lon: 83.2185 },
 ];
 
 /**
@@ -48,6 +52,32 @@ export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2
  */
 export function isWithin60kmOfWarangal(lat: number, lon: number): boolean {
   return haversineDistance(lat, lon, WARANGAL_LAT, WARANGAL_LON) <= 60;
+}
+
+/**
+ * Returns true if the given GPS coordinates are within 60 km of Hyderabad city center
+ */
+export function isWithin60kmOfHyderabad(lat: number, lon: number): boolean {
+  return haversineDistance(lat, lon, HYDERABAD_LAT, HYDERABAD_LON) <= 60;
+}
+
+/**
+ * Returns true if the given GPS coordinates are within 60 km of Visakhapatnam city center
+ */
+export function isWithin60kmOfVisakhapatnam(lat: number, lon: number): boolean {
+  return haversineDistance(lat, lon, VISAKHAPATNAM_LAT, VISAKHAPATNAM_LON) <= 60;
+}
+
+/**
+ * Returns true if the given GPS coordinates are within service area of any active hub
+ * (Warangal, Hyderabad, or Visakhapatnam)
+ */
+export function isWithinServiceArea(lat: number, lon: number): boolean {
+  return (
+    isWithin60kmOfWarangal(lat, lon) ||
+    isWithin60kmOfHyderabad(lat, lon) ||
+    isWithin60kmOfVisakhapatnam(lat, lon)
+  );
 }
 
 /**
@@ -325,15 +355,69 @@ export async function detectAccurateLocation(options?: { forceGps?: boolean }): 
 }
 
 /**
- * Keyword-based check covering Warangal + all major towns/areas within 60 km.
- * Covers all compass directions. Used as fallback when GPS is unavailable.
- * Source: user-provided geographic breakdown verified against Haversine distances.
+ * Keyword-based check covering active service hubs:
+ * 1. Warangal + Tri-City + all major towns/areas within 60 km
+ * 2. Hyderabad Metropolitan Region & surrounding zones
+ * 3. Visakhapatnam (Vizag) Coastal Metropolitan Region & surrounding zones
+ * Covers all compass directions. Used for instant validation and fallback when GPS is unavailable.
  */
-export function isWarangalLocation(locationStr: string): boolean {
+export function isServiceableLocation(locationStr: string): boolean {
   if (!locationStr) return false;
   const q = locationStr.toLowerCase().trim();
 
-  // ── CORE TRI-CITY (fast-path) ────────────────────────────────────────────
+  // ── HYDERABAD METROPOLITAN REGION ───────────────────────────────────────
+  if (
+    q.includes('hyderabad')    ||
+    q.includes('secunderabad')  ||
+    q.includes('cyberabad')
+  ) return true;
+
+  const hyderabadLocalities = [
+    'banjara hills', 'jubilee hills', 'gachibowli', 'hitec city', 'hiteccity', 'hitech city',
+    'madhapur', 'kondapur', 'kukatpally', 'kphb', 'begumpet', 'ameerpet',
+    'dilsukhnagar', 'miyapur', 'mehdipatnam', 'charminar', 'shamshabad',
+    'uppal', 'tarnaka', 'malkajgiri', 'alwal', 'somajiguda', 'panjagutta',
+    'punjagutta', 'sr nagar', 'sanjeeva reddy nagar', 'koti', 'abids',
+    'himayatnagar', 'narayanaguda', 'basheerbagh', 'nampally', 'khairatabad',
+    'lakdikapul', 'masab tank', 'attapur', 'rajendranagar', 'tolichowki',
+    'manikonda', 'financial district', 'nanakramguda', 'tellapur', 'nallagandla',
+    'kokapet', 'hafeezpet', 'chandanagar', 'lingampally', 'patancheru',
+    'bachupally', 'nizampet', 'pragathi nagar', 'bowenpally', 'marredpally',
+    'sainikpuri', 'ecil', 'kushaiguda', 'moula ali', 'nacharam', 'mallapur',
+    'habsiguda', 'ramanathapur', 'nagole', 'vanasthalipuram', 'hayathnagar',
+    'karmanghat', 'saroornagar', 'chandrayangutta', 'falaknuma', 'santoshnagar',
+    'bahadurpura', 'rgia', 'shamshabad airport', 'rajiv gandhi international',
+    'pvnr expressway', 'kompally', 'medchal', 'ghatkesar', 'shadnagar',
+    'gandipet', 'moosapet', 'erragadda', 'sanathnagar', 'balanagar', 'jeedimetla'
+  ];
+
+  if (hyderabadLocalities.some(loc => q.includes(loc))) return true;
+
+  // ── VISAKHAPATNAM (VIZAG) REGION ─────────────────────────────────────────
+  if (
+    q.includes('visakhapatnam')  ||
+    q.includes('vishakhapatnam') ||
+    q.includes('vizag')          ||
+    q.includes('waltair')
+  ) return true;
+
+  const vizagLocalities = [
+    'mvp colony', 'dwaraka nagar', 'dwarakanagar', 'madhurawada', 'rushikonda',
+    'rishikonda', 'siripuram', 'jagadamba', 'gajuwaka', 'kurmannapalem',
+    'steel plant', 'pendurthi', 'gopalapatnam', 'simhachalam', 'marripalem',
+    'seethammadhara', 'pm palem', 'kommadi', 'bheemunipatnam', 'bheemili',
+    'beach road', 'rk beach', 'ramakrishna beach', 'kailasagiri', 'tenneti park',
+    'yarada', 'scindia', 'malkapuram', 'auto nagar', 'sheela nagar', 'nad junction',
+    'nad kotha road', 'kancharapalem', 'thatichetlapalem', 'akkayyapalem',
+    'resapuvanipalem', 'maddilapalem', 'venkojipalem', 'hanumanthawaka',
+    'arilova', 'sujatha nagar', 'chinamushidiwada', 'anakapalle', 'tagarapuvalasa',
+    'vizag port', 'gangavaram port', 'ins degad', 'naval dockyard', 'p&t colony',
+    'visakhapatnam railway station', 'vizag railway station', 'visakhapatnam airport', 'vizag airport'
+  ];
+
+  if (vizagLocalities.some(loc => q.includes(loc))) return true;
+
+  // ── WARANGAL CORE TRI-CITY (fast-path) ──────────────────────────────────
   if (
     q.includes('warangal')       ||
     q.includes('hanamkonda')     ||
@@ -427,6 +511,9 @@ export function isWarangalLocation(locationStr: string): boolean {
 
   return within60km.some(town => q.includes(town));
 }
+
+// Backwards-compatible alias for existing imports
+export const isWarangalLocation = isServiceableLocation;
 
 export function getCityDisplayName(locationStr: string): string {
   if (!locationStr) return 'Your Location';

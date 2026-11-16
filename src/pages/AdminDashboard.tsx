@@ -752,19 +752,25 @@ const WARANGAL_AREA_PRESETS = [
   'Hanamkonda',
   'Kazipet',
   'Subedari',
-  'Naimnagar',
-  'Warangal Railway Station',
   'Hunter Road',
-  'Waddepally',
-  'Kishanpura',
-  'Kakatiya University (KU)',
-  'Pochamma Maidan',
+  'Warangal Railway Station',
+  'Banjara Hills, Hyderabad',
+  'Gachibowli, Hyderabad',
+  'Hitec City, Hyderabad',
+  'Madhapur, Hyderabad',
+  'Secunderabad',
+  'MVP Colony, Visakhapatnam',
+  'Dwaraka Nagar, Visakhapatnam',
+  'Gajuwaka, Visakhapatnam',
+  'Rushikonda, Visakhapatnam',
 ];
 
 const DRIVER_BADGE_PRESETS = [
   'Professional Chauffeur',
   'Highway & Outstation Expert',
   'City Specialist (Warangal)',
+  'City Specialist (Hyderabad)',
+  'City Specialist (Visakhapatnam)',
   'Automatic & Manual Expert',
   'Senior Executive Chauffeur',
 ];
@@ -960,7 +966,7 @@ const AddDriverModal: React.FC<AddDriverModalProps> = ({ isOpen, onClose, onSave
           {/* Operating Area */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
-              Operating Area in Warangal
+              Operating Area (Warangal / Hyderabad / Visakhapatnam)
             </label>
             <input
               type="text"

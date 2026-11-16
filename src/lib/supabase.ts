@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { DEFAULT_DRIVER_NO_PHOTO } from '../types';
+import { getFirebaseIdToken } from './firebase';
 
 const supabaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL)
   ? (import.meta.env.VITE_SUPABASE_URL as string)
@@ -14,10 +15,29 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+// Custom fetch wrapper that attaches Firebase ID Token when a Firebase user is authenticated,
+// while preserving Supabase Auth for Admin logins and anonymous access.
+const customFetch: typeof fetch = async (input, init) => {
+  try {
+    const firebaseToken = await getFirebaseIdToken();
+    if (firebaseToken) {
+      const headers = new Headers(init?.headers);
+      headers.set('Authorization', `Bearer ${firebaseToken}`);
+      return fetch(input, { ...init, headers });
+    }
+  } catch (err) {
+    console.warn('[DriverBee Supabase] Notice attaching Firebase token:', err);
+  }
+  return fetch(input, init);
+};
+
 export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-anon-key', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+  },
+  global: {
+    fetch: customFetch,
   },
   realtime: {
     params: { eventsPerSecond: 10 },
@@ -28,6 +48,7 @@ export const supabase = createClient(supabaseUrl || 'https://placeholder.supabas
 
 export interface DBProfile {
   id: string;
+  firebase_uid?: string | null;
   full_name: string | null;
   phone: string | null;
   role: 'customer' | 'admin' | 'driver';
@@ -151,6 +172,301 @@ export async function getProfile(userId: string): Promise<DBProfile | null> {
     .single();
   if (error) return null;
   return data;
+}
+
+export async function getProfileByFirebaseUid(firebaseUid: string): Promise<DBProfile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('firebase_uid', firebaseUid)
+      .maybeSingle();
+    if (!error && data) return data as DBProfile;
+  } catch {}
+  return null;
+}
+
+export async function checkUserAccountExists(params: {
+  phone?: string | null;
+  email?: string | null;
+  firebaseUid?: string | null;
+}): Promise<{ exists: boolean; profile?: DBProfile | null }> {
+  const cleanPhone = (params.phone || '').replace(/\D/g, '').slice(-10);
+  const cleanEmail = (params.email || '').toLowerCase().trim();
+  const uid = params.firebaseUid || null;
+
+  // 1. Demo accounts always exist
+  if (cleanEmail === 'customer@driverbee.in' || cleanPhone === '9845012345') {
+    return { exists: true };
+  }
+  if (cleanEmail === 'admin@driverbee.in' || cleanPhone === '9988776655') {
+    return { exists: true };
+  }
+
+  // 2. Check by Firebase UID in profiles table
+  if (uid) {
+    const byUid = await getProfileByFirebaseUid(uid);
+    if (byUid) return { exists: true, profile: byUid };
+  }
+
+  // 3. Check local registered users store in browser
+  if (typeof window !== 'undefined') {
+    try {
+      const rawStored = localStorage.getItem('driverbee_registered_users');
+      if (rawStored) {
+        const localUsers = JSON.parse(rawStored);
+        if (Array.isArray(localUsers)) {
+          const match = localUsers.find((u: any) => {
+            const uPhone = (u.phone || '').replace(/\D/g, '').slice(-10);
+            const uEmail = (u.email || '').toLowerCase().trim();
+            if (cleanPhone && uPhone === cleanPhone) return true;
+            if (cleanEmail && uEmail === cleanEmail) return true;
+            return false;
+          });
+          if (match) {
+            return {
+              exists: true,
+              profile: {
+                id: match.id,
+                full_name: match.fullName,
+                phone: match.phone,
+                role: match.role || 'customer',
+                city: match.city || 'Warangal',
+                wallet_balance: match.wallet_balance || 0,
+                avatar_url: null,
+                created_at: match.createdAt || new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }
+            };
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 4. Check Supabase profiles table for matching phone
+  try {
+    if (cleanPhone) {
+      const { data: phoneMatches } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`phone.ilike.%${cleanPhone}%,phone.eq.+91 ${cleanPhone},phone.eq.${cleanPhone}`)
+        .limit(1);
+      if (phoneMatches && phoneMatches.length > 0) {
+        return { exists: true, profile: phoneMatches[0] as DBProfile };
+      }
+    }
+  } catch {}
+
+  // 5. Check bookings table for past customer records
+  try {
+    if (cleanEmail) {
+      const { data: emailBookings } = await supabase
+        .from('bookings')
+        .select('customer_id, customer_name, customer_phone')
+        .eq('customer_email', cleanEmail)
+        .limit(1);
+      if (emailBookings && emailBookings.length > 0) {
+        return { exists: true };
+      }
+    }
+    if (cleanPhone) {
+      const { data: phoneBookings } = await supabase
+        .from('bookings')
+        .select('customer_id, customer_name, customer_phone')
+        .or(`customer_phone.ilike.%${cleanPhone}%,customer_phone.eq.+91 ${cleanPhone}`)
+        .limit(1);
+      if (phoneBookings && phoneBookings.length > 0) {
+        return { exists: true };
+      }
+    }
+  } catch {}
+
+  return { exists: false };
+}
+
+export async function syncFirebaseProfile(
+  firebaseUser: { 
+    uid: string; 
+    phoneNumber?: string | null; 
+    displayName?: string | null;
+    email?: string | null;
+    photoURL?: string | null;
+  },
+  fullName?: string
+): Promise<DBProfile | null> {
+  const cleanPhone = (firebaseUser.phoneNumber || '').replace(/\D/g, '').slice(-10);
+  const formattedPhone = cleanPhone ? `+91 ${cleanPhone}` : null;
+  const targetEmail = (firebaseUser.email || '').toLowerCase().trim() || null;
+  const targetName = fullName?.trim() || firebaseUser.displayName?.trim() || (cleanPhone ? `Customer ${cleanPhone.slice(-4)}` : (targetEmail ? targetEmail.split('@')[0] : 'Customer'));
+  const avatarUrl = firebaseUser.photoURL || null;
+
+  // Attempt 1: Try RPC function if migration has run in database
+  try {
+    const { data, error } = await supabase.rpc('sync_firebase_user', {
+      p_firebase_uid: firebaseUser.uid,
+      p_phone: firebaseUser.phoneNumber || (formattedPhone || ''),
+      p_full_name: targetName,
+    });
+
+    if (!error && data) {
+      const p = data as DBProfile;
+      // If profile returned but lacks avatar_url and Google provides one, update it non-destructively
+      if (!p.avatar_url && avatarUrl) {
+        try {
+          await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', p.id);
+          p.avatar_url = avatarUrl;
+        } catch {}
+      }
+      return p;
+    }
+  } catch {}
+
+  // Attempt 2: Check if profile already linked by firebase_uid
+  const existingByUid = await getProfileByFirebaseUid(firebaseUser.uid);
+  if (existingByUid) {
+    if (!existingByUid.avatar_url && avatarUrl) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+          .eq('id', existingByUid.id);
+        existingByUid.avatar_url = avatarUrl;
+      } catch {}
+    }
+    return existingByUid;
+  }
+
+  // Attempt 3: Check if profile exists by phone number (link existing user without changing ID or role)
+  if (cleanPhone) {
+    try {
+      const { data: phoneMatches } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`phone.ilike.%${cleanPhone}%,phone.eq.+91 ${cleanPhone},phone.eq.${cleanPhone}`)
+        .limit(1);
+
+      if (phoneMatches && phoneMatches.length > 0) {
+        const matched = phoneMatches[0];
+        const { data: updated } = await supabase
+          .from('profiles')
+          .update({
+            firebase_uid: firebaseUser.uid,
+            full_name: matched.full_name || targetName,
+            avatar_url: matched.avatar_url || avatarUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', matched.id)
+          .select()
+          .single();
+        if (updated) return updated as DBProfile;
+        return matched as DBProfile;
+      }
+    } catch {}
+  }
+
+  // Attempt 4: Check if user exists in local registered users store (by email or phone)
+  let localRecoveredId: string | null = null;
+  let localRecoveredName: string | null = null;
+  let localRecoveredPhone: string | null = null;
+  let localRecoveredBalance = 0;
+  let localRecoveredRole: 'customer' | 'driver' | 'admin' = 'customer';
+
+  if (typeof window !== 'undefined' && targetEmail) {
+    try {
+      const rawStored = localStorage.getItem('driverbee_registered_users');
+      if (rawStored) {
+        const localUsers = JSON.parse(rawStored);
+        const matchedLocal = Array.isArray(localUsers) 
+          ? localUsers.find((u: any) => u.email?.toLowerCase() === targetEmail)
+          : null;
+        if (matchedLocal) {
+          localRecoveredId = matchedLocal.id;
+          localRecoveredName = matchedLocal.fullName;
+          localRecoveredPhone = matchedLocal.phone;
+          localRecoveredBalance = matchedLocal.wallet_balance || 500;
+          localRecoveredRole = (matchedLocal.role as any) || 'customer';
+        }
+      }
+    } catch {}
+  }
+
+  // Attempt 5: Check if bookings exist for this customer email to link past ride history
+  let recoveredBookingCustomerId: string | null = null;
+  let recoveredBookingName: string | null = null;
+  let recoveredBookingPhone: string | null = null;
+
+  if (targetEmail) {
+    try {
+      const { data: pastBookings } = await supabase
+        .from('bookings')
+        .select('customer_id, customer_name, customer_phone')
+        .eq('customer_email', targetEmail)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (pastBookings && pastBookings.length > 0) {
+        recoveredBookingCustomerId = pastBookings[0].customer_id;
+        recoveredBookingName = pastBookings[0].customer_name;
+        recoveredBookingPhone = pastBookings[0].customer_phone;
+      }
+    } catch {}
+  }
+
+  // If a pre-existing ID was identified (local registered user or booking owner), check if profile exists
+  const existingCandidateId = localRecoveredId || recoveredBookingCustomerId;
+  if (existingCandidateId) {
+    const existingCandidate = await getProfile(existingCandidateId);
+    if (existingCandidate) {
+      try {
+        const { data: updated } = await supabase
+          .from('profiles')
+          .update({
+            firebase_uid: firebaseUser.uid,
+            avatar_url: existingCandidate.avatar_url || avatarUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingCandidate.id)
+          .select()
+          .single();
+        if (updated) return updated as DBProfile;
+      } catch {}
+      return existingCandidate;
+    }
+  }
+
+  // Attempt 6: First-time customer signup - create new profile (role strictly defaults to 'customer')
+  const newId = existingCandidateId || (
+    (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : '00000000-0000-4000-8000-' + Math.abs((Date.now() + firebaseUser.uid).split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0)).toString(16).padStart(12, '0')
+  );
+
+  const newProfile: DBProfile = {
+    id: newId,
+    firebase_uid: firebaseUser.uid,
+    full_name: localRecoveredName || recoveredBookingName || targetName,
+    phone: formattedPhone || localRecoveredPhone || recoveredBookingPhone,
+    role: localRecoveredRole || 'customer', // Existing role preserved if found, otherwise customer
+    city: 'Warangal',
+    wallet_balance: localRecoveredBalance || 0,
+    avatar_url: avatarUrl,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    const { data: inserted, error: insertErr } = await supabase
+      .from('profiles')
+      .insert(newProfile)
+      .select()
+      .single();
+
+    if (!insertErr && inserted) {
+      return inserted as DBProfile;
+    }
+  } catch {}
+
+  return newProfile;
 }
 
 // ─── Booking Helpers ─────────────────────────────────────────────────────────

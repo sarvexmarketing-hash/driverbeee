@@ -39,12 +39,13 @@ export const Footer: React.FC = () => {
           {/* Quick Links */}
           <div className="lg:col-span-2 space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-navy-950">
-              Services
+              Services &amp; Directory
             </h4>
             <ul className="space-y-2 text-xs font-medium">
-              <li><a href="#booking-card-section" className="hover:text-bee-600 transition-colors">Within City Drives</a></li>
-              <li><a href="#booking-card-section" className="hover:text-bee-600 transition-colors">Outstation & Outside City Trips</a></li>
-              <li><a href="#booking-card-section" className="hover:text-bee-600 transition-colors">Late Night Safe Rides</a></li>
+              <li><a href="/#booking-card-section" className="hover:text-bee-600 transition-colors">Within City Drives</a></li>
+              <li><a href="/#booking-card-section" className="hover:text-bee-600 transition-colors">Outstation Trips</a></li>
+              <li><a href="/cars" className="text-navy-900 font-bold hover:text-bee-600 transition-colors">🚗 Cars Directory</a></li>
+              <li><a href="/blog" className="text-navy-900 font-bold hover:text-bee-600 transition-colors">📖 Chauffeur Blog</a></li>
               <li><a href="/join-as-driver" className="text-bee-600 font-bold hover:underline flex items-center gap-1">🚖 Join as Driver</a></li>
             </ul>
           </div>
@@ -104,14 +105,29 @@ export const Footer: React.FC = () => {
 
         </div>
 
-        {/* Localities Covered */}
+        {/* Active Hubs & Internal Links */}
         <div className="py-6 border-b border-navy-100">
           <span className="text-[11px] font-bold uppercase tracking-wider text-navy-500 block mb-2">
-            Active Driver Hubs in Warangal
+            Active Driver Hubs &amp; Cities
           </span>
           <div className="flex flex-wrap gap-2 text-xs">
-            {localities.map((loc) => (
-              <span key={loc} className="px-2.5 py-1 bg-navy-50 rounded-lg text-navy-700 hover:bg-bee-50 transition-colors">
+            <a href="/city/warangal" className="px-2.5 py-1 bg-navy-50 rounded-lg text-navy-800 hover:bg-bee-100 font-bold transition-colors">
+              📍 Warangal Hub
+            </a>
+            <a href="/city/hyderabad" className="px-2.5 py-1 bg-navy-50 rounded-lg text-navy-800 hover:bg-bee-100 font-bold transition-colors">
+              📍 Hyderabad Hub
+            </a>
+            <a href="/city/visakhapatnam" className="px-2.5 py-1 bg-navy-50 rounded-lg text-navy-800 hover:bg-bee-100 font-bold transition-colors">
+              📍 Visakhapatnam Hub
+            </a>
+            <a href="/cars" className="px-2.5 py-1 bg-bee-50 rounded-lg text-bee-950 hover:bg-bee-100 font-bold transition-colors">
+              🚗 Supported Cars
+            </a>
+            <a href="/blog" className="px-2.5 py-1 bg-navy-50 rounded-lg text-navy-800 hover:bg-bee-100 font-bold transition-colors">
+              📖 Chauffeur Guides
+            </a>
+            {localities.slice(0, 6).map((loc) => (
+              <span key={loc} className="px-2.5 py-1 bg-navy-50 rounded-lg text-navy-600">
                 {loc}
               </span>
             ))}

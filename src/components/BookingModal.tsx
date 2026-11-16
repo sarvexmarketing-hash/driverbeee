@@ -123,6 +123,33 @@ const WARANGAL_SEARCH_AREAS = [
   'Fatima Nagar, Kazipet',
   'Warangal Railway Station, Warangal',
   'Kazipet Railway Junction, Kazipet',
+  'Hyderabad, Telangana',
+  'Banjara Hills, Hyderabad',
+  'Jubilee Hills, Hyderabad',
+  'Gachibowli, Hyderabad',
+  'Hitec City, Hyderabad',
+  'Madhapur, Hyderabad',
+  'Kondapur, Hyderabad',
+  'Kukatpally, Hyderabad',
+  'Begumpet, Hyderabad',
+  'Secunderabad',
+  'Miyapur, Hyderabad',
+  'Ameerpet, Hyderabad',
+  'Dilsukhnagar, Hyderabad',
+  'LB Nagar, Hyderabad',
+  'Shamshabad / RGI Airport, Hyderabad',
+  'Visakhapatnam, Andhra Pradesh',
+  'MVP Colony, Visakhapatnam',
+  'Dwaraka Nagar, Visakhapatnam',
+  'Madhurawada, Visakhapatnam',
+  'Gajuwaka, Visakhapatnam',
+  'Siripuram, Visakhapatnam',
+  'Rushikonda, Visakhapatnam',
+  'Beach Road / RK Beach, Visakhapatnam',
+  'Kurmannapalem, Visakhapatnam',
+  'Seethammadhara, Visakhapatnam',
+  'Jagadamba Junction, Visakhapatnam',
+  'Visakhapatnam Railway Station, Visakhapatnam',
   'Bhupalpally, Telangana',
   'Jangaon, Telangana',
   'Mahabubabad, Telangana',
@@ -130,11 +157,9 @@ const WARANGAL_SEARCH_AREAS = [
   'Narsampet, Telangana',
   'Parkal, Warangal',
   'Karimnagar, Telangana',
-  'Hyderabad, Telangana',
   'Khammam, Telangana',
   'Siddipet, Telangana',
   'Vijayawada, Andhra Pradesh',
-  'Visakhapatnam, Andhra Pradesh',
   'Guntur, Andhra Pradesh',
 ];
 
@@ -443,7 +468,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
 
     if (!isWarangalLocation(cleanAddress)) {
-      setFormError('DriverBee currently serves Warangal and areas within 60 km — including Hanamkonda, Kazipet, Narsampet, Parkal, Bhupalpally, Jangaon, and nearby towns. Please enter a pickup address within the service area.');
+      setFormError('DriverBee currently serves Warangal, Hyderabad, and Visakhapatnam. Please enter a pickup address within our active service areas.');
       return;
     }
 
@@ -1175,7 +1200,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11.5px] text-amber-900 flex items-start gap-1.5 animate-fade-in">
                       <AlertCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
                       <span>
-                        <strong>Pickup Notice:</strong> Currently, driver bookings only happen from <strong>Warangal</strong> (Tri-City). Pickups from outside Warangal are <strong>Coming Soon</strong>.
+                        <strong>Pickup Notice:</strong> Currently, driver bookings happen from <strong>Warangal, Hyderabad, and Visakhapatnam</strong>. Pickups from other cities are <strong>Coming Soon</strong>.
                       </span>
                     </div>
                   ) : null}

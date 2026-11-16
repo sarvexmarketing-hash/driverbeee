@@ -9,9 +9,41 @@ import {
   signOut, 
   signInWithGoogle, 
   resetPasswordForEmail, 
-  updateUserPassword 
+  updateUserPassword,
+  syncFirebaseProfile,
+  getProfileByFirebaseUid,
+  checkUserAccountExists
 } from '../lib/supabase';
+import { 
+  getOrCreateRecaptchaVerifier,
+  resetRecaptchaVerifier,
+  setupRecaptcha, 
+  sendFirebasePhoneOtp, 
+  confirmFirebasePhoneOtp, 
+  signOutOfFirebase, 
+  onFirebaseAuthStateChange,
+  normalizeE164,
+  formatDisplayPhone,
+  isFirebaseConfigured,
+  formatFirebaseAuthError,
+  formatFirebasePhoneAuthError,
+  signInWithFirebaseGoogle,
+  googleAuthProvider
+} from '../lib/firebase';
 import { sendPasswordResetEmail } from '../services/emailService';
+
+export { 
+  normalizeE164, 
+  formatDisplayPhone, 
+  isFirebaseConfigured, 
+  getOrCreateRecaptchaVerifier, 
+  resetRecaptchaVerifier, 
+  formatFirebasePhoneAuthError,
+  formatFirebaseAuthError,
+  signInWithFirebaseGoogle,
+  googleAuthProvider,
+  checkUserAccountExists
+};
 
 interface AuthContextValue {
   user: User | null;
@@ -19,10 +51,26 @@ interface AuthContextValue {
   profile: DBProfile | null;
   loading: boolean;
   login: (email: string, password: string, portal?: 'customer' | 'admin') => Promise<{ error: string | null }>;
-  loginWithGoogle: (portal?: 'customer' | 'admin') => Promise<{ error: string | null; redirected?: boolean }>;
+  loginWithGoogle: (portal?: 'customer' | 'admin', intent?: 'signin' | 'signup', fullNameHint?: string) => Promise<{ 
+    error: string | null; 
+    profile?: DBProfile; 
+    role?: string; 
+    redirected?: boolean;
+    needsSignup?: boolean;
+    needsSignin?: boolean;
+    accountCreated?: boolean;
+    googleEmail?: string;
+    googleDisplayName?: string;
+  }>;
   register: (email: string, password: string, fullName: string, phone: string, role?: string) => Promise<{ error: string | null }>;
   forgotPassword: (email: string) => Promise<{ error: string | null; resetToken?: string }>;
   resetPasswordWithToken: (email: string, token: string, newPassword: string) => Promise<{ error: string | null }>;
+  sendPhoneOtp: (phoneNumber: string, containerId?: string, intent?: 'signin' | 'signup') => Promise<{ error: string | null; confirmationResult?: any; needsSignup?: boolean; needsSignin?: boolean }>;
+  verifyPhoneOtp: (otpCode: string, confirmationResult?: any, fullName?: string, intent?: 'signin' | 'signup') => Promise<{ error: string | null; profile?: DBProfile; accountCreated?: boolean }>;
+  resendPhoneOtp: (phoneNumber?: string, containerId?: string, intent?: 'signin' | 'signup') => Promise<{ error: string | null; confirmationResult?: any; needsSignup?: boolean; needsSignin?: boolean }>;
+  resetRecaptchaVerifier: (containerId?: string) => void;
+  confirmationResult: any | null;
+  phoneForVerification: string;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -171,6 +219,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<DBProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [confirmationResult, setConfirmationResult] = useState<any | null>(null);
+  const [phoneForVerification, setPhoneForVerification] = useState<string>('');
 
   const loadProfile = useCallback(async (userId: string) => {
     const p = await getProfile(userId);
@@ -204,6 +254,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch {}
       }
     }
+
+    // Listen to Firebase Auth state for customer/driver phone OTP login
+    const unsubscribeFirebase = onFirebaseAuthStateChange(async (fbUser) => {
+      const isCurrentAdmin = window.location.pathname.startsWith('/admin');
+      if (fbUser && !isCurrentAdmin) {
+        try {
+          const p = await syncFirebaseProfile({
+            uid: fbUser.uid,
+            phoneNumber: fbUser.phoneNumber,
+            displayName: fbUser.displayName,
+            email: fbUser.email,
+            photoURL: fbUser.photoURL,
+          });
+          if (p) {
+            const synUser = createCustomerUser(
+              p.id,
+              fbUser.email || (p.phone ? `${normalizePhoneNumber(p.phone)}@driverbee.in` : 'customer@driverbee.in'),
+              p.full_name || fbUser.displayName || 'Customer',
+              p.phone || fbUser.phoneNumber || ''
+            );
+            setUser(synUser);
+            setProfile(p);
+            setLoading(false);
+            try {
+              localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify({ user: synUser, profile: p }));
+            } catch {}
+          }
+        } catch (err) {
+          console.warn('[DriverBee Auth] Firebase session restore notice:', err);
+        }
+      }
+    });
 
     // Supabase auth session check
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -294,7 +376,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      unsubscribeFirebase();
+    };
   }, [loadProfile]);
 
   const login = useCallback(async (
@@ -450,72 +535,177 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginWithGoogle = useCallback(async (
-    portal: 'customer' | 'admin' = 'customer'
-  ): Promise<{ error: string | null; redirected?: boolean }> => {
+    portal: 'customer' | 'admin' = 'customer',
+    intent: 'signin' | 'signup' = 'signin',
+    fullNameHint?: string
+  ): Promise<{ 
+    error: string | null; 
+    profile?: DBProfile; 
+    role?: string; 
+    redirected?: boolean;
+    needsSignup?: boolean;
+    needsSignin?: boolean;
+    accountCreated?: boolean;
+    googleEmail?: string;
+    googleDisplayName?: string;
+  }> => {
     if (portal === 'admin') {
-      return { error: 'Google sign in is supported for the Customer Portal only.' };
+      return { error: 'Google sign in is supported for the Customer Portal only. Administrators must sign in using administrator credentials.' };
     }
 
     try {
-      const { data, error } = await signInWithGoogle(window.location.origin);
+      // If Firebase credentials are not yet configured in local environment, provide demo flow
+      if (!isFirebaseConfigured) {
+        console.warn('[DriverBee Auth] Firebase credentials unconfigured in environment. Using demo Google customer flow.');
+        const mockEmail = 'javed.driverbee@gmail.com';
+        const mockName = 'Javed Sayed (Google)';
+        const mockPhone = '+91 88867 82434';
+        const mockUid = '00000000-0000-4000-8000-000000000003';
 
-      if (error) {
-        // If Google OAuth provider is not yet enabled in Supabase dashboard,
-        // activate instant verified Google customer profile for seamless local testing
-        if (
-          error.message.toLowerCase().includes('not enabled') ||
-          error.message.toLowerCase().includes('unsupported provider')
-        ) {
-          const googleUser: User = {
-            id: '00000000-0000-4000-8000-000000000003',
-            app_metadata: { provider: 'google' },
-            user_metadata: {
-              full_name: 'Javed Sayed (Google)',
-              avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-              role: 'customer',
-            },
-            aud: 'authenticated',
-            created_at: new Date().toISOString(),
-            email: 'javed.driverbee@gmail.com',
-            phone: '+91 88867 82434',
-            role: 'authenticated',
-            updated_at: new Date().toISOString(),
-          } as User;
+        const existsCheck = await checkUserAccountExists({ email: mockEmail, firebaseUid: mockUid });
 
-          const googleProfile: DBProfile = {
-            id: '00000000-0000-4000-8000-000000000003',
-            full_name: 'Javed Sayed (Google)',
-            phone: '+91 88867 82434',
-            role: 'customer',
-            city: 'Warangal',
-            wallet_balance: 500,
-            avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+        if (intent === 'signin' && !existsCheck.exists) {
+          return {
+            error: `No account found for ${mockEmail}. Please create an account first.`,
+            needsSignup: true,
+            googleEmail: mockEmail,
+            googleDisplayName: mockName,
           };
-
-          setUser(googleUser);
-          setProfile(googleProfile);
-          try {
-            localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify({
-              user: googleUser,
-              profile: googleProfile,
-            }));
-          } catch {}
-
-          return { error: null, redirected: false };
         }
-        return { error: error.message };
+
+        if (intent === 'signup' && existsCheck.exists) {
+          return {
+            error: `An account with ${mockEmail} already exists. Please sign in instead.`,
+            needsSignin: true,
+            googleEmail: mockEmail,
+          };
+        }
+
+        const googleProfile = await syncFirebaseProfile({
+          uid: mockUid,
+          displayName: fullNameHint || mockName,
+          email: mockEmail,
+          phoneNumber: mockPhone,
+          photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+        }, fullNameHint || mockName);
+
+        const googleUser: User = createCustomerUser(
+          mockUid,
+          mockEmail,
+          googleProfile?.full_name || mockName,
+          googleProfile?.phone || mockPhone
+        );
+
+        setUser(googleUser);
+        setProfile(googleProfile);
+        try {
+          localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify({
+            user: googleUser,
+            profile: googleProfile,
+          }));
+        } catch {}
+
+        return { 
+          error: null, 
+          profile: googleProfile || undefined, 
+          role: 'customer', 
+          redirected: false, 
+          accountCreated: intent === 'signup' 
+        };
       }
 
-      if (data?.url) {
-        window.location.href = data.url;
-        return { error: null, redirected: true };
+      // 1. Authenticate with Firebase Google Sign-In popup
+      const { user: fbUser } = await signInWithFirebaseGoogle();
+
+      // STRICT PERMISSION RULE: Check if Google email is an administrator account trying to log into customer portal
+      const cleanEmail = (fbUser.email || '').toLowerCase().trim();
+      if (cleanEmail === 'admin@driverbee.in' || cleanEmail.startsWith('admin@')) {
+        await signOutOfFirebase();
+        return {
+          error: 'Administrator accounts cannot log in to the Customer Portal. Only permitted for the Admin Portal (/admin).'
+        };
       }
 
-      return { error: null };
+      // Check account existence in DriverBee
+      const existsCheck = await checkUserAccountExists({
+        email: cleanEmail,
+        firebaseUid: fbUser.uid,
+        phone: fbUser.phoneNumber,
+      });
+
+      // CASE 1: User pressed SIGN IN, but NO account exists yet
+      if (intent === 'signin' && !existsCheck.exists) {
+        await signOutOfFirebase();
+        return {
+          error: `No account found for ${cleanEmail}. Please create an account first.`,
+          needsSignup: true,
+          googleEmail: cleanEmail,
+          googleDisplayName: fbUser.displayName || '',
+        };
+      }
+
+      // CASE 2: User pressed SIGN UP, but an account ALREADY exists
+      if (intent === 'signup' && existsCheck.exists) {
+        await signOutOfFirebase();
+        return {
+          error: `An account with ${cleanEmail} already exists. Please sign in instead.`,
+          needsSignin: true,
+          googleEmail: cleanEmail,
+        };
+      }
+
+      // 2. Synchronize with DriverBee Supabase profile (loads existing or creates customer)
+      const userProfile = await syncFirebaseProfile({
+        uid: fbUser.uid,
+        phoneNumber: fbUser.phoneNumber,
+        displayName: fullNameHint || fbUser.displayName,
+        email: fbUser.email,
+        photoURL: fbUser.photoURL,
+      }, fullNameHint || fbUser.displayName || undefined);
+
+      if (!userProfile) {
+        return { error: 'Failed to synchronize user profile. Please try again.' };
+      }
+
+      // If user profile role is admin, prohibit customer portal access
+      if (userProfile.role === 'admin') {
+        await signOutOfFirebase();
+        return {
+          error: 'Administrator accounts cannot log in to the Customer Portal. Only permitted for the Admin Portal (/admin).'
+        };
+      }
+
+      // Successfully authenticated & synchronized (both signin and signup log in automatically)
+      const synUser = createCustomerUser(
+        userProfile.id,
+        fbUser.email || (userProfile.phone ? `${normalizePhoneNumber(userProfile.phone)}@driverbee.in` : 'customer@driverbee.in'),
+        userProfile.full_name || fbUser.displayName || 'Customer',
+        userProfile.phone || fbUser.phoneNumber || ''
+      );
+
+      setUser(synUser);
+      setProfile(userProfile);
+
+      // Save customer session to localStorage
+      try {
+        localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify({
+          user: synUser,
+          profile: userProfile,
+        }));
+      } catch {}
+
+      return { 
+        error: null, 
+        profile: userProfile, 
+        role: userProfile.role, 
+        redirected: false, 
+        accountCreated: intent === 'signup',
+        googleEmail: cleanEmail,
+        googleDisplayName: fbUser.displayName || ''
+      };
     } catch (err: any) {
-      return { error: err?.message || 'Google authentication failed. Please try again.' };
+      console.error('[DriverBee Auth] Google sign-in error:', err);
+      return { error: formatFirebaseAuthError(err) };
     }
   }, []);
 
@@ -818,12 +1008,169 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: null };
   }, []);
 
+  const sendPhoneOtp = useCallback(async (
+    phoneNumber: string,
+    containerId = 'recaptcha-container',
+    intent: 'signin' | 'signup' = 'signin'
+  ): Promise<{ error: string | null; confirmationResult?: any; needsSignup?: boolean; needsSignin?: boolean }> => {
+    const cleanDigits = phoneNumber.replace(/\D/g, '').slice(-10);
+    const normalized = normalizeE164(phoneNumber);
+    if (!normalized || normalized.length < 13) {
+      return { error: 'Please enter a valid 10-digit mobile number.' };
+    }
+
+    // Prohibit admin accounts from Customer Portal phone OTP
+    if (normalized === '+919988776655') {
+      return {
+        error: 'Administrator accounts cannot log in to the Customer Portal. Only permitted for the Admin Portal (/admin).'
+      };
+    }
+
+    // Pre-validate account existence
+    const accountCheck = await checkUserAccountExists({ phone: cleanDigits });
+
+    if (intent === 'signin' && !accountCheck.exists) {
+      return {
+        error: `No account found with +91 ${cleanDigits}. Please create an account first.`,
+        needsSignup: true,
+      };
+    }
+
+    if (intent === 'signup' && accountCheck.exists) {
+      return {
+        error: `An account with +91 ${cleanDigits} already exists. Please sign in instead.`,
+        needsSignin: true,
+      };
+    }
+
+    try {
+      // Demo Customer bypass for instant local testing
+      if (normalized === '+919845012345') {
+        const demoConfirmation: any = {
+          verificationId: 'demo-verification-id-9845012345',
+          confirm: async (code: string) => {
+            const cleanCode = code.replace(/\D/g, '').trim();
+            if (cleanCode !== '123456' && cleanCode !== '000000') {
+              throw new Error('Invalid verification code. Enter 123456 for demo customer.');
+            }
+            return {
+              user: {
+                uid: 'demo-customer-firebase-uid-002',
+                phoneNumber: '+919845012345',
+                displayName: 'Warangal Customer',
+                getIdToken: async () => 'demo-firebase-id-token',
+              }
+            };
+          }
+        };
+        setConfirmationResult(demoConfirmation);
+        setPhoneForVerification(normalized);
+        return { error: null, confirmationResult: demoConfirmation };
+      }
+
+      const verifier = getOrCreateRecaptchaVerifier(containerId, 'invisible');
+      if (!verifier) {
+        return { error: 'Unable to initialize phone verification. Please verify your internet connection or check Firebase configuration.' };
+      }
+
+      const confResult = await sendFirebasePhoneOtp(normalized, verifier);
+      setConfirmationResult(confResult);
+      setPhoneForVerification(normalized);
+      return { error: null, confirmationResult: confResult };
+    } catch (err: any) {
+      console.error('[DriverBee Auth] sendPhoneOtp error:', err);
+      // Cleanly reset verifier on reCAPTCHA errors so retry works without duplicate render error
+      const errStr = ((err?.message || '') + (err?.code || '')).toLowerCase();
+      if (
+        errStr.includes('recaptcha') ||
+        errStr.includes('captcha') ||
+        err?.code === 'auth/captcha-check-failed'
+      ) {
+        resetRecaptchaVerifier(containerId);
+      }
+      return { error: formatFirebasePhoneAuthError(err) };
+    }
+  }, []);
+
+  const verifyPhoneOtp = useCallback(async (
+    otpCode: string,
+    passedConfResult?: any,
+    fullName?: string,
+    intent: 'signin' | 'signup' = 'signin'
+  ): Promise<{ error: string | null; profile?: DBProfile; accountCreated?: boolean }> => {
+    const activeConf = passedConfResult || confirmationResult;
+    if (!activeConf) {
+      return { error: 'No active OTP verification session. Please request an OTP first.' };
+    }
+
+    const cleanOtp = otpCode.replace(/\D/g, '').trim();
+    if (cleanOtp.length < 6) {
+      return { error: 'Please enter the complete 6-digit OTP code.' };
+    }
+
+    try {
+      const fbUser = await confirmFirebasePhoneOtp(activeConf, cleanOtp);
+
+      // Synchronize with DriverBee Supabase profile (creates if new, loads if existing)
+      const userProfile = await syncFirebaseProfile(
+        {
+          uid: fbUser.uid,
+          phoneNumber: fbUser.phoneNumber || phoneForVerification,
+          displayName: fullName || fbUser.displayName,
+        },
+        fullName
+      );
+
+      if (userProfile) {
+        const synUser = createCustomerUser(
+          userProfile.id,
+          userProfile.phone ? `${normalizePhoneNumber(userProfile.phone)}@driverbee.in` : 'customer@driverbee.in',
+          userProfile.full_name || 'Customer',
+          userProfile.phone || phoneForVerification
+        );
+
+        setUser(synUser);
+        setProfile(userProfile);
+        try {
+          localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify({
+            user: synUser,
+            profile: userProfile,
+          }));
+        } catch {}
+
+        return { error: null, profile: userProfile, accountCreated: intent === 'signup' };
+      }
+
+      return { error: 'Profile synchronization failed. Please try again.' };
+    } catch (err: any) {
+      console.error('[DriverBee Auth] verifyPhoneOtp error:', err);
+      return { error: formatFirebasePhoneAuthError(err) };
+    }
+  }, [confirmationResult, phoneForVerification]);
+
+  const resendPhoneOtp = useCallback(async (
+    phoneNumber?: string,
+    containerId = 'firebase-recaptcha-container',
+    intent: 'signin' | 'signup' = 'signin'
+  ): Promise<{ error: string | null; confirmationResult?: any; needsSignup?: boolean; needsSignin?: boolean }> => {
+    const target = phoneNumber || phoneForVerification;
+    if (!target) {
+      return { error: 'Phone number is required to resend OTP.' };
+    }
+    return sendPhoneOtp(target, containerId, intent);
+  }, [phoneForVerification, sendPhoneOtp]);
+
   const logout = useCallback(async () => {
     localStorage.removeItem(ADMIN_SESSION_KEY);
     localStorage.removeItem(CUSTOMER_SESSION_KEY);
     try {
+      await signOutOfFirebase();
+    } catch {}
+    try {
       await signOut();
     } catch {}
+    setConfirmationResult(null);
+    setPhoneForVerification('');
     setUser(null);
     setSession(null);
     setProfile(null);
@@ -858,6 +1205,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       register, 
       forgotPassword,
       resetPasswordWithToken,
+      sendPhoneOtp,
+      verifyPhoneOtp,
+      resendPhoneOtp,
+      resetRecaptchaVerifier,
+      confirmationResult,
+      phoneForVerification,
       logout, 
       refreshProfile 
     }}>

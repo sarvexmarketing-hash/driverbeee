@@ -59,14 +59,14 @@ export const ComingSoonModal: React.FC<ComingSoonModalProps> = ({
               <Clock className="w-3 h-3" />
               <span>Coming Soon</span>
             </span>
-            <span className="text-[11px] text-white/70 font-semibold">Exclusively in Warangal</span>
+            <span className="text-[11px] text-white/70 font-semibold">Active in Warangal, Hyderabad &amp; Vizag</span>
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black text-white leading-tight">
             DriverBee is Coming Soon to {cityName}!
           </h3>
           <p className="text-xs text-white/80 mt-1.5 leading-relaxed">
-            Currently, driver bookings <strong>only happen from Warangal</strong> (Tri-City).
+            Currently, driver bookings happen from <strong>Warangal, Hyderabad, and Visakhapatnam</strong>.
           </p>
         </div>
 
@@ -79,7 +79,7 @@ export const ComingSoonModal: React.FC<ComingSoonModalProps> = ({
               <span>Pickup Location Notice:</span>
             </div>
             <p className="text-[11.5px] leading-relaxed text-amber-950/90">
-              Whether you need a driver for <strong>Within the City</strong> or an <strong>Outside City</strong> trip to Telangana / Andhra Pradesh, all driver bookings must originate with doorstep pickup in <strong>Warangal, Hanamkonda, or Kazipet</strong>.
+              Whether you need a driver for <strong>Within the City</strong> or an <strong>Outside City</strong> trip across Telangana / Andhra Pradesh, all driver bookings must originate with doorstep pickup in <strong>Warangal, Hyderabad, or Visakhapatnam</strong>.
             </p>
           </div>
 

@@ -15,6 +15,17 @@ const DriverDashboard = React.lazy(() => import('./pages/DriverDashboard').then(
 const JoinAsDriverPage = React.lazy(() => import('./pages/JoinAsDriverPage').then(m => ({ default: m.JoinAsDriverPage })));
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
+// ─── SEO Slug Architecture Pages ─────────────────────────────────────────────
+const CarsCatalogPage = React.lazy(() => import('./pages/CarsCatalogPage').then(m => ({ default: m.CarsCatalogPage })));
+const BrandPage = React.lazy(() => import('./pages/BrandPage').then(m => ({ default: m.BrandPage })));
+const ModelPage = React.lazy(() => import('./pages/ModelPage').then(m => ({ default: m.ModelPage })));
+const VehicleDetailPage = React.lazy(() => import('./pages/VehicleDetailPage').then(m => ({ default: m.VehicleDetailPage })));
+const CityHubPage = React.lazy(() => import('./pages/CityHubPage').then(m => ({ default: m.CityHubPage })));
+const DealerPage = React.lazy(() => import('./pages/DealerPage').then(m => ({ default: m.DealerPage })));
+const BlogIndexPage = React.lazy(() => import('./pages/BlogIndexPage').then(m => ({ default: m.BlogIndexPage })));
+const BlogPostPage = React.lazy(() => import('./pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
+const LegacyRedirectPage = React.lazy(() => import('./pages/LegacyRedirectPage').then(m => ({ default: m.LegacyRedirectPage })));
+
 // ─── Loading Screen ──────────────────────────────────────────────────────────
 const LoadingScreen: React.FC = () => (
   <div className="min-h-screen flex items-center justify-center bg-navy-950">
@@ -95,6 +106,21 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/terms" element={<TermsAndConditions />} />
                   <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+
+                  {/* ─── SEO Slug Architecture Routes ────────────────────────────── */}
+                  <Route path="/cars" element={<CarsCatalogPage />} />
+                  <Route path="/cars/:brandSlug" element={<BrandPage />} />
+                  <Route path="/cars/:brandSlug/:modelSlug" element={<ModelPage />} />
+                  <Route path="/cars/:brandSlug/:modelSlug/:vehicleSlug" element={<VehicleDetailPage />} />
+                  <Route path="/city/:citySlug" element={<CityHubPage />} />
+                  <Route path="/dealers/:citySlug/:dealerSlug" element={<DealerPage />} />
+                  <Route path="/blog" element={<BlogIndexPage />} />
+                  <Route path="/blog/:slug" element={<BlogPostPage />} />
+
+                  {/* ─── Backward Compatibility Redirects (IDs to Slugs) ─────────── */}
+                  <Route path="/vehicle/:id" element={<LegacyRedirectPage entityType="vehicle" />} />
+                  <Route path="/dealers/:id" element={<LegacyRedirectPage entityType="dealer" />} />
+
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </React.Suspense>

@@ -1,8 +1,28 @@
 # Robots.txt for DriverBee (https://driverbee.in)
 User-agent: *
 Allow: /
+Allow: /cars
+Allow: /cars/*
+Allow: /city/*
+Allow: /dealers/*
+Allow: /blog
+Allow: /blog/*
+Allow: /privacy
+Allow: /terms
+
+# Disallow private dashboards, admin, authentication and internal APIs
 Disallow: /admin
 Disallow: /driver
+Disallow: /driver-onboarding
+Disallow: /api/
+Disallow: /auth
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /checkout
+Disallow: /payment
+Disallow: /private
 
-# Sitemap location
+# Sitemap
 Sitemap: https://driverbee.in/sitemap.xml

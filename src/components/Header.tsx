@@ -23,16 +23,17 @@ import { useAuth } from '../context/AuthContext';
 import { isWarangalLocation } from '../utils/location';
 
 interface HeaderProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  onOpenBookings: () => void;
-  onOpenDrivers: () => void;
-  onOpenFamily: () => void;
-  selectedCity: string;
-  setSelectedCity: (city: string) => void;
+  activeTab?: string;
+  setActiveTab?: (tab: string) => void;
+  onOpenBookings?: () => void;
+  onOpenDrivers?: () => void;
+  onOpenFamily?: () => void;
+  selectedCity?: string;
+  setSelectedCity?: (city: string) => void;
   onDetectLocation?: () => void;
   isDetectingLocation?: boolean;
   onOpenAuth?: (mode?: 'login' | 'signup') => void;
+  onOpenCitySelector?: () => void;
 }
 
 const WARANGAL_AREAS = [
@@ -49,16 +50,17 @@ const WARANGAL_AREAS = [
 ];
 
 export const Header: React.FC<HeaderProps> = ({
-  activeTab,
-  setActiveTab,
-  onOpenBookings,
-  onOpenDrivers,
-  onOpenFamily,
-  selectedCity,
-  setSelectedCity,
+  activeTab = 'home',
+  setActiveTab = () => {},
+  onOpenBookings = () => {},
+  onOpenDrivers = () => {},
+  onOpenFamily = () => {},
+  selectedCity = 'Warangal, Telangana',
+  setSelectedCity = () => {},
   onDetectLocation,
   isDetectingLocation,
-  onOpenAuth
+  onOpenAuth,
+  onOpenCitySelector
 }) => {
   const { user, profile, logout } = useAuth();
   const isWarangal = isWarangalLocation(selectedCity);
@@ -75,9 +77,11 @@ export const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navItems = [
-    { id: 'home', label: 'Home', action: () => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
-    { id: 'book', label: 'Book a Driver', action: () => { setActiveTab('book'); const el = document.getElementById('booking-card-section'); el?.scrollIntoView({ behavior: 'smooth' }); } },
+  const navItems: Array<{ id: string; label: string; action?: () => void; href?: string }> = [
+    { id: 'home', label: 'Home', action: () => { setActiveTab('home'); if (window.location.pathname === '/') { window.scrollTo({ top: 0, behavior: 'smooth' }); } else { window.location.href = '/'; } } },
+    { id: 'book', label: 'Book a Driver', action: () => { setActiveTab('book'); const el = document.getElementById('booking-card-section'); if (el) { el.scrollIntoView({ behavior: 'smooth' }); } else { window.location.href = '/#booking-card-section'; } } },
+    { id: 'cars', label: 'Cars Directory', href: '/cars' },
+    { id: 'blog', label: 'Blog', href: '/blog' },
     { id: 'bookings', label: 'My Bookings', action: () => onOpenBookings() },
   ];
 
@@ -90,8 +94,8 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-[1340px] mx-auto px-4 sm:px-6 lg:px-8 h-[68px] md:h-[76px] flex items-center justify-between">
         
         {/* LEFT: DriverBee Logo */}
-        <div className="flex items-center gap-3">
-          <div onClick={() => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+        <div className="flex items-center gap-3 cursor-pointer">
+          <div onClick={() => { setActiveTab('home'); if (window.location.pathname === '/') { window.scrollTo({ top: 0, behavior: 'smooth' }); } else { window.location.href = '/'; } }}>
             <DriverBeeLogo height={32} />
           </div>
         </div>
@@ -100,12 +104,8 @@ export const Header: React.FC<HeaderProps> = ({
         <nav className="hidden lg:flex items-center space-x-1 xl:space-x-3">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={item.action}
-                className="relative px-3.5 py-2 text-[14.5px] font-medium transition-colors group text-navy-800 hover:text-navy-950"
-              >
+            const content = (
+              <>
                 <span className={isActive ? 'font-semibold text-navy-950' : 'text-navy-700'}>
                   {item.label}
                 </span>
@@ -117,6 +117,28 @@ export const Header: React.FC<HeaderProps> = ({
                 {!isActive && (
                   <span className="absolute bottom-0 left-3.5 right-3.5 h-[2.5px] bg-bee-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-center rounded-full" />
                 )}
+              </>
+            );
+
+            if (item.href) {
+              return (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  className="relative px-3.5 py-2 text-[14.5px] font-medium transition-colors group text-navy-800 hover:text-navy-950 cursor-pointer"
+                >
+                  {content}
+                </a>
+              );
+            }
+
+            return (
+              <button
+                key={item.id}
+                onClick={item.action}
+                className="relative px-3.5 py-2 text-[14.5px] font-medium transition-colors group text-navy-800 hover:text-navy-950 cursor-pointer"
+              >
+                {content}
               </button>
             );
           })}
