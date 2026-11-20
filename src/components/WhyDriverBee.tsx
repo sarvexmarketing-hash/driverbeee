@@ -1,7 +1,7 @@
 import React from 'react';
-import { ShieldCheck, Car, HeartHandshake, Zap, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Car, HeartHandshake, Zap, CheckCircle2 } from 'lucide-react';
 
-export const WhyDriverBee: React.FC<{ onBookClick: () => void }> = ({ onBookClick }) => {
+export const WhyDriverBee: React.FC<{ onBookClick?: () => void }> = () => {
   const pillars = [
     {
       Icon: Car,
@@ -105,34 +105,6 @@ export const WhyDriverBee: React.FC<{ onBookClick: () => void }> = ({ onBookClic
             );
           })}
         </div>
-
-        {/* Value Proposition Strip */}
-        <div className="mt-12 p-6 sm:p-8 rounded-3xl bg-navy-950 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl relative overflow-hidden">
-          <div className="absolute right-0 top-0 w-96 h-96 bg-bee-500/10 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="relative z-10 max-w-xl text-center md:text-left">
-            <div className="text-xs font-bold uppercase tracking-widest text-bee-400 mb-1">
-              Warangal's Most Trusted Driver Network
-            </div>
-            <h4 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Over 20,000+ safe trips completed across Warangal.
-            </h4>
-            <p className="text-xs sm:text-sm text-navy-300 mt-1">
-              Drivers available across Hanamkonda, Kazipet, Subedari, Nakkalagutta, Hunter Road, and Waddepally in under 30 minutes.
-            </p>
-          </div>
-
-          <div className="relative z-10 flex items-center gap-4">
-            <button
-              onClick={onBookClick}
-              className="px-6 py-3 rounded-full bg-bee-600 hover:bg-bee-500 text-white font-bold text-sm shadow-cta flex items-center gap-2 transition-all group"
-            >
-              <span>Book Your First Drive</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-        </div>
-
       </div>
     </section>
   );
