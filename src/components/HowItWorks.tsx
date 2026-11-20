@@ -13,8 +13,8 @@ export const HowItWorks: React.FC<{ onBookClick: () => void }> = ({ onBookClick 
     {
       number: '02',
       Icon: Clock,
-      title: 'Choose duration',
-      description: 'Select transparent hourly packages starting from ₹300 for 2 hours, or extend seamlessly at ₹150/hr on demand.',
+      title: 'Flat Distance Pricing',
+      description: 'Simple and transparent pricing at flat ₹10 per km. Pay only for the distance traveled with zero hourly surge.',
       color: 'text-amber-600 bg-amber-50 border-amber-200'
     },
     {

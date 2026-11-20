@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Building2, Briefcase, Compass, Moon, PartyPopper, Users2, Check, ArrowRight } from 'lucide-react';
+import { FoldText } from './ui/FoldText';
 
 export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) => void }> = ({ onSelectCategory }) => {
   const [activeTab, setActiveTab] = useState(0);
@@ -12,7 +13,7 @@ export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) =
       tagline: 'Skip Warangal Traffic Exhaustion',
       desc: 'Work on your laptop or take conference calls from the backseat while our professional driver maneuvers through Hanamkonda, Hunter Road, and Highway corridors.',
       image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80',
-      rate: 'Starting at ₹300 for 2 Hours',
+      rate: 'Flat ₹10 per km rate',
       highlights: ['No parking hunting stress', 'Hands-free calls & work', 'Flexible waiting time']
     },
     {
@@ -22,7 +23,7 @@ export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) =
       tagline: 'Stress-Free Workday Travel',
       desc: 'Beat peak-hour traffic exhaustion. Focus on your work, calls, or unwind while our driver navigates busy corridors safely in your car.',
       image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=800&q=80',
-      rate: 'Monthly packages & hourly blocks',
+      rate: 'Daily packages at ₹10/km',
       highlights: ['Arrive refreshed at work', 'Zero parking hassle', 'Flexible pickup timings']
     },
     {
@@ -32,8 +33,8 @@ export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) =
       tagline: 'Relaxed Outstation Journeys',
       desc: 'Heading to Hyderabad, Amaravati, Guntur, Vizag, or Suryapet? Our highway-experienced drivers ensure smooth, safe expressway driving in your car.',
       image: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80',
-      rate: 'Starting at ₹400 for 2 Hours (₹200/hr)',
-      highlights: ['Highway & expressway experienced', 'Clear transparent hourly billing', 'Flexible return journey']
+      rate: 'Outstation trips at ₹10/km',
+      highlights: ['Highway & expressway experienced', 'Transparent ₹10/km distance billing', 'Flexible return journey']
     },
     {
       id: 'night',
@@ -42,7 +43,7 @@ export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) =
       tagline: 'Zero Drink & Drive Risk',
       desc: 'Enjoy your evening dinners and parties at Benz Circle or Governorpet with complete peace of mind. A polite, verified driver drives you and your car home safely.',
       image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80',
-      rate: 'Starting ₹350 late night',
+      rate: 'Safe late-night travel at ₹10/km',
       highlights: ['24/7 immediate availability', 'Discreet & respectful drivers', 'Direct doorstep parking']
     },
     {
@@ -52,7 +53,7 @@ export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) =
       tagline: 'VIP Driver for Family Functions',
       desc: 'Weddings, corporate summits, or family reunions. Hire drivers on multi-hour blocks to ferry elderly relatives and guests in luxury and comfort.',
       image: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
-      rate: 'Full day 10h block ₹1,800',
+      rate: 'Full day events at ₹10/km',
       highlights: ['Well-dressed formal attire', 'Multi-car family fleet booking', 'Guest greeting etiquette']
     },
     {
@@ -62,7 +63,7 @@ export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) =
       tagline: 'Safe Rides for Parents & Kids',
       desc: 'When you are busy at work, let a vetted DriverBee driver take your parents for doctor appointments, or drive your children safely to sports coaching.',
       image: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=800&q=80',
-      rate: 'Hourly & recurring subscription',
+      rate: 'Family packages at ₹10/km',
       highlights: ['Live GPS tracking link for you', 'Courteous assistance with bags', 'Direct driver calling & SOS']
     }
   ];
@@ -79,7 +80,26 @@ export const OneDriverEveryJourney: React.FC<{ onSelectCategory: (cat: string) =
             Versatile Mobility
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-navy-950 tracking-tight">
-            One Driver. Every Journey.
+            <FoldText
+              text="One Driver. Every Journey."
+              foldStyle="paper"
+              splitBy="char"
+              hinge="top"
+              trigger="scroll"
+              foldAngle={92}
+              duration={0.65}
+              stagger={0.035}
+              staggerFrom="start"
+              ease="power3.out"
+              hoverRefold={true}
+              refoldRadius={120}
+              refoldAngle={35}
+              perspective={700}
+              creaseShading={0.4}
+              fontSize="inherit"
+              fontWeight="inherit"
+              color="currentColor"
+            />
           </h2>
           <p className="mt-2 text-sm sm:text-base text-navy-600">
             From quick city errands to multi-day hill station trips, enjoy the freedom of having your personal driver whenever you need.

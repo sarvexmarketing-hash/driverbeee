@@ -176,16 +176,16 @@ export const CityHubPage: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-bee-100 text-bee-800 flex items-center justify-center font-bold text-lg mb-3">
                 🚗
               </div>
-              <h3 className="text-base font-extrabold text-navy-950 mb-1.5">Within City Hourly Rides</h3>
+              <h3 className="text-base font-extrabold text-navy-950 mb-1.5">Within City Rides</h3>
               <p className="text-xs text-navy-600 leading-relaxed">
-                Need a driver for shopping, family hospital visits, or attending weddings in {city.name}? Hire by the hour from ₹150/hr.
+                Need a driver for shopping, family hospital visits, or attending weddings in {city.name}? Hire your personal driver at flat ₹10/km.
               </p>
             </div>
             <button
               onClick={handleBookInCity}
               className="mt-4 pt-3 border-t border-navy-100 text-xs font-bold text-bee-700 hover:text-bee-800 flex items-center gap-1 cursor-pointer"
             >
-              <span>Book Hourly Driver</span>
+              <span>Book Local Driver</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

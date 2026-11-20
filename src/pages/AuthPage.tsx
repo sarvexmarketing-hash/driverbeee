@@ -86,6 +86,13 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const AVATAR_IMAGES = [
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80",
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&h=120&q=80",
+];
+
 export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initialMode = 'login', onSuccess }) => {
   const { 
     login, 
@@ -475,9 +482,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
   }[portal];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy-950 via-navy-900 to-navy-950 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#121212] relative overflow-hidden flex flex-col items-center justify-center p-4">
+      {/* Ambient background blur lighting */}
+      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
+
       {/* Brand Header */}
-      <div className="mb-8 flex flex-col items-center">
+      <div className="mb-8 flex flex-col items-center relative z-10">
         <a href="/" className="flex items-center gap-2 mb-2">
           <DriverBeeLogo height={42} />
         </a>
@@ -487,7 +498,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
       </div>
 
       {/* Auth Card */}
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-white/20 overflow-hidden relative z-10">
         
         {/* Card Header Banner */}
         <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-100 flex items-center justify-between">
@@ -976,74 +987,69 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
           {/* ─────────────────────────────────────────────────────────────────── */}
           {/* OPTION C: Google Sign-In Mode (Secure: Zero API key in URL)         */}
           {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* OPTION C: Google Sign-In Mode (1-Click Google OAuth)                */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
           {portal === 'customer' && authMethod === 'google' && (
-            <form onSubmit={(e) => { e.preventDefault(); handleGoogleAuth(); }} className="space-y-4">
-              <div className="p-3 bg-blue-50/70 rounded-2xl border border-blue-100 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white shadow-xs flex items-center justify-center flex-shrink-0">
+            <div className="space-y-4">
+              <div className="p-3.5 bg-blue-50/70 rounded-2xl border border-blue-100 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white shadow-xs flex items-center justify-center flex-shrink-0">
                   <GoogleIcon />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-navy-900">
-                    {mode === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}
+                  <div className="text-xs font-bold text-navy-950">
+                    {mode === 'signup' ? 'Create Account with Google' : 'Sign in with Google'}
                   </div>
-                  <div className="text-[11px] text-gray-500">
-                    Secure account verification without exposing API keys.
+                  <div className="text-[11px] text-navy-600 font-medium">
+                    Fast, secure, 1-click verification via your Google profile.
                   </div>
                 </div>
               </div>
 
-              {mode === 'signup' && (
-                <div>
-                  <label className="block text-xs font-bold text-navy-700 uppercase tracking-wider mb-1">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      name="fullName"
-                      value={form.fullName}
-                      onChange={handleChange}
-                      placeholder="Viswa Teja"
-                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-navy-950 text-sm focus:outline-none focus:ring-2 focus:ring-bee-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-navy-700 uppercase tracking-wider mb-1">
-                  Google Email Address
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    name="googleEmail"
-                    value={googleEmailInput}
-                    onChange={(e) => setGoogleEmailInput(e.target.value)}
-                    placeholder="yourname@gmail.com"
-                    required
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-navy-950 text-sm focus:outline-none focus:ring-2 focus:ring-bee-500"
-                  />
-                </div>
-              </div>
-
+              {/* 1-Click Primary Google Sign-In Button */}
               <button
-                type="submit"
-                disabled={loading || !googleEmailInput.trim()}
-                className="w-full py-3 rounded-2xl bg-bee-600 hover:bg-bee-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                type="button"
+                onClick={() => handleGoogleAuth()}
+                disabled={loading}
+                className="w-full py-3.5 px-4 rounded-2xl bg-neutral-950 hover:bg-neutral-800 active:scale-[0.99] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
               >
                 {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
                 ) : (
                   <>
                     <GoogleIcon />
-                    <span>{mode === 'signup' ? 'Verify & Create Account' : 'Verify & Sign In'}</span>
+                    <span>{mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}</span>
                   </>
                 )}
               </button>
-            </form>
+
+              {/* Optional Custom Email Input */}
+              <div className="pt-2 border-t border-gray-100">
+                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  Or specify a Google Email:
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      value={googleEmailInput}
+                      onChange={(e) => setGoogleEmailInput(e.target.value)}
+                      placeholder="yourname@gmail.com"
+                      className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-navy-950 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleGoogleAuth(googleEmailInput)}
+                    disabled={loading || !googleEmailInput.trim()}
+                    className="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 text-neutral-950 font-bold text-xs rounded-xl shadow-xs transition-colors disabled:opacity-40 cursor-pointer"
+                  >
+                    Go
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Google Sign In option (Customer Portal only) */}
@@ -1058,18 +1064,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
 
               <button
                 type="button"
-                onClick={() => {
-                  const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
-                  if (googleClientId) {
-                    handleGoogleAuth();
-                  } else {
-                    setAuthMethod('google');
-                    setError('');
-                    setSuccess('');
-                  }
-                }}
+                onClick={() => handleGoogleAuth()}
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100 text-navy-950 font-bold text-sm shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="w-full py-3 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100 text-navy-950 font-bold text-sm shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin text-bee-600" /> : <GoogleIcon />}
                 <span>{mode === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}</span>
@@ -1086,6 +1083,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({ portal = 'customer', initial
               <a href="/admin" className="hover:text-navy-950 transition-colors">Admin Portal</a>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Social proof user count and avatars */}
+      <div className="relative z-10 mt-8 flex flex-col items-center text-center px-4">
+        <p className="text-gray-400 text-xs sm:text-sm mb-2.5 font-medium">
+          Join <span className="font-bold text-white">10,000+</span> car owners who trust DriverBee.
+        </p>
+        <div className="flex -space-x-2">
+          {AVATAR_IMAGES.map((src, index) => (
+            <img
+              key={index}
+              src={src}
+              alt={`DriverBee customer ${index + 1}`}
+              className="w-8 h-8 rounded-full border-2 border-[#181824] object-cover ring-1 ring-white/10"
+              loading="lazy"
+            />
+          ))}
         </div>
       </div>
     </div>

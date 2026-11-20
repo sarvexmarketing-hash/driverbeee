@@ -116,7 +116,7 @@ export const CarsCatalogPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-lg sm:text-xl font-extrabold text-navy-950">Popular Personal Vehicles</h2>
-              <p className="text-xs text-navy-500">Verified drivers available on demand starting from ₹150/hr</p>
+              <p className="text-xs text-navy-500">Verified drivers available on demand at flat ₹10/km</p>
             </div>
 
             {/* Filter Tabs */}

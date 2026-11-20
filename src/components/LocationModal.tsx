@@ -14,20 +14,35 @@ interface LocationModalProps {
 }
 
 const PRIMARY_CITIES = [
-  { name: 'Warangal, Telangana', hub: 'Primary Hub (Live Bookings)', badge: 'Live Hub' },
+  // Telangana Hubs
   { name: 'Hyderabad, Telangana', hub: 'Metropolitan Hub (Live Bookings)', badge: 'Live Hub' },
-  { name: 'Visakhapatnam, Andhra Pradesh', hub: 'Coastal Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Warangal, Telangana', hub: 'Primary Hub (Live Bookings)', badge: 'Live Hub' },
   { name: 'Hanamkonda, Warangal', hub: 'Tri-City Hub (Live Bookings)', badge: 'Live Hub' },
   { name: 'Kazipet, Warangal', hub: 'Station & Junction Hub (Live Bookings)', badge: 'Live Hub' },
-  { name: 'Narsampet, Telangana', hub: '~25 km from Warangal • Live Bookings', badge: 'Live Hub' },
-  { name: 'Parkal, Warangal', hub: '~35 km from Warangal • Live Bookings', badge: 'Live Hub' },
-  { name: 'Bhupalpally, Telangana', hub: '~45 km from Warangal • Live Bookings', badge: 'Live Hub' },
-  { name: 'Jangaon, Telangana', hub: '~55 km from Warangal • Live Bookings', badge: 'Live Hub' },
-  { name: 'Mahabubabad, Telangana', hub: '~55 km from Warangal • Live Bookings', badge: 'Live Hub' },
-  { name: 'Mulugu, Telangana', hub: '~55 km from Warangal • Live Bookings', badge: 'Live Hub' },
-  { name: 'Vijayawada, Andhra Pradesh', hub: 'Capital Region launching soon', badge: 'Coming Soon' },
-  { name: 'Karimnagar, Telangana', hub: 'Northern Hub launching soon', badge: 'Coming Soon' },
-  { name: 'Khammam, Telangana', hub: 'Eastern Hub launching soon', badge: 'Coming Soon' },
+  { name: 'Karimnagar, Telangana', hub: 'Northern Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Khammam, Telangana', hub: 'Eastern Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Nizamabad, Telangana', hub: 'North-Western Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Nalgonda, Telangana', hub: 'South-Eastern Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Mahabubnagar, Telangana', hub: 'Southern Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Siddipet, Telangana', hub: 'Central Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Ramagundam, Telangana', hub: 'Industrial Corridor (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Jangaon, Telangana', hub: 'Highway Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Bhupalpally, Telangana', hub: 'Eastern Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Narsampet, Telangana', hub: 'Local Hub (Live Bookings)', badge: 'Live Hub' },
+
+  // Andhra Pradesh Hubs
+  { name: 'Visakhapatnam, Andhra Pradesh', hub: 'Coastal Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Vijayawada, Andhra Pradesh', hub: 'Capital Region Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Guntur, Andhra Pradesh', hub: 'Commercial Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Tirupati, Andhra Pradesh', hub: 'Pilgrimage & Airport Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Nellore, Andhra Pradesh', hub: 'Southern Coastal Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Kurnool, Andhra Pradesh', hub: 'Rayalaseema Gateway (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Rajahmundry, Andhra Pradesh', hub: 'Godavari Cultural Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Kakinada, Andhra Pradesh', hub: 'Port City Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Kadapa, Andhra Pradesh', hub: 'Rayalaseema Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Anantapur, Andhra Pradesh', hub: 'Western AP Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Eluru, Andhra Pradesh', hub: 'Delta Region Hub (Live Bookings)', badge: 'Live Hub' },
+  { name: 'Ongole, Andhra Pradesh', hub: 'Coastal Highway Hub (Live Bookings)', badge: 'Live Hub' },
 ];
 
 const LOCAL_AREAS_BY_CITY: Record<string, { label: string; areas: string[] }> = {
@@ -78,6 +93,59 @@ const LOCAL_AREAS_BY_CITY: Record<string, { label: string; areas: string[] }> = 
       'Jagadamba Junction, Visakhapatnam',
     ],
   },
+  vijayawada: {
+    label: 'Popular Vijayawada Localities & Amaravati Region',
+    areas: [
+      'Benz Circle, Vijayawada',
+      'Governorpet, Vijayawada',
+      'MGM Road, Vijayawada',
+      'Bhavanipuram, Vijayawada',
+      'Satyanarayanapuram, Vijayawada',
+      'Kanuru, Vijayawada',
+      'Poranki, Vijayawada',
+      'Gollapudi, Vijayawada',
+      'Gannavaram, Vijayawada',
+      'Auto Nagar, Vijayawada',
+    ],
+  },
+  guntur: {
+    label: 'Popular Guntur Localities',
+    areas: [
+      'Brodipet, Guntur',
+      'Arundelpet, Guntur',
+      'Koritepadu, Guntur',
+      'Kothapet, Guntur',
+      'Pattabhipuram, Guntur',
+      'Vidyanagar, Guntur',
+      'Nallapadu, Guntur',
+      'Pedakakani, Guntur',
+    ],
+  },
+  tirupati: {
+    label: 'Popular Tirupati Localities',
+    areas: [
+      'Alipiri, Tirupati',
+      'Kapila Theertham, Tirupati',
+      'Bairagipatteda, Tirupati',
+      'Korlagunta, Tirupati',
+      'Renigunta Road, Tirupati',
+      'Chandragiri Road, Tirupati',
+      'Padmavathi Puram, Tirupati',
+      'SV University Area, Tirupati',
+    ],
+  },
+  karimnagar: {
+    label: 'Popular Karimnagar Localities',
+    areas: [
+      'Collectorate Area, Karimnagar',
+      'Kothirampur, Karimnagar',
+      'Mankammathota, Karimnagar',
+      'Mukarrampura, Karimnagar',
+      'Kashmirgadda, Karimnagar',
+      'Vidyanagar, Karimnagar',
+      'Tower Circle, Karimnagar',
+    ],
+  },
 };
 
 export const LocationModal: React.FC<LocationModalProps> = ({
@@ -99,10 +167,19 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     c.name.toLowerCase().includes(normalizedSearch) || c.hub.toLowerCase().includes(normalizedSearch)
   );
 
-  const activeCityKey = selectedCity.toLowerCase().includes('hyderabad')
+  const lowerSelected = selectedCity.toLowerCase();
+  const activeCityKey = lowerSelected.includes('hyderabad')
     ? 'hyderabad'
-    : (selectedCity.toLowerCase().includes('visakhapatnam') || selectedCity.toLowerCase().includes('vizag'))
+    : lowerSelected.includes('visakhapatnam') || lowerSelected.includes('vizag')
     ? 'visakhapatnam'
+    : lowerSelected.includes('vijayawada')
+    ? 'vijayawada'
+    : lowerSelected.includes('guntur')
+    ? 'guntur'
+    : lowerSelected.includes('tirupati')
+    ? 'tirupati'
+    : lowerSelected.includes('karimnagar')
+    ? 'karimnagar'
     : 'warangal';
 
   const allAreas = Object.values(LOCAL_AREAS_BY_CITY).flatMap((g) => g.areas);
@@ -152,7 +229,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 Select Your City / Area
               </h3>
               <p className="text-[11px] text-navy-500 font-medium">
-                Live in Warangal, Hyderabad &amp; Visakhapatnam
+                Live across Telangana &amp; Andhra Pradesh
               </p>
             </div>
           </div>

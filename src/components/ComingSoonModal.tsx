@@ -59,14 +59,14 @@ export const ComingSoonModal: React.FC<ComingSoonModalProps> = ({
               <Clock className="w-3 h-3" />
               <span>Coming Soon</span>
             </span>
-            <span className="text-[11px] text-white/70 font-semibold">Active in Warangal, Hyderabad &amp; Vizag</span>
+            <span className="text-[11px] text-white/70 font-semibold">Active across Telangana &amp; Andhra Pradesh</span>
           </div>
 
           <h3 className="text-xl sm:text-2xl font-black text-white leading-tight">
             DriverBee is Coming Soon to {cityName}!
           </h3>
           <p className="text-xs text-white/80 mt-1.5 leading-relaxed">
-            Currently, driver bookings happen from <strong>Warangal, Hyderabad, and Visakhapatnam</strong>.
+            Currently, driver bookings happen across <strong>all districts of Telangana and Andhra Pradesh</strong>.
           </p>
         </div>
 
@@ -79,7 +79,7 @@ export const ComingSoonModal: React.FC<ComingSoonModalProps> = ({
               <span>Pickup Location Notice:</span>
             </div>
             <p className="text-[11.5px] leading-relaxed text-amber-950/90">
-              Whether you need a driver for <strong>Within the City</strong> or an <strong>Outside City</strong> trip across Telangana / Andhra Pradesh, all driver bookings must originate with doorstep pickup in <strong>Warangal, Hyderabad, or Visakhapatnam</strong>.
+              Whether you need a driver for <strong>Within the City</strong> or an <strong>Outside City</strong> trip across Telangana / Andhra Pradesh, all driver bookings must originate with doorstep pickup in <strong>Telangana or Andhra Pradesh</strong>.
             </p>
           </div>
 
@@ -139,7 +139,7 @@ export const ComingSoonModal: React.FC<ComingSoonModalProps> = ({
               }}
               className="w-full py-3 px-4 rounded-xl bg-bee-500 hover:bg-bee-600 active:bg-bee-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
             >
-              <span>Switch Location to Warangal (Start Booking)</span>
+              <span>Switch Location to Telangana / AP (Start Booking)</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 

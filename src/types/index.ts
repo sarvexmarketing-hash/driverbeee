@@ -29,6 +29,9 @@ export interface BookingState {
   passengerType: 'self' | 'family';
   familyMemberName?: string;
   notes?: string;
+  pickupLocation?: string;
+  dropLocation?: string;
+  selectedService?: 'local' | 'outstation' | 'hourly';
   outstationMode?: 'district' | 'distance';
   outstationState?: 'telangana' | 'andhra';
   outstationDestinationId?: string;
@@ -38,6 +41,9 @@ export interface BookingState {
   outstationDistanceRange?: string;
   outstationDays?: number;
   outstationPrice?: number;
+  outstationTripType?: 'round_trip' | 'one_way';
+  outstationVehicleCategory?: 'standard' | 'luxury';
+  outstationPackageHours?: 6 | 12;
   oneWayDays?: number;
   oneWayMode?: 'hours' | 'days';
 }

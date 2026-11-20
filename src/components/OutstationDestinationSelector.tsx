@@ -607,30 +607,14 @@ export const OutstationDestinationSelector: React.FC<OutstationDestinationSelect
 
             {/* Slabs Highlight Banner */}
             <div className="px-4 py-2.5 bg-amber-50/90 border-b border-amber-200/80 flex flex-wrap items-center justify-between gap-1.5 text-[11px] text-amber-950 font-bold">
-              <span>{modalStateTab === 'andhra' ? 'Andhra' : 'Telangana'} Rate Slabs from Warangal:</span>
+              <span>Transparent Distance Pricing:</span>
               <div className="flex items-center gap-1.5 flex-wrap">
-                {modalStateTab === 'telangana' ? (
-                  <>
-                    <span className="px-2 py-0.5 rounded bg-white border border-amber-200 text-amber-900 font-extrabold shadow-2xs">
-                      0–135 km: ₹1,200/day
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-white border border-amber-200 text-amber-900 font-extrabold shadow-2xs">
-                      145–240 km: ₹1,500/day
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-white border border-amber-200 text-amber-900 font-extrabold shadow-2xs">
-                      260–300 km: ₹1,800/day
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="px-2 py-0.5 rounded bg-white border border-amber-200 text-amber-900 font-extrabold shadow-2xs">
-                      200–240 km: ₹1,500/day
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-white border border-amber-200 text-amber-900 font-extrabold shadow-2xs">
-                      250–530 km: ₹1,800/day
-                    </span>
-                  </>
-                )}
+                <span className="px-2.5 py-0.5 rounded-full bg-white border border-amber-300 text-amber-950 font-black shadow-2xs">
+                  ⚡ Flat ₹10 / km
+                </span>
+                <span className="text-[11px] text-amber-900 font-medium">
+                  (e.g. 150 km = ₹1,500/day • 250 km = ₹2,500/day)
+                </span>
               </div>
             </div>
 

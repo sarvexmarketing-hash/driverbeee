@@ -1,5 +1,6 @@
 import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'node:path';
 
 function whatsappDevApiPlugin(): Plugin {
   return {
@@ -126,14 +127,25 @@ function whatsappDevApiPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), whatsappDevApiPlugin()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   build: {
+    target: 'es2020',
+    cssCodeSplit: true,
     chunkSizeWarningLimit: 600,
+    reportCompressedSize: false,
     rollupOptions: {
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/analytics'],
           'vendor-icons': ['lucide-react'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-gsap': ['gsap'],
         }
       }
     }

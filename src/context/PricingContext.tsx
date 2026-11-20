@@ -75,15 +75,16 @@ function savePricing(cfg: PricingConfig) {
   } catch { /* ignore */ }
 }
 
-interface PricingContextValue {
+export interface PricingContextValue {
   pricing: PricingConfig;
   updatePricing: (cfg: PricingConfig) => void;
   resetPricing: () => void;
-  getCityFare: (hours: number) => number;
-  getOutsideFare: (hours: number) => number;
-  getOneWayFare: (hours: number) => number;
-  /** Returns the per-day slab rate for a given distance in km */
+  getCityFare: (hoursOrKm: number) => number;
+  getOutsideFare: (hoursOrKm: number) => number;
+  getOneWayFare: (hoursOrKm: number) => number;
+  /** Returns the rate for a given distance in km at flat ₹10/km */
   getPriceForKm: (km: number | string | undefined) => number;
+  perKmRate: number;
   cityHourlyRate: number;
   outsideHourlyRate: number;
   oneWayHourlyRate: number;
@@ -177,20 +178,24 @@ export const PricingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [pricing]);
 
   const getPriceForKm = useCallback((km: number | string | undefined): number => {
-    const slabs = pricing.outstationSlabs;
-    const dist = typeof km === 'string' ? parseFloat(km) : (km ?? 0);
-    if (isNaN(dist) || dist < 150) return slabs.slab100_150;
-    if (dist < 250) return slabs.slab150_250;
-    return slabs.slabAbove250;
-  }, [pricing]);
+    if (typeof km === 'string') {
+      const parts = km.split(/[–-]/).map(s => parseFloat(s.trim()));
+      const num = parts.length === 2 && !isNaN(parts[1]) ? parts[1] : parseFloat(km);
+      if (!isNaN(num) && num > 0) return Math.round(num * 10);
+    }
+    const dist = typeof km === 'number' ? km : 0;
+    if (dist > 0) return Math.round(dist * 10);
+    return 100;
+  }, []);
 
   return (
     <PricingContext.Provider value={{
       pricing, updatePricing, resetPricing,
       getCityFare, getOutsideFare, getOneWayFare, getPriceForKm,
-      cityHourlyRate: Math.round(pricing.cityRates.hr2 / 2),
-      outsideHourlyRate: Math.round(pricing.outsideRates.hr2 / 2),
-      oneWayHourlyRate: Math.round((pricing.oneWayRates?.hr2 || DEFAULT_PRICING.oneWayRates.hr2) / 2),
+      perKmRate: 10,
+      cityHourlyRate: 10,
+      outsideHourlyRate: 10,
+      oneWayHourlyRate: 10,
     }}>
       {children}
     </PricingContext.Provider>

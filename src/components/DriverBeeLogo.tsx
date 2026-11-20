@@ -29,11 +29,15 @@ export const DriverBeeLogo: React.FC<DriverBeeLogoProps> = ({
       <img
         src={src}
         alt="DriverBee"
+        width={Math.round(height * 4.2)}
+        height={height}
+        decoding="async"
         className={`inline-block select-none object-contain cursor-pointer transition-transform hover:opacity-95 ${className}`}
         style={{
           height: `${height}px`,
           width: 'auto',
           maxHeight: '100%',
+          aspectRatio: '4.2 / 1',
         }}
         onClick={onClick}
         onError={() => setImgError(true)}

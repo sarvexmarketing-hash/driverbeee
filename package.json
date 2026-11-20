@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node tests/whatsapp.test.mjs && node tests/driver-onboarding.test.mjs && node tests/schedule-time.test.mjs && node tests/phone-auth.test.mjs && node tests/google-auth.test.mjs && node tests/seo-slugs.test.mjs"
+    "test": "node tests/whatsapp.test.mjs && node tests/driver-onboarding.test.mjs && node tests/schedule-time.test.mjs && node tests/phone-auth.test.mjs && node tests/google-auth.test.mjs && node tests/seo-slugs.test.mjs && node tests/city-locations.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -16,6 +16,8 @@
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",
     "firebase": "^12.19.0",
+    "framer-motion": "^14.14.0",
+    "gsap": "^3.15.1",
     "lucide-react": "^0.395.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

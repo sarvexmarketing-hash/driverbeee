@@ -40,10 +40,41 @@
     <meta name="twitter:description" content="Your car, our driver. Verified professional drivers at your doorstep in Warangal within 30 minutes." />
     <meta name="twitter:image" content="https://driverbee.in/hero-driver-car.jpg" />
 
-    <!-- Google Fonts: Plus Jakarta Sans & Caveat -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- DNS Prefetch & Preconnect for High-Speed Asset Delivery -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Non-Render-Blocking Google Fonts with Asynchronous Swap & Fallback -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+    </noscript>
+
+    <!-- Critical CSS & Layout Shift (CLS) Protection -->
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background-color: #FAFBFD;
+        color: #0B1020;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        text-size-adjust: 100%;
+        -webkit-text-size-adjust: 100%;
+      }
+      #root {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+      }
+      /* Prevent mobile double-tap zoom latency */
+      button, a, input, select, textarea, [role="button"] {
+        touch-action: manipulation;
+      }
+    </style>
 
     <!-- Structured Data (JSON-LD) for LocalBusiness & TransportationService -->
     <script type="application/ld+json">

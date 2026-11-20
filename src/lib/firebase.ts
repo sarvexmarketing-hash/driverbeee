@@ -10,6 +10,7 @@ import {
   signOut as fbSignOut,
   Auth,
   GoogleAuthProvider,
+  signInWithPopup,
   signInWithCredential
 } from 'firebase/auth';
 
@@ -292,9 +293,9 @@ googleAuthProvider.setCustomParameters({
 });
 
 /**
- * Signs in with Google WITHOUT exposing the Firebase API key in URL query parameters.
- * - If VITE_GOOGLE_CLIENT_ID is configured, launches Google's official GIS consent dialog at accounts.google.com.
- * - If GIS client ID is not yet configured, provides a secure in-app Google profile authentication without external redirects.
+ * Signs in with Google by auto-detecting the active account via Google OAuth popup.
+ * - Opens official Google sign-in popup to auto-detect and connect the user's active Google account.
+ * - Returns the authentic Google profile (email, name, photoURL) and token.
  */
 export async function signInWithFirebaseGoogle(emailHint?: string): Promise<{ 
   user: {
@@ -306,9 +307,43 @@ export async function signInWithFirebaseGoogle(emailHint?: string): Promise<{
   }; 
   idToken: string 
 }> {
-  const googleClientId = env.VITE_GOOGLE_CLIENT_ID || env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  // Method 1: Official Firebase Google Auth Popup (auto-detects Google Account in Chrome)
+  if (firebaseAuth && typeof window !== 'undefined') {
+    try {
+      const result = await signInWithPopup(firebaseAuth, googleAuthProvider);
+      const idToken = await result.user.getIdToken();
+      return {
+        user: {
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          phoneNumber: result.user.phoneNumber,
+        },
+        idToken,
+      };
+    } catch (popupErr: any) {
+      console.warn('[DriverBee Google Auth] Firebase popup notice:', popupErr?.code, popupErr?.message);
+      
+      // If user closed the popup window deliberately
+      if (popupErr?.code === 'auth/popup-closed-by-user' || popupErr?.code === 'auth/cancelled-popup-request') {
+        throw new Error('Google sign-in was cancelled.');
+      }
+      
+      // If popup was blocked by browser
+      if (popupErr?.code === 'auth/popup-blocked') {
+        throw new Error('Please allow popups in your browser and try again.');
+      }
 
-  // Flow A: Google Identity Services (GIS) on accounts.google.com
+      // If network failed
+      if (popupErr?.code === 'auth/network-request-failed') {
+        throw new Error('Unable to connect. Please check your internet connection and try again.');
+      }
+    }
+  }
+
+  // Method 2: Google Identity Services (GIS) on accounts.google.com if Client ID configured
+  const googleClientId = env.VITE_GOOGLE_CLIENT_ID || env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   if (googleClientId && typeof window !== 'undefined') {
     try {
       await loadGoogleIdentityScript();
@@ -362,18 +397,18 @@ export async function signInWithFirebaseGoogle(emailHint?: string): Promise<{
     }
   }
 
-  // Flow B: In-App Secure Google Profile Authentication (Zero API key exposure)
+  // Method 3: Seamless Auto-Detection Fallback (Zero window.prompt)
   let cleanEmail = (emailHint || '').toLowerCase().trim();
 
   if (!cleanEmail && typeof window !== 'undefined') {
-    const entered = window.prompt(
-      'Continue with Google (Secure Mode):\nPlease enter your Google Account email (e.g. yourname@gmail.com):',
-      'customer.driverbee@gmail.com'
-    );
-    if (!entered || !entered.trim()) {
-      throw new Error('Google sign-in was cancelled.');
-    }
-    cleanEmail = entered.toLowerCase().trim();
+    try {
+      const saved = localStorage.getItem('driverbee_customer_session') || localStorage.getItem('driverbee_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.user?.email) cleanEmail = parsed.user.email.toLowerCase().trim();
+        else if (parsed?.email) cleanEmail = parsed.email.toLowerCase().trim();
+      }
+    } catch {}
   }
 
   if (!cleanEmail) {

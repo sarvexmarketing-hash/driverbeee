@@ -177,13 +177,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const { user, profile } = useAuth();
   const { bookings, drivers, addBooking, acceptBooking, refreshBookings } = useBookings();
   const { getCityFare, getOutsideFare, getOneWayFare, getPriceForKm } = usePricing();
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState(bookingState.pickupLocation || selectedCity || '');
   const [isLocatingPickup, setIsLocatingPickup] = useState(false);
   const stateName = bookingState.outstationState === 'andhra' ? 'Andhra Pradesh' : 'Telangana';
   const [deliveryAddress, setDeliveryAddress] = useState(
-    bookingState.tripType === 'outside' && bookingState.outstationDestinationName
+    bookingState.dropLocation ||
+    (bookingState.tripType === 'outside' && bookingState.outstationDestinationName
       ? `${bookingState.outstationDestinationName}, ${bookingState.outstationDistrict || ''}, ${stateName}`
-      : ''
+      : '')
   );
   const [customerName, setCustomerName] = useState(profile?.full_name || '');
   const [phone, setPhone] = useState('');
@@ -200,6 +201,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
   const [showDropSuggestions, setShowDropSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (bookingState.pickupLocation) setAddress(bookingState.pickupLocation);
+      if (bookingState.dropLocation) setDeliveryAddress(bookingState.dropLocation);
+    }
+  }, [isOpen, bookingState.pickupLocation, bookingState.dropLocation]);
 
   const matchingPickupAreas = address.trim().length >= 2
     ? WARANGAL_SEARCH_AREAS.filter(a => a.toLowerCase().includes(address.toLowerCase().trim()))
@@ -420,6 +428,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const getBaseRate = () => {
     const isOutside = bookingState.tripType === 'outside';
     if (isOutside) {
+      if (bookingState.outstationPrice) return bookingState.outstationPrice;
+      if (bookingState.outstationTripType === 'round_trip') {
+        const cat = bookingState.outstationVehicleCategory || 'standard';
+        const hrs = bookingState.outstationPackageHours === 12 ? 12 : 6;
+        return cat === 'luxury' ? (hrs === 12 ? 1899 : 1149) : (hrs === 12 ? 1499 : 899);
+      }
       // Calculate dynamically based on destination distance and days
       if (bookingState.outstationDestinationId) {
         const dest = ALL_OUTSTATION_PRICING.find((d) => d.id === bookingState.outstationDestinationId);
@@ -428,7 +442,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           return getPriceForKm(dest.distanceKm) * days;
         }
       }
-      if (bookingState.outstationPrice) return bookingState.outstationPrice;
       return getOutsideFare(bookingState.duration);
     }
     if (bookingState.tripType === 'oneway') {
@@ -468,7 +481,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
 
     if (!isWarangalLocation(cleanAddress)) {
-      setFormError('DriverBee currently serves Warangal, Hyderabad, and Visakhapatnam. Please enter a pickup address within our active service areas.');
+      setFormError('DriverBee currently serves all districts across Telangana and Andhra Pradesh. Please enter a pickup address within Telangana or Andhra Pradesh.');
       return;
     }
 
@@ -508,22 +521,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     // Build comprehensive, structured notes detailing every choice made by the customer
     let bookingNotes = '';
     if (bookingState.tripType === 'outside') {
-      const stateStr = bookingState.outstationState === 'andhra' ? 'Andhra Pradesh' : 'Telangana';
-      const outDays = bookingState.outstationDays || 1;
+      const isRoundTrip = bookingState.outstationTripType === 'round_trip' || !bookingState.outstationDestinationId;
+      const vehTier = bookingState.outstationVehicleCategory === 'luxury' ? 'Premium / Luxury' : 'Standard';
+      const pkgHrs = bookingState.outstationPackageHours || 6;
+      const extraHr = bookingState.outstationVehicleCategory === 'luxury' ? 150 : 120;
       bookingNotes = [
-        `[OUTSIDE CITY TRIP - BY DISTRICT / DESTINATION]`,
-        `• Destination: ${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDistrict || ''} • ${stateStr})`,
-        `• Package Duration: ${outDays} Day${outDays > 1 ? 's' : ''} Package`,
-        `• Daily Service Window: 12 Hours (8:00 AM – 8:00 PM)`,
-        `• Overtime Charges: ₹100 per hour beyond 12 hours`,
-        `• Driver Night Stay: Client provides food & basic accommodation`,
+        `[OUTSTATION ROUND TRIP PACKAGE]`,
+        `• Trip Type: Outstation Round Trip`,
+        `• Vehicle Tier: ${vehTier}`,
+        `• Package Duration: Up to ${pkgHrs} Hours`,
+        `• Extra Hour Rate: ₹${extraHr} per hour`,
+        `• Destination / Route: ${deliveryAddress || bookingState.dropLocation || 'Outstation Route'}`,
         `• Transmission: ${transmission === 'automatic' ? 'Automatic' : 'Manual'}`,
         `• Car Type: ${carType.toUpperCase()}`,
         `• Vehicle: ${carType.toUpperCase()} • ${carModel || 'Personal Car'} (${carPlate || 'TS-03-MJ-4412'})`,
         `• Booked For: ${forWhomStr}`,
         `• Pickup Doorstep: ${address}`,
         `• Destination Address: ${deliveryAddress}`,
-        `• Fixed Driver Fare: ₹${total.toLocaleString('en-IN')}`,
+        `• Fixed Package Fare: ₹${total.toLocaleString('en-IN')}`,
         `• Terms & Conditions Accepted: Yes`,
       ].join('\n');
     } else if (bookingState.tripType === 'oneway') {
@@ -1076,16 +1091,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div>
                   <span className="text-navy-400 font-medium block">Trip Category</span>
                   <span className="font-bold text-navy-950 text-sm capitalize">
-                    {bookingState.tripType === 'city' ? 'Within the City' : bookingState.tripType === 'oneway' ? 'One Way Drop' : 'Outside City'}
+                    {bookingState.tripType === 'city' ? 'Within the City' : bookingState.tripType === 'oneway' ? 'One Way Drop' : 'Outstation Round Trip'}
                   </span>
                 </div>
                 <div>
                   <span className="text-navy-400 font-medium block">
-                    {bookingState.tripType === 'outside' ? 'Destination & Package' : 'Duration'}
+                    {bookingState.tripType === 'outside' ? 'Vehicle Tier & Package' : 'Duration'}
                   </span>
                   <span className="font-bold text-navy-950 text-sm">
                     {bookingState.tripType === 'outside'
-                      ? `${bookingState.outstationDestinationName || 'Outstation'} (${bookingState.outstationDays || 1} Day${(bookingState.outstationDays || 1) > 1 ? 's' : ''})`
+                      ? `${bookingState.outstationVehicleCategory === 'luxury' ? 'Premium/Luxury' : 'Standard'} • Up to ${bookingState.outstationPackageHours || 6} Hours`
                       : (bookingState.tripType === 'oneway' && bookingState.oneWayMode === 'days')
                       ? `${bookingState.oneWayDays || 1} Day${(bookingState.oneWayDays || 1) > 1 ? 's' : ''} Multi-Day Drive`
                       : `${bookingState.duration} Hours`}
@@ -1200,7 +1215,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded-xl text-[11.5px] text-amber-900 flex items-start gap-1.5 animate-fade-in">
                       <AlertCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
                       <span>
-                        <strong>Pickup Notice:</strong> Currently, driver bookings happen from <strong>Warangal, Hyderabad, and Visakhapatnam</strong>. Pickups from other cities are <strong>Coming Soon</strong>.
+                        <strong>Pickup Notice:</strong> Currently, driver bookings happen across <strong>all districts of Telangana and Andhra Pradesh</strong>. Pickups outside Telangana &amp; Andhra Pradesh are coming soon.
                       </span>
                     </div>
                   ) : null}

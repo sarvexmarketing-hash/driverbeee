@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
-import { BookingCard } from './components/BookingCard';
-import { BrandStory } from './components/BrandStory';
-import { TrustColumn } from './components/TrustColumn';
 import { WhyDriverBee } from './components/WhyDriverBee';
 import { OneDriverEveryJourney } from './components/OneDriverEveryJourney';
 import { INITIAL_DRIVERS } from './components/TrustedDrivers';
@@ -342,71 +339,43 @@ export const App: React.FC = () => {
         onOpenAuth={handleOpenAuth}
       />
 
-      {/* 2. Cinematic Hero Section */}
+      {/* 2. Hero Section: Book Your Driver (Matches Reference Design) */}
       <Hero
-        onQuickBook={() => {
-          const el = document.getElementById('booking-card-section');
-          el?.scrollIntoView({ behavior: 'smooth' });
-        }}
         selectedCity={selectedCity}
         onOpenCitySelector={() => setIsLocationModalOpen(true)}
         onOpenNotifications={() => {}}
         onOpenAuth={handleOpenAuth}
         onOpenProfile={() => setIsProfileModalOpen(true)}
+        bookingState={bookingState}
+        updateBookingState={updateBookingState}
+        onBookNow={handleBookNow}
+        onSwitchToWarangal={handleSwitchToWarangal}
       />
 
-      {/* 3. Booking Engine: flows naturally on mobile, overlaps hero on desktop */}
-      <main className="flex-1 lg:-mt-24 relative z-20 px-0 lg:px-8 max-w-[1400px] mx-auto w-full mb-12 sm:mb-16">
-        <div className="flex items-start justify-center gap-4 lg:gap-6 xl:gap-8">
-          
-          {/* Left Brand Story (Desktop only, 1280px+) */}
-          <BrandStory />
+      {/* 4. Below-the-fold content optimized for mobile performance & CLS */}
+      <div className="content-visibility-auto">
+        <WhyDriverBee 
+          onBookClick={() => {
+            const el = document.getElementById('booking-card-section');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }} 
+        />
 
-          {/* Center: Main Booking Card */}
-          <div className="w-full max-w-[1020px]">
-            <BookingCard
-              bookingState={bookingState}
-              updateBookingState={updateBookingState}
-              onBookNow={handleBookNow}
-              selectedCity={selectedCity}
-              onSwitchToWarangal={handleSwitchToWarangal}
-            />
-          </div>
+        <OneDriverEveryJourney onSelectCategory={handleSelectCategory} />
 
-          {/* Right Trust Column (Desktop only, 1280px+) */}
-          <TrustColumn />
+        <HowItWorks 
+          onBookClick={() => {
+            const el = document.getElementById('booking-card-section');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }} 
+        />
 
-        </div>
-      </main>
+        <CustomerStories />
 
-      {/* 4. Why DriverBee Value Pillars */}
-      <WhyDriverBee 
-        onBookClick={() => {
-          const el = document.getElementById('booking-card-section');
-          el?.scrollIntoView({ behavior: 'smooth' });
-        }} 
-      />
+        <FaqSection />
 
-      {/* 5. One Driver. Every Journey. */}
-      <OneDriverEveryJourney onSelectCategory={handleSelectCategory} />
-
-      {/* 6. How DriverBee Works (5 Steps) */}
-      <HowItWorks 
-        onBookClick={() => {
-          const el = document.getElementById('booking-card-section');
-          el?.scrollIntoView({ behavior: 'smooth' });
-        }} 
-      />
-
-
-      {/* 10. Customer Stories from Warangal */}
-      <CustomerStories />
-
-      {/* 10. Frequently Asked Questions */}
-      <FaqSection />
-
-      {/* 11. Footer */}
-      <Footer />
+        <Footer />
+      </div>
 
       {/* 12. Mobile Fixed Bottom Navigation */}
       <BottomNav

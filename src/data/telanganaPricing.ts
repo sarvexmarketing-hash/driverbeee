@@ -1,5 +1,38 @@
 export type StateRegion = 'telangana' | 'andhra';
 
+export interface OutstationRoundTripRate {
+  vehicleCategory: 'standard' | 'luxury';
+  label: string;
+  description: string;
+  hours6Price: number;
+  hours12Price: number;
+  extraHourRate: number;
+}
+
+export const OUTSTATION_ROUND_TRIP_PRICING: Record<'standard' | 'luxury', OutstationRoundTripRate> = {
+  standard: {
+    vehicleCategory: 'standard',
+    label: 'Standard Vehicle',
+    description: 'Hatchback, Sedan & Compact SUV',
+    hours6Price: 899,
+    hours12Price: 1499,
+    extraHourRate: 120,
+  },
+  luxury: {
+    vehicleCategory: 'luxury',
+    label: 'Premium / Luxury',
+    description: 'Innova Crysta, Fortuner, BMW, Audi, Mercedes',
+    hours6Price: 1149,
+    hours12Price: 1899,
+    extraHourRate: 150,
+  },
+};
+
+export function getOutstationRoundTripFare(category: 'standard' | 'luxury' = 'standard', hours: 6 | 12 = 6): number {
+  const pkg = OUTSTATION_ROUND_TRIP_PRICING[category] || OUTSTATION_ROUND_TRIP_PRICING.standard;
+  return hours === 12 ? pkg.hours12Price : pkg.hours6Price;
+}
+
 export interface OutstationOption {
   days: number;
   label: string;
