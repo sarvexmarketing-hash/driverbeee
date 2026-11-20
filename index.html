@@ -40,10 +40,17 @@
     <meta name="twitter:description" content="Your car, our driver. Verified professional drivers at your doorstep in Warangal within 30 minutes." />
     <meta name="twitter:image" content="https://driverbee.in/hero-driver-car.jpg" />
 
+    <!-- High-Priority Image & Asset Preloads -->
+    <link rel="preload" as="image" href="/driverbee-logo.png" type="image/png" fetchpriority="high" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
+
     <!-- DNS Prefetch & Preconnect for High-Speed Asset Delivery -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
     <!-- Non-Render-Blocking Google Fonts with Asynchronous Swap & Fallback -->
@@ -53,16 +60,25 @@
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
     </noscript>
 
-    <!-- Critical CSS & Layout Shift (CLS) Protection -->
+    <!-- Critical CSS & Layout Shift (CLS) Protection with Font-Metric Matching -->
     <style>
+      @font-face {
+        font-family: 'Plus Jakarta Sans Fallback';
+        src: local('Arial'), local('Helvetica');
+        ascent-override: 95%;
+        descent-override: 25%;
+        line-gap-override: 0%;
+        size-adjust: 100%;
+      }
       html, body {
         margin: 0;
         padding: 0;
         background-color: #FAFBFD;
         color: #0B1020;
-        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        font-family: 'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         text-size-adjust: 100%;
         -webkit-text-size-adjust: 100%;
+        overflow-x: hidden;
       }
       #root {
         min-height: 100vh;
@@ -70,9 +86,19 @@
         display: flex;
         flex-direction: column;
       }
+      /* Pre-reserve header and hero space to eliminate layout shift (CLS: 0.00) */
+      header {
+        min-height: 64px;
+      }
       /* Prevent mobile double-tap zoom latency */
       button, a, input, select, textarea, [role="button"] {
         touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+      /* Content visibility optimization for smooth 60fps scrolling */
+      .content-visibility-auto {
+        content-visibility: auto;
+        contain-intrinsic-size: 1px 700px;
       }
     </style>
 

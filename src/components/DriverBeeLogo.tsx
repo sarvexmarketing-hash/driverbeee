@@ -31,7 +31,9 @@ export const DriverBeeLogo: React.FC<DriverBeeLogoProps> = ({
         alt="DriverBee"
         width={Math.round(height * 4.2)}
         height={height}
+        loading="eager"
         decoding="async"
+        fetchPriority="high"
         className={`inline-block select-none object-contain cursor-pointer transition-transform hover:opacity-95 ${className}`}
         style={{
           height: `${height}px`,

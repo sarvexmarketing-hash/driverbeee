@@ -1,29 +1,31 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { WhyDriverBee } from './components/WhyDriverBee';
 import { OneDriverEveryJourney } from './components/OneDriverEveryJourney';
 import { INITIAL_DRIVERS } from './components/TrustedDrivers';
 import { INITIAL_FAMILY } from './components/FamilySafety';
-import { HowItWorks } from './components/HowItWorks';
-import { CustomerStories } from './components/CustomerStories';
-import { FaqSection } from './components/FaqSection';
-import { Footer } from './components/Footer';
 import { BottomNav } from './components/BottomNav';
-import { BookingModal } from './components/BookingModal';
-import { MyBookingsDrawer } from './components/MyBookingsDrawer';
-import { FamilyManagerModal } from './components/FamilyManagerModal';
-import { AuthModal } from './components/AuthModal';
-import { ProfileModal } from './components/ProfileModal';
-import { LocationModal } from './components/LocationModal';
-import { ComingSoonModal } from './components/ComingSoonModal';
-import { EmailReceiptModal } from './components/EmailReceiptModal';
 import { CookieBanner } from './components/CookieBanner';
 import { getEmailByBookingId, getSentEmails, SentEmailRecord } from './services/emailService';
 import { isWarangalLocation, isWithin60kmOfWarangal, isWithinServiceArea, detectAccurateLocation } from './utils/location';
 import { BookingState, BookingRecord, Driver, FamilyMember, TripType } from './types';
 import { useBookings } from './context/BookingContext';
 import { useAuth } from './context/AuthContext';
+
+// Asynchronously load below-the-fold content and heavy modals to slash initial bundle size and eliminate TBT
+const HowItWorks = lazy(() => import('./components/HowItWorks').then(m => ({ default: m.HowItWorks })));
+const CustomerStories = lazy(() => import('./components/CustomerStories').then(m => ({ default: m.CustomerStories })));
+const FaqSection = lazy(() => import('./components/FaqSection').then(m => ({ default: m.FaqSection })));
+const Footer = lazy(() => import('./components/Footer').then(m => ({ default: m.Footer })));
+const BookingModal = lazy(() => import('./components/BookingModal').then(m => ({ default: m.BookingModal })));
+const MyBookingsDrawer = lazy(() => import('./components/MyBookingsDrawer').then(m => ({ default: m.MyBookingsDrawer })));
+const FamilyManagerModal = lazy(() => import('./components/FamilyManagerModal').then(m => ({ default: m.FamilyManagerModal })));
+const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
+const ProfileModal = lazy(() => import('./components/ProfileModal').then(m => ({ default: m.ProfileModal })));
+const LocationModal = lazy(() => import('./components/LocationModal').then(m => ({ default: m.LocationModal })));
+const ComingSoonModal = lazy(() => import('./components/ComingSoonModal').then(m => ({ default: m.ComingSoonModal })));
+const EmailReceiptModal = lazy(() => import('./components/EmailReceiptModal').then(m => ({ default: m.EmailReceiptModal })));
 
 export const App: React.FC = () => {
   const { bookings: contextBookings, drivers } = useBookings();
@@ -378,18 +380,20 @@ export const App: React.FC = () => {
 
         <OneDriverEveryJourney onSelectCategory={handleSelectCategory} />
 
-        <HowItWorks 
-          onBookClick={() => {
-            const el = document.getElementById('booking-card-section');
-            el?.scrollIntoView({ behavior: 'smooth' });
-          }} 
-        />
+        <Suspense fallback={<div className="min-h-[400px] w-full" />}>
+          <HowItWorks 
+            onBookClick={() => {
+              const el = document.getElementById('booking-card-section');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }} 
+          />
 
-        <CustomerStories />
+          <CustomerStories />
 
-        <FaqSection />
+          <FaqSection />
 
-        <Footer />
+          <Footer />
+        </Suspense>
       </div>
 
       {/* 12. Mobile Fixed Bottom Navigation */}
@@ -401,92 +405,101 @@ export const App: React.FC = () => {
         onOpenProfile={() => setIsProfileModalOpen(true)}
       />
 
-      {/* MODALS */}
-      
-      {/* Interactive Booking Confirmation Modal */}
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        bookingState={bookingState}
-        onConfirmSuccess={handleConfirmSuccess}
-        familyMembers={familyMembers}
-        onOpenEmailReceipt={handleOpenEmailReceipt}
-        selectedCity={selectedCity}
-        userCoords={userCoords}
-        onOpenAuth={handleOpenAuth}
-      />
+      {/* MODALS (Rendered on demand with zero initial blocking or memory overhead) */}
+      <Suspense fallback={null}>
+        {isBookingModalOpen && (
+          <BookingModal
+            isOpen={isBookingModalOpen}
+            onClose={() => setIsBookingModalOpen(false)}
+            bookingState={bookingState}
+            onConfirmSuccess={handleConfirmSuccess}
+            familyMembers={familyMembers}
+            onOpenEmailReceipt={handleOpenEmailReceipt}
+            selectedCity={selectedCity}
+            userCoords={userCoords}
+            onOpenAuth={handleOpenAuth}
+          />
+        )}
 
-      {/* My Bookings Drawer */}
-      <MyBookingsDrawer
-        isOpen={isBookingsDrawerOpen}
-        onClose={() => setIsBookingsDrawerOpen(false)}
-        bookings={displayedBookings}
-        onOpenEmailReceipt={handleOpenEmailReceipt}
-      />
+        {isBookingsDrawerOpen && (
+          <MyBookingsDrawer
+            isOpen={isBookingsDrawerOpen}
+            onClose={() => setIsBookingsDrawerOpen(false)}
+            bookings={displayedBookings}
+            onOpenEmailReceipt={handleOpenEmailReceipt}
+          />
+        )}
 
-      {/* Sent Email Receipt Modal */}
-      <EmailReceiptModal
-        isOpen={isEmailReceiptModalOpen}
-        onClose={() => setIsEmailReceiptModalOpen(false)}
-        emailRecord={selectedEmailRecord}
-      />
+        {isEmailReceiptModalOpen && (
+          <EmailReceiptModal
+            isOpen={isEmailReceiptModalOpen}
+            onClose={() => setIsEmailReceiptModalOpen(false)}
+            emailRecord={selectedEmailRecord}
+          />
+        )}
 
-      {/* Family Hub Modal */}
-      <FamilyManagerModal
-        isOpen={isFamilyModalOpen}
-        onClose={() => setIsFamilyModalOpen(false)}
-        familyMembers={familyMembers}
-        onAddMember={handleAddFamilyMember}
-        onRemoveMember={handleRemoveFamilyMember}
-      />
+        {isFamilyModalOpen && (
+          <FamilyManagerModal
+            isOpen={isFamilyModalOpen}
+            onClose={() => setIsFamilyModalOpen(false)}
+            familyMembers={familyMembers}
+            onAddMember={handleAddFamilyMember}
+            onRemoveMember={handleRemoveFamilyMember}
+          />
+        )}
 
-      {/* Customer Profile & Account Modal */}
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        onOpenBookings={() => setIsBookingsDrawerOpen(true)}
-        onOpenFamily={() => setIsFamilyModalOpen(true)}
-        selectedCity={selectedCity}
-      />
+        {isProfileModalOpen && (
+          <ProfileModal
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+            onOpenBookings={() => setIsBookingsDrawerOpen(true)}
+            onOpenFamily={() => setIsFamilyModalOpen(true)}
+            selectedCity={selectedCity}
+          />
+        )}
 
-      {/* Customer Login & Signup Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        initialMode={authModalMode}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
+        {isAuthModalOpen && (
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            initialMode={authModalMode}
+            onClose={() => setIsAuthModalOpen(false)}
+          />
+        )}
 
-      {/* City / Area Selector Modal for Mobile & Desktop */}
-      <LocationModal
-        isOpen={isLocationModalOpen}
-        onClose={() => setIsLocationModalOpen(false)}
-        selectedCity={selectedCity}
-        onSelectCity={(city) => {
-          setSelectedCity(city);
-          setUserManuallySelectedCity(true);
-          setUserCoords(null); // clear stale GPS when user manually picks a city
-          try {
-            localStorage.setItem('driverbee_user_location', city);
-            localStorage.setItem('driverbee_user_manual_city', 'true');
-            localStorage.removeItem('driverbee_user_coords');
-          } catch {}
-        }}
-        onNonWarangalSelected={(city) => {
-          if (!isWarangalLocation(city)) {
-            setIsComingSoonModalOpen(true);
-          }
-        }}
-        onDetectLocation={() => detectLocation(true)}
-        isDetectingLocation={isDetectingLocation}
-      />
+        {isLocationModalOpen && (
+          <LocationModal
+            isOpen={isLocationModalOpen}
+            onClose={() => setIsLocationModalOpen(false)}
+            selectedCity={selectedCity}
+            onSelectCity={(city) => {
+              setSelectedCity(city);
+              setUserManuallySelectedCity(true);
+              setUserCoords(null);
+              try {
+                localStorage.setItem('driverbee_user_location', city);
+                localStorage.setItem('driverbee_user_manual_city', 'true');
+                localStorage.removeItem('driverbee_user_coords');
+              } catch {}
+            }}
+            onNonWarangalSelected={(city) => {
+              if (!isWarangalLocation(city)) {
+                setIsComingSoonModalOpen(true);
+              }
+            }}
+            onDetectLocation={() => detectLocation(true)}
+            isDetectingLocation={isDetectingLocation}
+          />
+        )}
 
-      {/* Non-Warangal "Coming Soon" Alert Modal */}
-      <ComingSoonModal
-        isOpen={isComingSoonModalOpen}
-        onClose={() => setIsComingSoonModalOpen(false)}
-        city={selectedCity}
-        onSwitchToWarangal={handleSwitchToWarangal}
-      />
+        {isComingSoonModalOpen && (
+          <ComingSoonModal
+            isOpen={isComingSoonModalOpen}
+            onClose={() => setIsComingSoonModalOpen(false)}
+            city={selectedCity}
+            onSwitchToWarangal={handleSwitchToWarangal}
+          />
+        )}
+      </Suspense>
 
       {/* Cookie Consent Banner */}
       <CookieBanner />
