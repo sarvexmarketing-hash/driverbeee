@@ -442,9 +442,22 @@ export async function detectAccurateLocation(options?: { forceGps?: boolean }): 
  * Comprehensive serviceability check covering ALL of Andhra Pradesh & Telangana:
  * Every district, city, town, mandal, and local neighborhood across both states is 100% serviceable.
  */
-export function isServiceableLocation(locationStr: string): boolean {
-  if (!locationStr) return false;
+export function isServiceableLocation(locationStr: string, fallbackCity?: string): boolean {
+  if (!locationStr) {
+    if (fallbackCity) return isServiceableLocation(fallbackCity);
+    return false;
+  }
   const q = locationStr.toLowerCase().trim();
+
+  // Out-of-State exclusions: Other states are outside current direct driver pickup boundary
+  const explicitOutOfState = [
+    'bengaluru', 'bangalore', 'karnataka', 'chennai', 'tamil nadu',
+    'mumbai', 'pune', 'maharashtra', 'new delhi', 'delhi', 'kolkata',
+    'west bengal', 'ahmedabad', 'gujarat', 'kerala', 'kochi', 'goa', 'odisha', 'orissa'
+  ];
+  if (explicitOutOfState.some(loc => q.includes(loc))) {
+    return false;
+  }
 
   // ── 1. STATE & REGIONAL IDENTIFIERS (Instant Match) ──────────────────────
   if (
@@ -458,7 +471,10 @@ export function isServiceableLocation(locationStr: string): boolean {
     q.includes(' ap ')            ||
     q.includes(' ts ')            ||
     q.endsWith(' ap')             ||
-    q.endsWith(' ts')
+    q.endsWith(' ts')             ||
+    q.includes(', tg')            ||
+    q.includes(' tg ')            ||
+    q.endsWith(' tg')
   ) {
     return true;
   }
@@ -668,7 +684,16 @@ export function isServiceableLocation(locationStr: string): boolean {
     'kollur', 'amruthalur', 'tsundur', 'tenali rural', 'duggirala'
   ];
 
-  return regionalTowns.some(town => q.includes(town));
+  if (regionalTowns.some(town => q.includes(town))) {
+    return true;
+  }
+
+  // If query did not contain explicit city keyword, but fallbackCity is within AP or TS
+  if (fallbackCity && isServiceableLocation(fallbackCity)) {
+    return true;
+  }
+
+  return false;
 }
 
 // Backwards-compatible alias for existing imports

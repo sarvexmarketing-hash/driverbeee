@@ -295,7 +295,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             <div className="space-y-1.5">
               {filteredCities.map((city) => {
                 const isSelected = selectedCity.toLowerCase().includes(city.name.split(',')[0].toLowerCase());
-                const isWarangal = isWarangalLocation(city.name);
+                const isLive = isWarangalLocation(city.name);
                 return (
                   <button
                     key={city.name}
@@ -308,13 +308,13 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-bee-600' : isWarangal ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                      <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-bee-600' : isLive ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                       <div>
                         <div className="font-bold text-navy-950 flex items-center gap-1.5">
                           <span>{city.name}</span>
                           <span
                             className={`text-[9.5px] font-black uppercase px-1.5 py-0.2 rounded ${
-                              isWarangal
+                              isLive
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/80'
                                 : 'bg-amber-100 text-amber-900 border border-amber-200/80'
                             }`}

@@ -160,13 +160,15 @@ export const App: React.FC = () => {
       return;
     }
 
-    // PRIMARY CHECK: if the user's selected city name is a Warangal-area location,
-    // always allow booking — this covers manual selections and correct auto-detections.
-    if (isWarangalLocation(selectedCity)) {
+    const pickupCheck = (bookingState.pickupLocation || selectedCity || '').trim();
+
+    // People from all around Andhra Pradesh and Telangana can book the driver!
+    if (isWarangalLocation(pickupCheck, selectedCity)) {
       setIsBookingModalOpen(true);
       return;
     }
-    // SECONDARY CHECK: if we have GPS coords, check if within service radius of any active hub
+
+    // Secondary check with GPS coordinates if available
     if (userCoords) {
       if (isWithinServiceArea(userCoords.lat, userCoords.lon)) {
         setIsBookingModalOpen(true);
@@ -175,7 +177,20 @@ export const App: React.FC = () => {
       }
       return;
     }
-    // FALLBACK: no GPS, no keyword match — show Coming Soon
+
+    // Allow general local booking by default unless explicitly out-of-state
+    const lower = pickupCheck.toLowerCase();
+    const explicitOutside = [
+      'bangalore', 'bengaluru', 'karnataka', 'chennai', 'tamil nadu',
+      'mumbai', 'pune', 'maharashtra', 'delhi', 'kolkata', 'kerala', 'gujarat'
+    ].some(state => lower.includes(state));
+
+    if (!explicitOutside) {
+      setIsBookingModalOpen(true);
+      return;
+    }
+
+    // Only explicitly out of state locations trigger Coming Soon
     setIsComingSoonModalOpen(true);
   };
 
@@ -456,8 +471,10 @@ export const App: React.FC = () => {
             localStorage.removeItem('driverbee_user_coords');
           } catch {}
         }}
-        onNonWarangalSelected={() => {
-          setIsComingSoonModalOpen(true);
+        onNonWarangalSelected={(city) => {
+          if (!isWarangalLocation(city)) {
+            setIsComingSoonModalOpen(true);
+          }
         }}
         onDetectLocation={() => detectLocation(true)}
         isDetectingLocation={isDetectingLocation}
